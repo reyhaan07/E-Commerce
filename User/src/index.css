@@ -1,32 +1,36 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-primary-light: #3B82F6;
-  --color-primary: #1D4ED8;
-  --color-primary-dark: #1E3A8A;
-  
-  --color-secondary-light: #F3F4F6;
-  --color-secondary: #E5E7EB;
-  --color-secondary-dark: #374151;
+  --color-primary-light: #93c5fd;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+
+  --color-secondary-light: #f8fafc;
+  --color-secondary: #e2e8f0;
+  --color-secondary-dark: #334155;
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans selection:bg-primary-light selection:text-white;
+    @apply bg-slate-50 text-slate-900 font-sans selection:bg-primary selection:text-white;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary hover:bg-primary-dark text-white font-medium py-2 px-6 rounded-lg transition-all duration-300 active:scale-95;
+    @apply bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-300 active:scale-[0.98] shadow-sm;
   }
-  
+
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
+    @apply bg-white/80 backdrop-blur-md border border-white/60 shadow-sm;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
   }
 
   .card-hover {
-    @apply transition-transform duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer bg-white rounded-xl overflow-hidden;
+    @apply transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer bg-white rounded-xl overflow-hidden;
   }
 }
 
@@ -34,7 +38,7 @@
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-slate-100;
 }
 ::-webkit-scrollbar-thumb {
   @apply bg-primary/40 rounded-full hover:bg-primary/60 transition-colors;

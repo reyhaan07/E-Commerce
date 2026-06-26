@@ -137,25 +137,43 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // ── Placeholder submit — no backend, no navigation ──────────────────────────
-  const handleLogin = () => {
-  if (!selectedRole) {
-    alert("Please select a role.");
-    return;
-  }
+  const handleLogin = async () => {
+    if (!selectedRole) {
+      alert("Please select a role.");
+      return;
+    }
 
-  if (selectedRole === "admin") {
-    window.open("http://localhost:5173", "_self");
-  }
+    try {
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: selectedRole,
+        }),
+      });
 
-  if (selectedRole === "seller") {
-    window.open("http://localhost:5174", "_self");
-  }
+      const result = await response.json();
 
-  if (selectedRole === "user") {
-    window.open("http://localhost:5175", "_self");
-  }
-};
+      if (result.success) {
+        if (selectedRole === "admin") {
+          window.location.href = "http://localhost:5173";
+        } else if (selectedRole === "seller") {
+          window.location.href = "http://localhost:5174";
+        } else {
+          window.location.href = "http://localhost:5175";
+        }
+        return;
+      }
+
+      alert(result.message || "Invalid email or password");
+    } catch (error) {
+      alert("Invalid email or password");
+    }
+  };
 
   // ── Derived helpers ─────────────────────────────────────────────────────────
   const activeRole = ROLES.find((r) => r.id === selectedRole);

@@ -8,8 +8,8 @@ const Navbar = () => {
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">B</div>
-          <span className="hidden sm:inline">BlueCart</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">S</div>
+          <span className="hidden sm:inline">ShopSphere</span>
         </Link>
 
         {/* Search Bar - Desktop */}

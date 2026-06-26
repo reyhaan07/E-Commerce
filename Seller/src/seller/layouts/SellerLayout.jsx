@@ -62,8 +62,8 @@ export default function SellerLayout() {
               <FiTrendingUp size={16} color="white" />
             </div>
             <div>
-              <div className="text-sm font-bold leading-none" style={{ color: 'var(--text-primary)' }}>Seller</div>
-              <div className="text-xs leading-none mt-0.5" style={{ color: 'var(--text-muted)' }}>Hub Pro</div>
+              <div className="text-sm font-bold leading-none" style={{ color: 'var(--text-primary)' }}>ShopSphere</div>
+              <div className="text-xs leading-none mt-0.5" style={{ color: 'var(--text-muted)' }}>Seller</div>
             </div>
           </div>
           <button className="lg:hidden btn-icon" onClick={() => setSidebarOpen(false)}>
@@ -79,8 +79,8 @@ export default function SellerLayout() {
             A
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>Apex Store</div>
-            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>apex@store.com</div>
+            <div className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>ShopSphere Store</div>
+            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>store@shopsphere.com</div>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ export default function SellerLayout() {
             <div>
               <h1 className="text-base font-bold leading-none" style={{ color: 'var(--text-primary)' }}>{currentPage}</h1>
               <p className="text-xs mt-0.5 hidden sm:block" style={{ color: 'var(--text-muted)' }}>
-                Welcome back, Apex Store
+                Welcome back, ShopSphere Store
               </p>
             </div>
           </div>

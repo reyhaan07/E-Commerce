@@ -1,17 +1,41 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 export default function Login(){
-  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e){
+  async function handleSubmit(e){
     e.preventDefault()
-    // save mock user
-    const user = { email }
-    try{ localStorage.setItem('seller_user', JSON.stringify({ id: Date.now(), email, name: email.split('@')[0] })) }catch(e){}
-    navigate('/seller')
+    setLoading(true)
+
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: 'seller',
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        window.location.href = 'http://localhost:5174'
+        return
+      }
+
+      alert(result.message || 'Invalid email or password')
+    } catch (error) {
+      alert('Invalid email or password')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -27,9 +51,9 @@ export default function Login(){
             <label className="text-sm text-white/70">Password</label>
             <input value={password} onChange={e=>setPassword(e.target.value)} type="password" className="w-full mt-1 p-2 rounded bg-white/5" placeholder="••••••••" required />
           </div>
-          <button type="submit" className="w-full py-2 rounded bg-teal-500 hover:bg-teal-600">Sign in</button>
+          <button type="submit" disabled={loading} className="w-full py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-70">{loading ? 'Signing in...' : 'Sign in'}</button>
         </form>
-        <p className="mt-4 text-sm text-white/70">Don't have an account? <Link to="/register" className="text-teal-300">Register</Link></p>
+        <p className="mt-4 text-sm text-white/70">Don't have an account? <Link to="/register" className="text-blue-300">Register</Link></p>
       </div>
     </div>
   )
