@@ -7,8 +7,12 @@ app.use(cors());
 app.use(express.json());
 
 const authRoutes = require("./routes/auth");
+const ordersRoutes = require("./routes/orders");
+const deliveryPartnersRoutes = require("./routes/deliveryPartners");
 
 app.use("/api", authRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/delivery-partners", deliveryPartnersRoutes);
 
 const PORT = 5000;
 
