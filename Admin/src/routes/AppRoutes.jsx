@@ -1,15 +1,6 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
-import Home from "../pages/Home";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/Login";
-import Register from "../pages/Register";
-import ProductListing from "../pages/ProductListing";
-import ProductDetails from "../pages/ProductDetails";
-import Cart from "../pages/Cart";
-import Checkout from "../pages/Checkout";
-import Orders from "../pages/Orders";
-import Wishlist from "../pages/Wishlist";
-import Profile from "../pages/Profile";
 
 import AdminLayout from "../layouts/AdminLayout";
 
@@ -30,16 +21,8 @@ import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/products" element={<ProductListing />} />
-      <Route path="/product/:id" element={<ProductDetails />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/checkout" element={<Checkout />} />
-      <Route path="/orders" element={<Orders />} />
-      <Route path="/wishlist" element={<Wishlist />} />
-      <Route path="/profile" element={<Profile />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
