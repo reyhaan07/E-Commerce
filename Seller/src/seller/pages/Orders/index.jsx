@@ -1,39 +1,56 @@
 import React, { useState, useEffect } from 'react'
 import { SkeletonTable } from '../../components/Skeleton'
 import EmptyState from '../../components/EmptyState'
-import { FiShoppingBag, FiSearch, FiFilter, FiEye } from 'react-icons/fi'
+import StatusBadge from '../../components/StatusBadge'
+import { FiShoppingBag, FiSearch, FiFilter, FiEye, FiTruck } from 'react-icons/fi'
+import { getOrders, updateSellerStatus } from '../../api/orders'
 
-const ordersData = [
-  { id: '#ORD-1041', customer: 'Priya Sharma',   items: 3, amount: '₹340', date: 'Jun 19, 2026', status: 'Processing', payment: 'Paid'   },
-  { id: '#ORD-1040', customer: 'Arjun Mehta',    items: 1, amount: '₹120', date: 'Jun 19, 2026', status: 'Delivered',  payment: 'Paid'   },
-  { id: '#ORD-1039', customer: 'Meera Nair',     items: 5, amount: '₹890', date: 'Jun 18, 2026', status: 'Shipped',    payment: 'Paid'   },
-  { id: '#ORD-1038', customer: 'Rohan Gupta',    items: 1, amount: '₹55',  date: 'Jun 18, 2026', status: 'Returned',   payment: 'Refund' },
-  { id: '#ORD-1037', customer: 'Sana Kapoor',    items: 2, amount: '₹210', date: 'Jun 17, 2026', status: 'Delivered',  payment: 'Paid'   },
-  { id: '#ORD-1036', customer: 'Karan Joshi',    items: 4, amount: '₹475', date: 'Jun 17, 2026', status: 'Processing', payment: 'Paid'   },
-  { id: '#ORD-1035', customer: 'Divya Pillai',   items: 1, amount: '₹89',  date: 'Jun 16, 2026', status: 'Cancelled',  payment: 'Refund' },
-  { id: '#ORD-1034', customer: 'Vikram Singh',   items: 2, amount: '₹318', date: 'Jun 16, 2026', status: 'Delivered',  payment: 'Paid'   },
-  { id: '#ORD-1033', customer: 'Anjali Verma',   items: 1, amount: '₹49',  date: 'Jun 15, 2026', status: 'Shipped',    payment: 'Paid'   },
-  { id: '#ORD-1032', customer: 'Rahul Desai',    items: 3, amount: '₹650', date: 'Jun 15, 2026', status: 'Delivered',  payment: 'Paid'   },
-]
-
-const STATUSES = ['All', 'Processing', 'Shipped', 'Delivered', 'Returned', 'Cancelled']
-const statusClass = { Processing: 'badge-info', Shipped: 'badge-accent', Delivered: 'badge-success', Returned: 'badge-danger', Cancelled: 'badge-neutral' }
+const STATUSES = ['All', 'Processing', 'Ready For Dispatch', 'Shipped', 'Delivered', 'Returned', 'Cancelled']
+const statusClass = {
+  Processing: 'badge-info',
+  'Ready For Dispatch': 'badge-warning',
+  Shipped: 'badge-accent',
+  Delivered: 'badge-success',
+  Returned: 'badge-danger',
+  Cancelled: 'badge-neutral',
+}
 
 export default function Orders() {
+  const [ordersData, setOrdersData] = useState([])
   const [loading, setLoading] = useState(true)
   const [query,   setQuery]   = useState('')
   const [status,  setStatus]  = useState('All')
+  const [updatingId, setUpdatingId] = useState(null)
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 1300); return () => clearTimeout(t) }, [])
+  function loadOrders() {
+    setLoading(true)
+    getOrders()
+      .then(setOrdersData)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(loadOrders, [])
+
+  async function handleMarkReady(orderId) {
+    setUpdatingId(orderId)
+    try {
+      await updateSellerStatus(orderId, 'Ready For Dispatch')
+      loadOrders()
+    } catch (err) {
+      alert(err.message || 'Could not update order status')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
 
   const filtered = ordersData.filter(o => {
-    const matchQ = o.id.toLowerCase().includes(query.toLowerCase()) || o.customer.toLowerCase().includes(query.toLowerCase())
-    const matchS = status === 'All' || o.status === status
+    const matchQ = o.id.toLowerCase().includes(query.toLowerCase()) || o.customerName.toLowerCase().includes(query.toLowerCase())
+    const matchS = status === 'All' || o.sellerStatus === status
     return matchQ && matchS
   })
 
   const counts = STATUSES.reduce((acc, s) => {
-    acc[s] = s === 'All' ? ordersData.length : ordersData.filter(o => o.status === s).length
+    acc[s] = s === 'All' ? ordersData.length : ordersData.filter(o => o.sellerStatus === s).length
     return acc
   }, {})
 
@@ -84,18 +101,36 @@ export default function Orders() {
       ) : (
         <div className="table-wrapper">
           <table className="data-table">
-            <thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Amount</th><th>Date</th><th>Status</th><th>Payment</th><th>Action</th></tr></thead>
+            <thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Amount</th><th>Date</th><th>Status</th><th>Delivery</th><th>Action</th></tr></thead>
             <tbody>
-              {filtered.map((o, i) => (
-                <tr key={i}>
+              {filtered.map((o) => (
+                <tr key={o.id}>
                   <td><span className="font-mono text-xs font-semibold" style={{ color: 'var(--accent)' }}>{o.id}</span></td>
-                  <td>{o.customer}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{o.items} item{o.items > 1 ? 's' : ''}</td>
-                  <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{o.amount}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{o.date}</td>
-                  <td><span className={`badge ${statusClass[o.status] || 'badge-neutral'}`}>{o.status}</span></td>
-                  <td><span className={`badge ${o.payment === 'Paid' ? 'badge-success' : 'badge-warning'}`}>{o.payment}</span></td>
-                  <td><button className="btn-icon" style={{ width: 30, height: 30 }}><FiEye size={13} /></button></td>
+                  <td>{o.customerName}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{o.items.length} item{o.items.length > 1 ? 's' : ''}</td>
+                  <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>₹{o.amount}</td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(o.createdAt).toLocaleDateString()}</td>
+                  <td><span className={`badge ${statusClass[o.sellerStatus] || 'badge-neutral'}`}>{o.sellerStatus}</span></td>
+                  <td>
+                    <StatusBadge status={o.deliveryStatus} />
+                    {o.deliveryPartnerName && (
+                      <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{o.deliveryPartnerName}</div>
+                    )}
+                  </td>
+                  <td>
+                    {o.sellerStatus === 'Processing' ? (
+                      <button
+                        className="btn-ghost text-xs"
+                        style={{ padding: '6px 10px' }}
+                        disabled={updatingId === o.id}
+                        onClick={() => handleMarkReady(o.id)}
+                      >
+                        <FiTruck size={12} /> {updatingId === o.id ? 'Updating...' : 'Ready For Dispatch'}
+                      </button>
+                    ) : (
+                      <button className="btn-icon" style={{ width: 30, height: 30 }}><FiEye size={13} /></button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
