@@ -10,6 +10,7 @@ import Checkout from '../pages/Checkout';
 import Orders from '../pages/Orders';
 import Wishlist from '../pages/Wishlist';
 import Profile from '../pages/Profile';
+import TrackOrder from '../pages/TrackOrder';
 
 const AppRoutes = () => {
   return (
@@ -24,6 +25,8 @@ const AppRoutes = () => {
       <Route path="/orders" element={<Orders />} />
       <Route path="/wishlist" element={<Wishlist />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/track-order" element={<TrackOrder />} />
+      <Route path="/track-order/:id" element={<TrackOrder />} />
     </Routes>
   );
 };

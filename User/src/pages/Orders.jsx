@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { HiOutlineCube, HiOutlineCheckCircle, HiOutlineClock, HiOutlineTruck } from 'react-icons/hi2';
@@ -62,7 +63,8 @@ const Orders = () => {
                                         <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Items</p>
                                         <p className="font-extrabold text-gray-900">{order.items} Items</p>
                                     </div>
-                                    <div className="md:col-span-2 flex justify-end">
+                                    <div className="md:col-span-2 flex justify-end gap-6">
+                                        <Link to={`/track-order/${order.id.replace('#', '')}`} className="text-primary font-bold hover:underline">Track Order</Link>
                                         <button className="text-primary font-bold hover:underline">Download Invoice</button>
                                     </div>
                                 </div>
