@@ -1,6 +1,46 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #2563eb;
+  --color-brand-600: #1d4ed8;
+  --color-brand-700: #1e3a8a;
+  --color-brand-800: #172a63;
+  --color-brand-900: #0f1d45;
+
+  --color-sky-accent: #0ea5e9;
+  --color-surface: #f8fafc;
+  --color-ink: #0f172a;
+
+  --font-display: "Poppins", ui-sans-serif, system-ui;
+  --font-body: "Inter", ui-sans-serif, system-ui;
+
+  --shadow-soft: 0 2px 12px rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 4px 20px rgba(30, 58, 138, 0.08);
+  --shadow-glass: 0 8px 32px rgba(31, 38, 135, 0.1);
+  --shadow-lift: 0 12px 28px rgba(30, 58, 138, 0.16);
+
+  --animate-fade-in: fadeIn 0.4s ease-out;
+  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-shimmer: shimmer 1.6s infinite;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -700px 0; }
+  100% { background-position: 700px 0; }
+}
 
 html {
   scroll-behavior: smooth;
