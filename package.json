@@ -1,0 +1,14 @@
+{
+  "name": "shopsphere",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ShopSphere — multi-vendor e-commerce platform (User, Seller, Admin, Delivery Partner + shared Backend)",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend/admin && npm install --prefix frontend/seller && npm install --prefix frontend/user && npm install --prefix frontend/delivery",
+    "dev:all": "concurrently -n backend,admin,seller,user,delivery -c blue,green,magenta,cyan,yellow \"npm run dev --prefix backend\" \"npm run dev --prefix frontend/admin\" \"npm run dev --prefix frontend/seller\" \"npm run dev --prefix frontend/user\" \"npm run dev --prefix frontend/delivery\"",
+    "build:all": "npm run build --prefix frontend/admin && npm run build --prefix frontend/seller && npm run build --prefix frontend/user && npm run build --prefix frontend/delivery"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
