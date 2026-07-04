@@ -43,6 +43,26 @@ export default function AdminSidebar() {
           Analytics Dashboard
         </Link>
 
+        <div className="mt-2 pt-2 border-t border-slate-700 text-xs uppercase tracking-wide text-slate-400">
+          Delivery Management
+        </div>
+
+        <Link to="/admin/delivery-partners">
+          Delivery Partners
+        </Link>
+
+        <Link to="/admin/delivery-assignment">
+          Assign Deliveries
+        </Link>
+
+        <Link to="/admin/delivery-tracking">
+          Delivery Tracking
+        </Link>
+
+        <Link to="/admin/delivery-analytics">
+          Delivery Analytics
+        </Link>
+
       </div>
     </div>
   );

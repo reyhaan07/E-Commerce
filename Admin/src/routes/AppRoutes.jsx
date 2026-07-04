@@ -22,6 +22,10 @@ import RefundTracking from "../pages/admin/RefundTracking";
 import AnalyticsDashboard from "../pages/admin/AnalyticsDashboard";
 import SellerVerification from "../pages/admin/SellerVerification";
 import ProductApproval from "../pages/admin/ProductApproval";
+import DeliveryPartners from "../pages/admin/DeliveryPartners";
+import DeliveryAssignment from "../pages/admin/DeliveryAssignment";
+import DeliveryTracking from "../pages/admin/DeliveryTracking";
+import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
 
 export default function AppRoutes() {
   return (
@@ -46,6 +50,10 @@ export default function AppRoutes() {
         <Route path="orders" element={<OrderMonitoring />} />
         <Route path="refunds" element={<RefundTracking />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
+        <Route path="delivery-partners" element={<DeliveryPartners />} />
+        <Route path="delivery-assignment" element={<DeliveryAssignment />} />
+        <Route path="delivery-tracking" element={<DeliveryTracking />} />
+        <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
       </Route>
     </Routes>
   );
