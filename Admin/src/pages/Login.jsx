@@ -24,6 +24,7 @@ import {
   FaUser,
   FaStore,
   FaShieldAlt,
+  FaTruck,
 } from "react-icons/fa";
 
 // ─── Role definitions ────────────────────────────────────────────────────────
@@ -62,6 +63,17 @@ const ROLES = [
     activeIcon: "text-rose-600",
     activeBadge: "bg-rose-500",
     activeLabel: "text-rose-700",
+  },
+  {
+    id: "delivery",
+    label: "Delivery Partner",
+    subtitle: "Deliver orders",
+    Icon: FaTruck,
+    activeRing: "ring-emerald-400",
+    activeBg: "bg-emerald-50",
+    activeIcon: "text-emerald-600",
+    activeBadge: "bg-emerald-500",
+    activeLabel: "text-emerald-700",
   },
 ];
 
@@ -159,13 +171,13 @@ export default function Login() {
       const result = await response.json();
 
       if (result.success) {
-        if (selectedRole === "admin") {
-          window.location.href = "http://localhost:5173";
-        } else if (selectedRole === "seller") {
-          window.location.href = "http://localhost:5174";
-        } else {
-          window.location.href = "http://localhost:5175";
-        }
+        const redirects = {
+          admin: "http://localhost:5173",
+          seller: "http://localhost:5174",
+          user: "http://localhost:5175",
+          delivery: "http://localhost:5176",
+        };
+        window.location.href = redirects[selectedRole];
         return;
       }
 
@@ -214,7 +226,7 @@ export default function Login() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
             Login as
           </p>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {ROLES.map((role) => (
               <RoleCard
                 key={role.id}
@@ -321,8 +333,9 @@ export default function Login() {
             <span
               className={`
                 pointer-events-none absolute inset-0 opacity-20 transition-opacity duration-300
-                ${activeRole?.id === "seller" ? "bg-amber-400" : ""}
-                ${activeRole?.id === "admin"  ? "bg-rose-400"  : ""}
+                ${activeRole?.id === "seller"   ? "bg-amber-400"   : ""}
+                ${activeRole?.id === "admin"    ? "bg-rose-400"    : ""}
+                ${activeRole?.id === "delivery" ? "bg-emerald-400" : ""}
               `}
               aria-hidden
             />
