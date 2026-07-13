@@ -1,8 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4 } from 'react-icons/hi';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
 const Navbar = () => {
+  const { itemCount } = useCart();
+  const { items: wishlistItems } = useWishlist();
+
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -24,18 +29,22 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-4 sm:gap-6">
-          <Link to="/login" className="flex flex-col items-center group">
+          <Link to="/profile" className="flex flex-col items-center group">
             <HiOutlineUser className="text-2xl group-hover:text-primary transition-colors" />
             <span className="text-[10px] uppercase font-bold text-gray-500 group-hover:text-primary transition-colors hidden sm:block">Profile</span>
           </Link>
           <Link to="/wishlist" className="flex flex-col items-center group relative">
             <HiOutlineHeart className="text-2xl group-hover:text-primary transition-colors" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold italic">2</span>
+            {wishlistItems.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold italic">{wishlistItems.length}</span>
+            )}
             <span className="text-[10px] uppercase font-bold text-gray-500 group-hover:text-primary transition-colors hidden sm:block">Wishlist</span>
           </Link>
           <Link to="/cart" className="flex flex-col items-center group relative">
             <HiOutlineShoppingBag className="text-2xl group-hover:text-primary transition-colors" />
-            <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold italic">3</span>
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold italic">{itemCount}</span>
+            )}
             <span className="text-[10px] uppercase font-bold text-gray-500 group-hover:text-primary transition-colors hidden sm:block">Cart</span>
           </Link>
           <button className="md:hidden">

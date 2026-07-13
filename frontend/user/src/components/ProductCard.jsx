@@ -2,8 +2,38 @@ import React from 'react';
 import { HiStar } from 'react-icons/hi';
 import { HiOutlineHeart, HiOutlineShoppingBag } from 'react-icons/hi';
 import { motion } from 'framer-motion';
+import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+
+// Browsing is public, but adding to cart needs an account — login lives on
+// a different dev-server origin (frontend/admin), so unauthenticated clicks
+// hard-redirect there and come back to this exact product afterward.
+const SHARED_LOGIN_URL = 'http://localhost:5173/login';
 
 const ProductCard = ({ product }) => {
+  const { user } = useAuth();
+  const { addItem } = useCart();
+  const { isWishlisted, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlist();
+  const wishlisted = isWishlisted(product.id);
+
+  function handleAddToCart() {
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=user&redirect=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    addItem(product, 1);
+  }
+
+  function handleToggleWishlist() {
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=user&redirect=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    if (wishlisted) removeFromWishlist(product.id);
+    else addToWishlist(product);
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -21,11 +51,14 @@ const ProductCard = ({ product }) => {
             {product.isNew && <span className="bg-primary text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">New</span>}
             {product.discount && <span className="bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">-{product.discount}%</span>}
         </div>
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300 hover:text-red-500">
+        <button
+          onClick={handleToggleWishlist}
+          className={`absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur shadow-sm flex items-center justify-center transition-all duration-300 hover:text-red-500 ${wishlisted ? 'text-red-500 opacity-100' : 'opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0'}`}
+        >
           <HiOutlineHeart className="text-xl" />
         </button>
         <div className="absolute bottom-4 left-4 right-4 flex gap-2 translate-y-20 group-hover:translate-y-0 transition-transform duration-300">
-          <button className="flex-1 bg-primary text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-primary-dark shadow-lg">
+          <button onClick={handleAddToCart} className="flex-1 bg-primary text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-primary-dark shadow-lg">
             <HiOutlineShoppingBag /> Add to Cart
           </button>
         </div>

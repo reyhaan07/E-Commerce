@@ -3,12 +3,11 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import { HiOutlineHeart } from 'react-icons/hi2';
+import { useWishlist } from '../context/WishlistContext';
 
 const Wishlist = () => {
-    const products = [
-        { id: 1, name: 'Premium Wireless Headphones', price: 14999, rating: 5, reviews: 128, category: 'Electronics', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800' },
-        { id: 2, name: 'Minimalist Analog Watch', price: 4999, rating: 4, reviews: 85, category: 'Fashion', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800' },
-    ];
+    const { items } = useWishlist();
+    const products = items.map((w) => ({ id: w.productId, name: w.name, price: w.price, image: w.image }));
 
   return (
     <div className="min-h-screen bg-gray-50">

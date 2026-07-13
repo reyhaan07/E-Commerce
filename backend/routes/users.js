@@ -1,0 +1,220 @@
+const express = require("express");
+const router = express.Router();
+const { Account } = require("../models/account.model");
+
+async function findUser(req, res) {
+  const account = await Account.findOne({ id: req.params.id, role: "user" });
+  if (!account) {
+    res.status(404).json({ success: false, message: "User not found" });
+    return null;
+  }
+  return account;
+}
+
+// GET /api/users/:id
+router.get("/:id", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, user: account });
+});
+
+// PUT /api/users/:id  { name, phone, avatar, deliveryInstructions, notifyByEmail, notifyBySms }
+router.put("/:id", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { name, phone, avatar, deliveryInstructions, notifyByEmail, notifyBySms } = req.body;
+  if (name !== undefined) account.name = name;
+  if (phone !== undefined) account.phone = phone;
+  if (avatar !== undefined) account.avatar = avatar;
+  if (deliveryInstructions !== undefined) account.deliveryInstructions = deliveryInstructions;
+  if (notifyByEmail !== undefined) account.notifyByEmail = notifyByEmail;
+  if (notifyBySms !== undefined) account.notifyBySms = notifyBySms;
+  await account.save();
+
+  res.json({ success: true, user: account });
+});
+
+// GET /api/users/:id/addresses
+router.get("/:id/addresses", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, addresses: account.addresses });
+});
+
+// POST /api/users/:id/addresses  { label, line1, line2, city, state, pincode, phone, isDefault }
+router.post("/:id/addresses", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { label, line1, line2, city, state, pincode, phone, isDefault } = req.body;
+  if (!line1 || !city || !state || !pincode) {
+    return res.status(400).json({ success: false, message: "line1, city, state and pincode are required" });
+  }
+
+  if (isDefault) {
+    account.addresses.forEach((a) => (a.isDefault = false));
+  }
+  account.addresses.push({ label, line1, line2, city, state, pincode, phone, isDefault });
+  await account.save();
+
+  res.status(201).json({ success: true, addresses: account.addresses });
+});
+
+// PUT /api/users/:id/addresses/:addressId
+router.put("/:id/addresses/:addressId", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const address = account.addresses.id(req.params.addressId);
+  if (!address) {
+    return res.status(404).json({ success: false, message: "Address not found" });
+  }
+
+  const { label, line1, line2, city, state, pincode, phone, isDefault } = req.body;
+  if (label !== undefined) address.label = label;
+  if (line1 !== undefined) address.line1 = line1;
+  if (line2 !== undefined) address.line2 = line2;
+  if (city !== undefined) address.city = city;
+  if (state !== undefined) address.state = state;
+  if (pincode !== undefined) address.pincode = pincode;
+  if (phone !== undefined) address.phone = phone;
+  if (isDefault) {
+    account.addresses.forEach((a) => (a.isDefault = false));
+    address.isDefault = true;
+  }
+  await account.save();
+
+  res.json({ success: true, addresses: account.addresses });
+});
+
+// DELETE /api/users/:id/addresses/:addressId
+router.delete("/:id/addresses/:addressId", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  account.addresses.pull(req.params.addressId);
+  await account.save();
+
+  res.json({ success: true, addresses: account.addresses });
+});
+
+// GET /api/users/:id/payment-methods
+router.get("/:id/payment-methods", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, paymentMethods: account.paymentMethods });
+});
+
+// POST /api/users/:id/payment-methods  { type, label, last4, upiId, isDefault }
+// Mock/tokenized only - full card numbers are never accepted or stored.
+router.post("/:id/payment-methods", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { type, label, last4, upiId, isDefault } = req.body;
+  if (!type || (type === "card" && !last4) || (type === "upi" && !upiId)) {
+    return res.status(400).json({ success: false, message: "type and last4/upiId are required" });
+  }
+
+  if (isDefault) {
+    account.paymentMethods.forEach((p) => (p.isDefault = false));
+  }
+  account.paymentMethods.push({ type, label, last4, upiId, isDefault });
+  await account.save();
+
+  res.status(201).json({ success: true, paymentMethods: account.paymentMethods });
+});
+
+// DELETE /api/users/:id/payment-methods/:paymentId
+router.delete("/:id/payment-methods/:paymentId", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  account.paymentMethods.pull(req.params.paymentId);
+  await account.save();
+
+  res.json({ success: true, paymentMethods: account.paymentMethods });
+});
+
+// GET /api/users/:id/cart
+router.get("/:id/cart", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, cart: account.cart });
+});
+
+// PUT /api/users/:id/cart  { items: [{ productId, name, price, image, qty }] }
+// Replaces the whole cart in one go - simplest way to keep it in sync with
+// whatever the frontend has in local state.
+router.put("/:id/cart", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { items } = req.body;
+  account.cart = Array.isArray(items) ? items : [];
+  await account.save();
+
+  res.json({ success: true, cart: account.cart });
+});
+
+// GET /api/users/:id/wishlist
+router.get("/:id/wishlist", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, wishlist: account.wishlist });
+});
+
+// POST /api/users/:id/wishlist  { productId, name, price, image }
+router.post("/:id/wishlist", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { productId, name, price, image } = req.body;
+  if (!productId) {
+    return res.status(400).json({ success: false, message: "productId is required" });
+  }
+  const alreadySaved = account.wishlist.some((w) => w.productId === String(productId));
+  if (!alreadySaved) {
+    account.wishlist.push({ productId: String(productId), name, price, image });
+    await account.save();
+  }
+
+  res.status(201).json({ success: true, wishlist: account.wishlist });
+});
+
+// DELETE /api/users/:id/wishlist/:productId
+router.delete("/:id/wishlist/:productId", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  account.wishlist = account.wishlist.filter((w) => w.productId !== req.params.productId);
+  await account.save();
+
+  res.json({ success: true, wishlist: account.wishlist });
+});
+
+// GET /api/users/:id/reviews
+router.get("/:id/reviews", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+  res.json({ success: true, reviews: account.reviews });
+});
+
+// POST /api/users/:id/reviews  { productId, productName, rating, comment }
+router.post("/:id/reviews", async (req, res) => {
+  const account = await findUser(req, res);
+  if (!account) return;
+
+  const { productId, productName, rating, comment } = req.body;
+  if (!productId || !rating) {
+    return res.status(400).json({ success: false, message: "productId and rating are required" });
+  }
+
+  account.reviews.push({ productId, productName, rating, comment });
+  await account.save();
+
+  res.status(201).json({ success: true, reviews: account.reviews });
+});
+
+module.exports = router;

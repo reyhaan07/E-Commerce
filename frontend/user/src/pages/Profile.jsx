@@ -1,9 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { HiOutlineUser, HiOutlineTicket, HiOutlineHome, HiOutlineCreditCard, HiOutlinePencilSquare, HiOutlinePower } from 'react-icons/hi2';
+import { useAuth } from '../hooks/useAuth';
+import { apiRequest } from '../api/client';
 
 const Profile = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    apiRequest(`/users/${user.id}`)
+      .then((data) => setProfile(data.user))
+      .catch(() => {});
+  }, [user]);
+
+  function handleLogout() {
+    logout();
+    navigate('/');
+  }
+
+  const defaultAddress = profile?.addresses?.find((a) => a.isDefault) || profile?.addresses?.[0];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -18,8 +39,10 @@ const Profile = () => {
                     <div className="w-24 h-24 rounded-full border-4 border-white bg-gray-100 mx-auto overflow-hidden">
                         <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80" alt="Avatar" className="w-full h-full object-cover" />
                     </div>
-                    <h2 className="mt-4 text-xl font-bold text-gray-900">Johnathan Doe</h2>
-                    <p className="text-gray-400 text-sm font-medium">Customer since 2026</p>
+                    <h2 className="mt-4 text-xl font-bold text-gray-900">{profile?.name || 'Loading...'}</h2>
+                    <p className="text-gray-400 text-sm font-medium">
+                      {profile?.createdAt ? `Customer since ${new Date(profile.createdAt).getFullYear()}` : ''}
+                    </p>
                     <button className="mt-6 flex items-center gap-2 mx-auto text-primary font-bold hover:underline">
                         <HiOutlinePencilSquare /> Edit Profile
                     </button>
@@ -30,12 +53,12 @@ const Profile = () => {
                 <nav className="space-y-1">
                     {[
                         { name: 'My Profile', icon: <HiOutlineUser /> },
-                        { name: 'My Orders', icon: <HiOutlineTicket /> },
+                        { name: 'My Orders', icon: <HiOutlineTicket />, onClick: () => navigate('/orders') },
                         { name: 'Address Book', icon: <HiOutlineHome /> },
                         { name: 'Payments', icon: <HiOutlineCreditCard /> },
-                        { name: 'Logout', icon: <HiOutlinePower />, color: 'text-red-500' },
+                        { name: 'Logout', icon: <HiOutlinePower />, color: 'text-red-500', onClick: handleLogout },
                     ].map((item, idx) => (
-                        <button key={idx} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all hover:bg-gray-50 ${item.color || 'text-gray-600 hover:text-primary'}`}>
+                        <button key={idx} onClick={item.onClick} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all hover:bg-gray-50 ${item.color || 'text-gray-600 hover:text-primary'}`}>
                             <span className="text-xl">{item.icon}</span>
                             {item.name}
                         </button>
@@ -51,15 +74,15 @@ const Profile = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Full Name</p>
-                        <p className="text-gray-900 font-medium">Johnathan Doe</p>
+                        <p className="text-gray-900 font-medium">{profile?.name || '-'}</p>
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Email Address</p>
-                        <p className="text-gray-900 font-medium">john.doe@example.com</p>
+                        <p className="text-gray-900 font-medium">{profile?.email || '-'}</p>
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
-                        <p className="text-gray-900 font-medium">+91 98765 43210</p>
+                        <p className="text-gray-900 font-medium">{profile?.phone || '-'}</p>
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Birthday</p>
@@ -73,19 +96,22 @@ const Profile = () => {
                     <h3 className="text-xl font-bold text-gray-900">Default Address</h3>
                     <button className="text-primary font-bold hover:underline text-sm">+ Add New</button>
                 </div>
-                <div className="flex items-start gap-4 p-6 rounded-2xl border border-gray-100 bg-gray-50">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary flex-shrink-0 border">
-                        <HiOutlineHome className="text-xl" />
+                {defaultAddress ? (
+                    <div className="flex items-start gap-4 p-6 rounded-2xl border border-gray-100 bg-gray-50">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary flex-shrink-0 border">
+                            <HiOutlineHome className="text-xl" />
+                        </div>
+                        <div>
+                            <p className="font-bold text-gray-900 mb-1">{defaultAddress.label || 'Home'}</p>
+                            <p className="text-gray-500 text-sm leading-relaxed">
+                                {defaultAddress.line1}{defaultAddress.line2 ? `, ${defaultAddress.line2}` : ''}, <br />
+                                {defaultAddress.state}, {defaultAddress.pincode}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-bold text-gray-900 mb-1">Home</p>
-                        <p className="text-gray-500 text-sm leading-relaxed">
-                            Sector 62, Noida, <br />
-                            Near Electronics City Metro Station, <br />
-                            Uttar Pradesh, 201309
-                        </p>
-                    </div>
-                </div>
+                ) : (
+                    <p className="text-gray-400 text-sm p-6">No saved address yet.</p>
+                )}
             </section>
           </div>
         </div>
