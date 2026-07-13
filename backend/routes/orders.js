@@ -3,6 +3,7 @@ const router = express.Router();
 const { Order, SELLER_STATUSES, DELIVERY_STATUSES } = require("../models/order.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
 const { Account } = require("../models/account.model");
+const { getAuthFromHeader } = require("../middleware/auth");
 
 // 1 loyalty point per 100 rupees spent, same as a lot of real stores do it
 const LOYALTY_POINTS_PER_RUPEE = 1 / 100;
@@ -19,6 +20,19 @@ async function nextOrderId() {
 // GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=
 router.get("/", async (req, res) => {
   const { deliveryPartnerId, sellerStatus, deliveryStatus, userId } = req.query;
+
+  // filtering by deliveryPartnerId/sellerStatus/deliveryStatus is used by the
+  // admin/seller/delivery apps and stays open like before - but asking for a
+  // specific user's orders needs to be that user (or an admin)
+  if (userId) {
+    const auth = getAuthFromHeader(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, message: "Missing or invalid Authorization header" });
+    }
+    if (auth.role !== "admin" && auth.id !== userId) {
+      return res.status(403).json({ success: false, message: "You don't have access to this user's orders" });
+    }
+  }
 
   const filter = {};
   if (deliveryPartnerId) filter.deliveryPartnerId = deliveryPartnerId;

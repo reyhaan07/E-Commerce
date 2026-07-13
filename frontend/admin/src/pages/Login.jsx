@@ -14,8 +14,8 @@
  * console.log({ email, password, selectedRole }) on submit.
  */
 
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaEnvelope,
   FaLock,
@@ -26,6 +26,26 @@ import {
   FaShieldAlt,
   FaTruck,
 } from "react-icons/fa";
+import { useAuth } from "../hooks/useAuth";
+
+// This login page is the single shared entry point for all 4 ShopSphere
+// frontends. Each app runs on its own Vite dev-server port (its own origin),
+// so a role picked here that isn't "admin" can't just call this app's own
+// useAuth() — it has to hard-redirect to that app's origin and hand off the
+// login result via query params (consumed by that app's own useAuth hook).
+const APP_ORIGINS = {
+  user: "http://localhost:5175",
+  seller: "http://localhost:5174",
+  admin: "http://localhost:5173",
+  delivery: "http://localhost:5176",
+};
+
+const DEFAULT_PATH = {
+  user: "/",
+  seller: "/seller/dashboard",
+  admin: "/admin/dashboard",
+  delivery: "/delivery/dashboard",
+};
 
 // ─── Role definitions ────────────────────────────────────────────────────────
 
@@ -142,12 +162,28 @@ function RoleCard({ role, isSelected, onSelect }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function Login() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user: adminUser, login: adminLogin } = useAuth();
+
   // ── Form state ─────────────────────────────────────────────────────────────
+  const requestedRole = searchParams.get("role");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState("user"); // default: user
+  const [selectedRole, setSelectedRole] = useState(
+    APP_ORIGINS[requestedRole] ? requestedRole : "user"
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // If you're already signed in as Admin and just land on /login directly
+  // (not sent here by another app asking you to switch roles), skip straight
+  // to the dashboard instead of making you log in again.
+  useEffect(() => {
+    if (!requestedRole && adminUser) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, []);
 
   const handleLogin = async () => {
     if (!selectedRole) {
@@ -170,18 +206,43 @@ export default function Login() {
 
       const result = await response.json();
 
-      if (result.success) {
-        const redirects = {
-          admin: "http://localhost:5173",
-          seller: "http://localhost:5174",
-          user: "http://localhost:5175",
-          delivery: "http://localhost:5176",
-        };
-        window.location.href = redirects[selectedRole];
+      if (!result.success) {
+        alert(result.message || "Invalid email or password");
         return;
       }
 
-      alert(result.message || "Invalid email or password");
+      const redirectParam = searchParams.get("redirect");
+
+      // Admin runs in this same app/origin — log in directly, no handoff needed.
+      if (selectedRole === "admin") {
+        adminLogin({ id: result.id, name: result.name, email });
+        const target =
+          redirectParam && redirectParam.startsWith(APP_ORIGINS.admin)
+            ? redirectParam.replace(APP_ORIGINS.admin, "")
+            : DEFAULT_PATH.admin;
+        navigate(target, { replace: true });
+        return;
+      }
+
+      // Every other role lives on a different dev-server origin, so hand off
+      // the login result via query params for that app's own useAuth to pick up.
+      const origin = APP_ORIGINS[selectedRole];
+      let target = origin + DEFAULT_PATH[selectedRole];
+      if (redirectParam) {
+        try {
+          if (new URL(redirectParam).origin === origin) target = redirectParam;
+        } catch {
+          // ignore malformed redirect param, fall back to the default path
+        }
+      }
+
+      const url = new URL(target);
+      url.searchParams.set("authId", result.id);
+      url.searchParams.set("authName", result.name);
+      url.searchParams.set("authEmail", email);
+      url.searchParams.set("authRole", selectedRole);
+      if (result.token) url.searchParams.set("authToken", result.token);
+      window.location.href = url.toString();
     } catch (error) {
       alert("Invalid email or password");
     }

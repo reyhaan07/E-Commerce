@@ -20,6 +20,20 @@ app.use("/api/orders", ordersRoutes);
 app.use("/api/delivery-partners", deliveryPartnersRoutes);
 app.use("/api/users", usersRoutes);
 
+// Catches errors passed to next(err) (e.g. by asyncHandler) so a Mongoose
+// validation/duplicate-key error comes back as normal JSON instead of
+// Express's default HTML error page.
+app.use((err, req, res, next) => {
+    if (err.code === 11000) {
+        return res.status(400).json({ success: false, message: "That value is already in use" });
+    }
+    if (err.name === "ValidationError") {
+        return res.status(400).json({ success: false, message: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ success: false, message: "Something went wrong" });
+});
+
 const PORT = process.env.PORT || 5000;
 
 connectDB()

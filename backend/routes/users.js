@@ -1,6 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const { Account } = require("../models/account.model");
+const { requireAuth, requireSelfOrAdmin } = require("../middleware/auth");
+const asyncHandler = require("../middleware/asyncHandler");
+
+const PINCODE_RE = /^\d{6}$/;
+const LAST4_RE = /^\d{4}$/;
+
+// every route below is /:id or /:id/... so the same two checks apply
+// everywhere: must be logged in, and must be looking at your own account
+// (or be an admin)
+const protect = [requireAuth, requireSelfOrAdmin("id")];
 
 async function findUser(req, res) {
   const account = await Account.findOne({ id: req.params.id, role: "user" });
@@ -11,15 +21,19 @@ async function findUser(req, res) {
   return account;
 }
 
+function isBlank(value) {
+  return typeof value !== "string" || value.trim() === "";
+}
+
 // GET /api/users/:id
-router.get("/:id", async (req, res) => {
+router.get("/:id", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, user: account });
-});
+}));
 
 // PUT /api/users/:id  { name, phone, avatar, deliveryInstructions, notifyByEmail, notifyBySms }
-router.put("/:id", async (req, res) => {
+router.put("/:id", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -33,23 +47,26 @@ router.put("/:id", async (req, res) => {
   await account.save();
 
   res.json({ success: true, user: account });
-});
+}));
 
 // GET /api/users/:id/addresses
-router.get("/:id/addresses", async (req, res) => {
+router.get("/:id/addresses", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, addresses: account.addresses });
-});
+}));
 
 // POST /api/users/:id/addresses  { label, line1, line2, city, state, pincode, phone, isDefault }
-router.post("/:id/addresses", async (req, res) => {
+router.post("/:id/addresses", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
   const { label, line1, line2, city, state, pincode, phone, isDefault } = req.body;
-  if (!line1 || !city || !state || !pincode) {
+  if (isBlank(line1) || isBlank(city) || isBlank(state) || isBlank(pincode)) {
     return res.status(400).json({ success: false, message: "line1, city, state and pincode are required" });
+  }
+  if (!PINCODE_RE.test(pincode)) {
+    return res.status(400).json({ success: false, message: "pincode must be 6 digits" });
   }
 
   if (isDefault) {
@@ -59,10 +76,10 @@ router.post("/:id/addresses", async (req, res) => {
   await account.save();
 
   res.status(201).json({ success: true, addresses: account.addresses });
-});
+}));
 
 // PUT /api/users/:id/addresses/:addressId
-router.put("/:id/addresses/:addressId", async (req, res) => {
+router.put("/:id/addresses/:addressId", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -72,6 +89,24 @@ router.put("/:id/addresses/:addressId", async (req, res) => {
   }
 
   const { label, line1, line2, city, state, pincode, phone, isDefault } = req.body;
+  if (line1 !== undefined && isBlank(line1)) {
+    return res.status(400).json({ success: false, message: "line1 cannot be blank" });
+  }
+  if (city !== undefined && isBlank(city)) {
+    return res.status(400).json({ success: false, message: "city cannot be blank" });
+  }
+  if (state !== undefined && isBlank(state)) {
+    return res.status(400).json({ success: false, message: "state cannot be blank" });
+  }
+  if (pincode !== undefined) {
+    if (isBlank(pincode)) {
+      return res.status(400).json({ success: false, message: "pincode cannot be blank" });
+    }
+    if (!PINCODE_RE.test(pincode)) {
+      return res.status(400).json({ success: false, message: "pincode must be 6 digits" });
+    }
+  }
+
   if (label !== undefined) address.label = label;
   if (line1 !== undefined) address.line1 = line1;
   if (line2 !== undefined) address.line2 = line2;
@@ -86,10 +121,10 @@ router.put("/:id/addresses/:addressId", async (req, res) => {
   await account.save();
 
   res.json({ success: true, addresses: account.addresses });
-});
+}));
 
 // DELETE /api/users/:id/addresses/:addressId
-router.delete("/:id/addresses/:addressId", async (req, res) => {
+router.delete("/:id/addresses/:addressId", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -97,24 +132,30 @@ router.delete("/:id/addresses/:addressId", async (req, res) => {
   await account.save();
 
   res.json({ success: true, addresses: account.addresses });
-});
+}));
 
 // GET /api/users/:id/payment-methods
-router.get("/:id/payment-methods", async (req, res) => {
+router.get("/:id/payment-methods", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, paymentMethods: account.paymentMethods });
-});
+}));
 
 // POST /api/users/:id/payment-methods  { type, label, last4, upiId, isDefault }
 // Mock/tokenized only - full card numbers are never accepted or stored.
-router.post("/:id/payment-methods", async (req, res) => {
+router.post("/:id/payment-methods", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
   const { type, label, last4, upiId, isDefault } = req.body;
-  if (!type || (type === "card" && !last4) || (type === "upi" && !upiId)) {
-    return res.status(400).json({ success: false, message: "type and last4/upiId are required" });
+  if (type !== "card" && type !== "upi") {
+    return res.status(400).json({ success: false, message: "type must be 'card' or 'upi'" });
+  }
+  if (type === "card" && !LAST4_RE.test(last4 || "")) {
+    return res.status(400).json({ success: false, message: "last4 must be exactly 4 digits" });
+  }
+  if (type === "upi" && isBlank(upiId)) {
+    return res.status(400).json({ success: false, message: "upiId is required" });
   }
 
   if (isDefault) {
@@ -124,10 +165,10 @@ router.post("/:id/payment-methods", async (req, res) => {
   await account.save();
 
   res.status(201).json({ success: true, paymentMethods: account.paymentMethods });
-});
+}));
 
 // DELETE /api/users/:id/payment-methods/:paymentId
-router.delete("/:id/payment-methods/:paymentId", async (req, res) => {
+router.delete("/:id/payment-methods/:paymentId", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -135,19 +176,19 @@ router.delete("/:id/payment-methods/:paymentId", async (req, res) => {
   await account.save();
 
   res.json({ success: true, paymentMethods: account.paymentMethods });
-});
+}));
 
 // GET /api/users/:id/cart
-router.get("/:id/cart", async (req, res) => {
+router.get("/:id/cart", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, cart: account.cart });
-});
+}));
 
 // PUT /api/users/:id/cart  { items: [{ productId, name, price, image, qty }] }
 // Replaces the whole cart in one go - simplest way to keep it in sync with
 // whatever the frontend has in local state.
-router.put("/:id/cart", async (req, res) => {
+router.put("/:id/cart", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -156,17 +197,17 @@ router.put("/:id/cart", async (req, res) => {
   await account.save();
 
   res.json({ success: true, cart: account.cart });
-});
+}));
 
 // GET /api/users/:id/wishlist
-router.get("/:id/wishlist", async (req, res) => {
+router.get("/:id/wishlist", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, wishlist: account.wishlist });
-});
+}));
 
 // POST /api/users/:id/wishlist  { productId, name, price, image }
-router.post("/:id/wishlist", async (req, res) => {
+router.post("/:id/wishlist", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -181,10 +222,10 @@ router.post("/:id/wishlist", async (req, res) => {
   }
 
   res.status(201).json({ success: true, wishlist: account.wishlist });
-});
+}));
 
 // DELETE /api/users/:id/wishlist/:productId
-router.delete("/:id/wishlist/:productId", async (req, res) => {
+router.delete("/:id/wishlist/:productId", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -192,17 +233,17 @@ router.delete("/:id/wishlist/:productId", async (req, res) => {
   await account.save();
 
   res.json({ success: true, wishlist: account.wishlist });
-});
+}));
 
 // GET /api/users/:id/reviews
-router.get("/:id/reviews", async (req, res) => {
+router.get("/:id/reviews", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
   res.json({ success: true, reviews: account.reviews });
-});
+}));
 
 // POST /api/users/:id/reviews  { productId, productName, rating, comment }
-router.post("/:id/reviews", async (req, res) => {
+router.post("/:id/reviews", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 
@@ -215,6 +256,6 @@ router.post("/:id/reviews", async (req, res) => {
   await account.save();
 
   res.status(201).json({ success: true, reviews: account.reviews });
-});
+}));
 
 module.exports = router;
