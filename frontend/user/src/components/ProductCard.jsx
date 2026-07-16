@@ -7,9 +7,9 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
 // Browsing is public, but adding to cart needs an account — login lives on
-// a different dev-server origin (frontend/admin), so unauthenticated clicks
+// a different dev-server origin (frontend/login), so unauthenticated clicks
 // hard-redirect there and come back to this exact product afterward.
-const SHARED_LOGIN_URL = 'http://localhost:5173/login';
+const SHARED_LOGIN_URL = 'http://localhost:5177';
 
 const ProductCard = ({ product }) => {
   const { user } = useAuth();

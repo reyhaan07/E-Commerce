@@ -4,10 +4,11 @@ const bcrypt = require("bcryptjs");
 const ROLES = ["admin", "seller", "user", "delivery"];
 const ACCOUNT_STATUSES = ["active", "suspended", "deleted"];
 
+
 const addressSchema = new mongoose.Schema(
   {
     label: { type: String, default: "Home" },
-    line1: { type: String, required: true },
+    line1: { type: String,  required: true },
     line2: String,
     city: { type: String, required: true },
     state: { type: String, required: true },

@@ -4,6 +4,9 @@ import {
   FiGrid, FiBox, FiLayers, FiShoppingBag, FiUser, FiSettings,
   FiMenu, FiX, FiBell, FiSearch, FiTrendingUp, FiLogOut
 } from 'react-icons/fi'
+import { useAuth } from '../hooks/useAuth'
+
+const SHARED_LOGIN_URL = 'http://localhost:5177'
 
 const navItems = [
   { to: '/seller/dashboard', label: 'Dashboard', icon: FiGrid },
@@ -32,7 +35,13 @@ function SidebarLink({ to, label, Icon, onClick }) {
 export default function SellerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { user, logout } = useAuth()
   const currentPage = navItems.find(n => location.pathname.startsWith(n.to))?.label || 'Dashboard'
+
+  function handleLogout() {
+    logout()
+    window.location.href = `${SHARED_LOGIN_URL}?role=seller`
+  }
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
@@ -76,11 +85,11 @@ export default function SellerLayout() {
           style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base font-bold shrink-0"
             style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white' }}>
-            A
+            {user?.name?.[0]?.toUpperCase() || 'S'}
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>ShopSphere Store</div>
-            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>store@shopsphere.com</div>
+            <div className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.name || 'ShopSphere Store'}</div>
+            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{user?.email || ''}</div>
           </div>
         </div>
 
@@ -95,7 +104,7 @@ export default function SellerLayout() {
 
         {/* Logout */}
         <div className="px-3 pb-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button className="nav-link w-full text-left" style={{ color: '#e11d48' }}>
+          <button className="nav-link w-full text-left" style={{ color: '#e11d48' }} onClick={handleLogout}>
             <FiLogOut size={18} />
             <span>Log Out</span>
           </button>
@@ -120,7 +129,7 @@ export default function SellerLayout() {
             <div>
               <h1 className="text-base font-bold leading-none" style={{ color: 'var(--text-primary)' }}>{currentPage}</h1>
               <p className="text-xs mt-0.5 hidden sm:block" style={{ color: 'var(--text-muted)' }}>
-                Welcome back, ShopSphere Store
+                Welcome back, {user?.name || 'Seller'}
               </p>
             </div>
           </div>
@@ -142,7 +151,7 @@ export default function SellerLayout() {
             {/* Avatar */}
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white' }}>
-              A
+              {user?.name?.[0]?.toUpperCase() || 'S'}
             </div>
           </div>
         </header>

@@ -8,7 +8,7 @@ const seedDatabase = require("./data/seed");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
 const authRoutes = require("./routes/auth");
 const ordersRoutes = require("./routes/orders");

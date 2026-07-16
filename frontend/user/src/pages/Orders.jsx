@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { HiOutlineCube, HiOutlineCheckCircle, HiOutlineClock, HiOutlineTruck } from 'react-icons/hi2';
+import { HiOutlineCube, HiOutlineCheckCircle, HiOutlineClock, HiOutlineTruck, HiOutlineStar } from 'react-icons/hi2';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../api/client';
 
@@ -23,6 +23,8 @@ function statusBadge(order) {
 const Orders = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [reviewDrafts, setReviewDrafts] = useState({});
+  const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -30,6 +32,33 @@ const Orders = () => {
       .then((data) => setOrders(data.orders))
       .catch(() => {});
   }, [user]);
+
+  function updateReviewDraft(orderId, changes) {
+    setReviewDrafts((current) => ({
+      ...current,
+      [orderId]: { rating: 5, productId: '', productName: '', comment: '', ...current[orderId], ...changes },
+    }));
+  }
+
+  async function submitOrderReview(e, order) {
+    e.preventDefault();
+    const firstItem = order.items[0];
+    const draft = reviewDrafts[order.id] || {};
+    const productName = draft.productName || firstItem?.name || order.id;
+    const productId = draft.productId || productName;
+
+    await apiRequest(`/users/${user.id}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({
+        productId,
+        productName,
+        rating: Number(draft.rating || 5),
+        comment: draft.comment || '',
+      }),
+    });
+    setReviewDrafts((current) => ({ ...current, [order.id]: { rating: 5, productId: '', productName: '', comment: '' } }));
+    setReviewMessage(`Review submitted for ${productName}`);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,6 +106,32 @@ const Orders = () => {
                                         <Link to={`/track-order/${order.id}`} className="text-primary font-bold hover:underline">Track Order</Link>
                                     </div>
                                 </div>
+                                {(order.deliveryStatus === 'Delivered' || order.sellerStatus === 'Delivered') && (
+                                    <form onSubmit={(e) => submitOrderReview(e, order)} className="mt-6 grid grid-cols-1 md:grid-cols-5 gap-3 rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                                        <select
+                                            className="px-4 py-3 rounded-xl border border-gray-200 outline-none"
+                                            value={reviewDrafts[order.id]?.productName || order.items[0]?.name || ''}
+                                            onChange={(e) => updateReviewDraft(order.id, { productName: e.target.value, productId: e.target.value })}
+                                        >
+                                            {order.items.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+                                        </select>
+                                        <select
+                                            className="px-4 py-3 rounded-xl border border-gray-200 outline-none"
+                                            value={reviewDrafts[order.id]?.rating || 5}
+                                            onChange={(e) => updateReviewDraft(order.id, { rating: e.target.value })}
+                                        >
+                                            {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} Stars</option>)}
+                                        </select>
+                                        <input
+                                            className="md:col-span-2 px-4 py-3 rounded-xl border border-gray-200 outline-none"
+                                            placeholder="Write a review"
+                                            value={reviewDrafts[order.id]?.comment || ''}
+                                            onChange={(e) => updateReviewDraft(order.id, { comment: e.target.value })}
+                                        />
+                                        <button className="btn-primary flex items-center justify-center gap-2"><HiOutlineStar /> Submit</button>
+                                    </form>
+                                )}
+                                {reviewMessage && <p className="mt-3 text-sm font-bold text-green-600">{reviewMessage}</p>}
                             </div>
                         </div>
                     </div>

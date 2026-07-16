@@ -4,7 +4,7 @@ const STORAGE_KEY = 'user_user'
 const EXPECTED_ROLE = 'user'
 
 // Consumes the auth handoff appended to the URL by the shared login page
-// (frontend/admin's /login role-picker) after a successful cross-origin
+// (the frontend/login role-picker app) after a successful cross-origin
 // login, since localStorage can't be shared across dev-server ports.
 // Includes the JWT (authToken) the backend returns from /api/login, which
 // is required for the /api/users/:id and /api/orders?userId= routes.

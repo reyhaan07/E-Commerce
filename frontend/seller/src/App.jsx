@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import SellerLayout from './seller/layouts/SellerLayout'
@@ -8,6 +8,25 @@ import InventoryPage from './seller/pages/Inventory/index'
 import OrdersPage    from './seller/pages/Orders/index'
 import ProfilePage   from './seller/pages/Profile/index'
 import SettingsPage  from './seller/pages/Settings/index'
+import { useAuth } from './seller/hooks/useAuth'
+
+// Seller runs on its own dev-server origin, separate from the shared login
+// page (frontend/login). Unauthenticated visits get a hard redirect there —
+// react-router's <Navigate> can't cross origins.
+const SHARED_LOGIN_URL = 'http://localhost:5177'
+
+function RequireAuth({ children }) {
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=seller&redirect=${encodeURIComponent(window.location.href)}`
+    }
+  }, [user])
+
+  if (!user) return null
+  return children
+}
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -34,7 +53,7 @@ export default function App() {
 
   return (
     <Routes location={location} key={location.pathname}>
-      <Route path="/seller" element={<SellerLayout />}>
+      <Route path="/seller" element={<RequireAuth><SellerLayout /></RequireAuth>}>
         <Route index        element={<PageWrapper><DashboardPage /></PageWrapper>} />
         <Route path="dashboard" element={<PageWrapper><DashboardPage /></PageWrapper>} />
         <Route path="products"  element={<PageWrapper><ProductsPage /></PageWrapper>} />

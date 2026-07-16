@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -18,9 +18,36 @@ const Checkout = () => {
   const total = subtotal + shipping;
 
   const [address, setAddress] = useState({ street: '', city: '', pincode: '', state: '' });
+  const [profile, setProfile] = useState(null);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [selectedPaymentId, setSelectedPaymentId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    apiRequest(`/users/${user.id}`)
+      .then((data) => {
+        setProfile(data.user);
+        const defaultAddress = data.user.addresses?.find((item) => item.isDefault) || data.user.addresses?.[0];
+        const defaultPayment = data.user.paymentMethods?.find((item) => item.isDefault) || data.user.paymentMethods?.[0];
+        if (defaultAddress) setSelectedAddressId(defaultAddress._id);
+        if (defaultPayment) {
+          setSelectedPaymentId(defaultPayment._id);
+          setPaymentMethod(defaultPayment.type);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const selectedAddress = useMemo(() => profile?.addresses?.find((item) => item._id === selectedAddressId), [profile, selectedAddressId]);
+  const selectedPayment = useMemo(() => profile?.paymentMethods?.find((item) => item._id === selectedPaymentId), [profile, selectedPaymentId]);
+
+  const manualAddressText = `${address.street}, ${address.city}, ${address.state} ${address.pincode}`.replace(/^,\s*/, '').trim();
+  const savedAddressText = selectedAddress
+    ? `${selectedAddress.line1}${selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}, ${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.pincode}`
+    : '';
 
   async function handlePlaceOrder() {
     setError('');
@@ -29,6 +56,11 @@ const Checkout = () => {
       return;
     }
     if (cartItems.length === 0) return;
+    const customerAddress = savedAddressText || manualAddressText;
+    if (!customerAddress || customerAddress === ',') {
+      setError('Please choose or enter a shipping address');
+      return;
+    }
 
     setPlacing(true);
     try {
@@ -38,10 +70,11 @@ const Checkout = () => {
           userId: user.id,
           customerName: user.name,
           customerEmail: user.email,
-          customerAddress: `${address.street}, ${address.city}, ${address.state} ${address.pincode}`,
+          customerPhone: selectedAddress?.phone || profile?.phone,
+          customerAddress,
           items: cartItems.map((i) => ({ name: i.name, qty: i.quantity })),
           amount: total,
-          paymentMethod: PAYMENT_METHOD_MAP[paymentMethod] || 'Prepaid',
+          paymentMethod: PAYMENT_METHOD_MAP[selectedPayment?.type || paymentMethod] || 'Prepaid',
         }),
       });
       clearCart();
@@ -76,6 +109,20 @@ const Checkout = () => {
                 </div>
 
                 <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {profile?.addresses?.length > 0 && (
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profile.addresses.map((saved) => (
+                        <label key={saved._id} className="relative border-2 border-gray-100 p-5 rounded-2xl cursor-pointer hover:border-primary transition-all">
+                          <input type="radio" name="saved-address" className="sr-only peer" checked={selectedAddressId === saved._id} onChange={() => setSelectedAddressId(saved._id)} />
+                          <div className="peer-checked:text-primary">
+                            <p className="font-bold text-gray-900">{saved.label || 'Address'} {saved.isDefault ? '(Default)' : ''}</p>
+                            <p className="text-sm text-gray-500 mt-1">{saved.line1}{saved.line2 ? `, ${saved.line2}` : ''}, {saved.city}, {saved.state} {saved.pincode}</p>
+                          </div>
+                          <HiCheckCircle className="absolute top-4 right-4 text-primary text-2xl opacity-0 peer-checked:opacity-100" />
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Street Address</label>
                     <input type="text" className="w-full px-5 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="123 Shopping Avenue" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} />
@@ -92,6 +139,11 @@ const Checkout = () => {
                     <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">State</label>
                     <input type="text" className="w-full px-5 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Uttar Pradesh" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
                   </div>
+                  {profile?.deliveryInstructions && (
+                    <div className="md:col-span-2 rounded-2xl bg-primary/5 border border-primary/10 p-4 text-sm text-gray-600">
+                      <span className="font-bold text-gray-900">Delivery instructions:</span> {profile.deliveryInstructions}
+                    </div>
+                  )}
                 </form>
               </section>
 
@@ -105,13 +157,26 @@ const Checkout = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {profile?.paymentMethods?.map((method) => (
+                    <label key={method._id} className="relative border-2 border-gray-100 p-6 rounded-2xl cursor-pointer hover:border-primary transition-all group overflow-hidden">
+                      <input type="radio" name="saved-payment" className="sr-only peer" checked={selectedPaymentId === method._id} onChange={() => { setSelectedPaymentId(method._id); setPaymentMethod(method.type); }} />
+                      <div className="peer-checked:text-primary transition-colors">
+                        <HiCreditCard className="text-3xl mb-2" />
+                        <p className="font-bold text-gray-900 group-hover:text-primary transition-colors">{method.label || (method.type === 'card' ? 'Saved Card' : 'Saved UPI')}</p>
+                        <p className="text-sm text-gray-400">{method.type === 'card' ? `Ending ${method.last4}` : method.upiId}</p>
+                      </div>
+                      <div className="absolute top-3 right-3 opacity-0 peer-checked:opacity-100 transition-opacity">
+                        <HiCheckCircle className="text-primary text-2xl" />
+                      </div>
+                    </label>
+                  ))}
                   {[
                       { id: 'card', name: 'Credit/Debit Card', icon: '💳' },
                       { id: 'upi', name: 'UPI / Wallet', icon: '📱' },
                       { id: 'cod', name: 'Cash on Delivery', icon: '💵' },
                   ].map(method => (
                       <label key={method.id} className="relative border-2 border-gray-100 p-6 rounded-2xl cursor-pointer hover:border-primary transition-all group overflow-hidden">
-                          <input type="radio" name="payment" className="sr-only peer" checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} />
+                          <input type="radio" name="payment" className="sr-only peer" checked={!selectedPaymentId && paymentMethod === method.id} onChange={() => { setSelectedPaymentId(''); setPaymentMethod(method.id); }} />
                           <div className="peer-checked:text-primary transition-colors">
                               <span className="text-3xl block mb-2">{method.icon}</span>
                               <p className="font-bold text-gray-900 group-hover:text-primary transition-colors">{method.name}</p>

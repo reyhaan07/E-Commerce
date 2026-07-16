@@ -142,7 +142,7 @@ const Register = () => {
           </form>
 
           <p className="mt-8 text-center text-gray-600">
-            Already have an account? <a href="http://localhost:5173/login?role=user" className="font-bold text-primary hover:text-primary-dark transition-colors underline underline-offset-4">Sign In</a>
+            Already have an account? <a href="http://localhost:5177?role=user" className="font-bold text-primary hover:text-primary-dark transition-colors underline underline-offset-4">Sign In</a>
           </p>
         </div>
       </motion.div>

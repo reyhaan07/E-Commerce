@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "../pages/Login";
+import { useAuth } from "../hooks/useAuth";
 
 import AdminLayout from "../layouts/AdminLayout";
 
@@ -18,12 +18,38 @@ import DeliveryAssignment from "../pages/admin/DeliveryAssignment";
 import DeliveryTracking from "../pages/admin/DeliveryTracking";
 import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
 
+// The shared login page lives in its own app (frontend/login) on its own
+// dev-server origin, so unauthenticated visits need a hard redirect there —
+// react-router's <Navigate> can't cross origins.
+const SHARED_LOGIN_URL = "http://localhost:5177";
+
+function RedirectToLogin() {
+  useEffect(() => {
+    window.location.href = `${SHARED_LOGIN_URL}?role=admin&redirect=${encodeURIComponent(window.location.href)}`;
+  }, []);
+  return null;
+}
+
+function RequireAuth({ children }) {
+  const { user } = useAuth();
+  if (!user) return <RedirectToLogin />;
+  return children;
+}
+
 export default function AppRoutes() {
+  const { user } = useAuth();
+
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route path="/" element={user ? <Navigate to="/admin/dashboard" replace /> : <RedirectToLogin />} />
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth>
+            <AdminLayout />
+          </RequireAuth>
+        }
+      >
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="sellers" element={<SellerManagement />} />

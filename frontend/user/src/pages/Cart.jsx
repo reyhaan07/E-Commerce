@@ -3,15 +3,13 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { HiPlus, HiMinus, HiOutlineTrash, HiArrowRight, HiOutlineShoppingBag } from 'react-icons/hi2';
 import { Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const Cart = () => {
-  const cartItems = [
-    { id: 1, name: 'Wireless Headphones', price: 14999, quantity: 1, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=300', color: 'Midnight Black' },
-    { id: 2, name: 'Minimalist Watch', price: 4999, quantity: 2, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=300', color: 'Silver' },
-  ];
+  const { items: cartItems, updateQuantity, removeItem } = useCart();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = 20;
+  const shipping = cartItems.length ? 20 : 0;
   const tax = subtotal * 0.05;
   const total = subtotal + shipping + tax;
 
@@ -34,16 +32,15 @@ const Cart = () => {
                 <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">{item.name}</h3>
-                    <p className="text-gray-500 text-sm mb-4">Color: {item.color}</p>
-                    <div className="flex items-center border border-gray-200 rounded-lg w-fit overflow-hidden">
-                        <button className="p-2 hover:bg-gray-100"><HiMinus className="text-sm" /></button>
+                    <div className="flex items-center border border-gray-200 rounded-lg w-fit overflow-hidden mt-4">
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-2 hover:bg-gray-100"><HiMinus className="text-sm" /></button>
                         <span className="px-4 font-bold text-gray-900">{item.quantity}</span>
-                        <button className="p-2 hover:bg-gray-100"><HiPlus className="text-sm" /></button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-2 hover:bg-gray-100"><HiPlus className="text-sm" /></button>
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end">
                     <p className="text-xl font-bold text-gray-900 mb-4">₹{item.price * item.quantity}</p>
-                    <button className="text-red-500 hover:text-red-700 transition-colors flex items-center gap-1 text-sm font-bold uppercase tracking-widest">
+                    <button onClick={() => removeItem(item.id)} className="text-red-500 hover:text-red-700 transition-colors flex items-center gap-1 text-sm font-bold uppercase tracking-widest">
                         <HiOutlineTrash /> Remove
                     </button>
                   </div>

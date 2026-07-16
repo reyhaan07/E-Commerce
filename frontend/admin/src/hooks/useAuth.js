@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
-const STORAGE_KEY = 'seller_user'
-const EXPECTED_ROLE = 'seller'
+const STORAGE_KEY = 'admin_user'
+const EXPECTED_ROLE = 'admin'
 
 // Consumes the auth handoff appended to the URL by the shared login page
 // (the frontend/login role-picker app) after a successful cross-origin
-// login, since localStorage can't be shared across dev-server ports.
+// login. Each of the 4 frontends runs on its own dev-server port/origin,
+// so localStorage can't be shared directly — the login page passes the
+// result via query params instead.
 function consumeAuthHandoff() {
   const params = new URLSearchParams(window.location.search)
   const id = params.get('authId')

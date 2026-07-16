@@ -1,7 +1,19 @@
 import { Link } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaSignOutAlt } from "react-icons/fa";
+import { useAuth } from "../hooks/useAuth";
+
+// Shared login page runs on its own origin (frontend/login), so leaving
+// the admin app after logout is a hard cross-origin redirect.
+const SHARED_LOGIN_URL = "http://localhost:5177";
 
 export default function AdminNavbar() {
+  const { user, logout } = useAuth();
+
+  function handleLogout() {
+    logout();
+    window.location.href = `${SHARED_LOGIN_URL}?role=admin`;
+  }
+
   return (
     <div className="bg-white shadow px-6 py-4 flex justify-between items-center">
       <h2 className="font-semibold text-xl">
@@ -16,7 +28,14 @@ export default function AdminNavbar() {
           <FaArrowLeft size={14} />
           Back to Store
         </Link>
-        <span className="text-slate-600 font-medium">Admin</span>
+        <span className="text-slate-600 font-medium">{user?.name || "Admin"}</span>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium transition-colors"
+        >
+          <FaSignOutAlt size={14} />
+          Log Out
+        </button>
       </div>
     </div>
   );

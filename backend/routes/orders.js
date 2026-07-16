@@ -63,6 +63,15 @@ router.post("/", async (req, res) => {
   if (!customerName || !amount) {
     return res.status(400).json({ success: false, message: "customerName and amount are required" });
   }
+  if (userId) {
+    const auth = getAuthFromHeader(req);
+    if (!auth) {
+      return res.status(401).json({ success: false, message: "Missing or invalid Authorization header" });
+    }
+    if (auth.role !== "admin" && auth.id !== userId) {
+      return res.status(403).json({ success: false, message: "You can't place an order for another user" });
+    }
+  }
 
   const order = await Order.create({
     id: await nextOrderId(),

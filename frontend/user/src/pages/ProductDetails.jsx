@@ -1,14 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 import { HiPlus, HiMinus, HiOutlineShoppingBag, HiOutlineHeart, HiStar, HiCube, HiShieldCheck, HiArrowPath } from 'react-icons/hi2';
+import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import { apiRequest } from '../api/client';
+
+// Browsing is public, but adding to cart needs an account — login lives on
+// a different dev-server origin (frontend/login), so unauthenticated clicks
+// hard-redirect there and come back to this exact product afterward.
+const SHARED_LOGIN_URL = 'http://localhost:5177';
 
 const ProductDetails = () => {
+  const { user } = useAuth();
+  const { addItem } = useCart();
+  const { isWishlisted, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [mainImage, setMainImage] = useState('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200');
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviews, setReviews] = useState([]);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   const product = {
+    id: 'BC-HP-001',
     name: 'Premium Wireless Over-Ear Headphones',
     price: 14999,
     oldPrice: 19999,
@@ -24,6 +40,51 @@ const ProductDetails = () => {
       'https://images.unsplash.com/photo-1583394838336-acd977736f90?q=80&w=1200',
     ]
   };
+  const wishlisted = isWishlisted(product.id);
+
+  useEffect(() => {
+    if (!user) return;
+    apiRequest(`/users/${user.id}/reviews`)
+      .then((data) => setReviews(data.reviews.filter((review) => review.productId === product.id)))
+      .catch(() => {});
+  }, [user]);
+
+  function handleAddToCart() {
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=user&redirect=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    addItem({ id: product.id, name: product.name, price: product.price, image: product.images[0] }, quantity);
+  }
+
+  function handleToggleWishlist() {
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=user&redirect=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    if (wishlisted) removeFromWishlist(product.id);
+    else addToWishlist({ id: product.id, name: product.name, price: product.price, image: product.images[0] });
+  }
+
+  async function submitReview(e) {
+    e.preventDefault();
+    if (!user) {
+      window.location.href = `${SHARED_LOGIN_URL}?role=user&redirect=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    const data = await apiRequest(`/users/${user.id}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({
+        productId: product.id,
+        productName: product.name,
+        rating: Number(reviewForm.rating),
+        comment: reviewForm.comment,
+      }),
+    });
+    setReviews(data.reviews.filter((review) => review.productId === product.id));
+    setReviewForm({ rating: 5, comment: '' });
+    setReviewMessage('Review submitted');
+  }
 
   return (
     <div className="min-h-screen">
@@ -89,10 +150,10 @@ const ProductDetails = () => {
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
                   <button onClick={() => setQuantity(q => q+1)} className="p-4 hover:bg-gray-200 transition-colors"><HiPlus /></button>
                 </div>
-                <button className="flex-1 btn-primary py-4 flex items-center justify-center gap-2 shadow-xl shadow-primary/20">
+                <button onClick={handleAddToCart} className="flex-1 btn-primary py-4 flex items-center justify-center gap-2 shadow-xl shadow-primary/20">
                   <HiOutlineShoppingBag className="text-xl" /> Add to Cart
                 </button>
-                <button className="w-14 h-14 border border-gray-200 rounded-xl flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:text-red-500 transition-all">
+                <button onClick={handleToggleWishlist} className={`w-14 h-14 border rounded-xl flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:text-red-500 transition-all ${wishlisted ? 'bg-red-50 border-red-500 text-red-500' : 'border-gray-200'}`}>
                   <HiOutlineHeart className="text-2xl" />
                 </button>
               </div>
@@ -114,6 +175,26 @@ const ProductDetails = () => {
             </div>
           </div>
         </div>
+
+        <section className="mt-12 bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Customer Reviews</h2>
+          <form onSubmit={submitReview} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <select value={reviewForm.rating} onChange={(e) => setReviewForm({ ...reviewForm, rating: e.target.value })} className="px-4 py-3 rounded-xl border border-gray-200 outline-none">
+              {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} Stars</option>)}
+            </select>
+            <input value={reviewForm.comment} onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} placeholder="Share your experience" className="md:col-span-3 px-4 py-3 rounded-xl border border-gray-200 outline-none" />
+            <button className="btn-primary">Submit Review</button>
+          </form>
+          {reviewMessage && <p className="text-green-600 font-bold text-sm mb-4">{reviewMessage}</p>}
+          <div className="space-y-4">
+            {reviews.length ? reviews.map((review) => (
+              <div key={review._id} className="rounded-2xl bg-gray-50 border border-gray-100 p-5">
+                <p className="font-bold text-yellow-500 mb-1">{review.rating}/5 Stars</p>
+                <p className="text-gray-600">{review.comment || 'No comment added.'}</p>
+              </div>
+            )) : <p className="text-gray-400 text-sm">No reviews yet.</p>}
+          </div>
+        </section>
       </main>
 
       <Footer />
