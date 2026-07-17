@@ -22,31 +22,33 @@ async function nextReviewId() {
   return `rev-${maxNum + 1}`;
 }
 
+function averageOf(ratings) {
+  if (!ratings.length) return { avg: 0, count: 0 };
+  const sum = ratings.reduce((total, r) => total + r.rating, 0);
+  return { avg: Math.round((sum / ratings.length) * 10) / 10, count: ratings.length };
+}
+
 // Recalculate the product's average from approved reviews, then roll the
 // seller's aggregate up from all their products' approved reviews.
 async function recalculateRatings(productId) {
   const product = await Product.findOne({ id: productId });
   if (!product) return;
 
-  const productAgg = await Review.aggregate([
-    { $match: { productId, moderationStatus: "Approved" } },
-    { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
-  ]);
-  product.rating = productAgg.length ? Math.round(productAgg[0].avg * 10) / 10 : 0;
-  product.ratingCount = productAgg.length ? productAgg[0].count : 0;
+  const productRatings = await Review.find({ productId, moderationStatus: "Approved" }, "rating").lean();
+  const productAgg = averageOf(productRatings);
+  product.rating = productAgg.avg;
+  product.ratingCount = productAgg.count;
   await product.save();
 
   const sellerProducts = await Product.find({ sellerId: product.sellerId }, "id").lean();
-  const sellerAgg = await Review.aggregate([
-    { $match: { productId: { $in: sellerProducts.map((p) => p.id) }, moderationStatus: "Approved" } },
-    { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
-  ]);
+  const sellerRatings = await Review.find(
+    { productId: { $in: sellerProducts.map((p) => p.id) }, moderationStatus: "Approved" },
+    "rating"
+  ).lean();
+  const sellerAgg = averageOf(sellerRatings);
   await Account.updateOne(
     { id: product.sellerId, role: "seller" },
-    {
-      sellerRating: sellerAgg.length ? Math.round(sellerAgg[0].avg * 10) / 10 : 0,
-      sellerRatingCount: sellerAgg.length ? sellerAgg[0].count : 0,
-    }
+    { sellerRating: sellerAgg.avg, sellerRatingCount: sellerAgg.count }
   );
 }
 
