@@ -237,7 +237,7 @@ router.post("/forgot-password", asyncHandler(async (req, res) => {
 
   await sendMail({
     to: account.email,
-    ...templates.passwordReset(account.name, `${LOGIN_APP_URL}/?resetToken=${token}`),
+    ...templates.passwordReset(account.name, `${LOGIN_APP_URL}/?token=${token}`),
   });
 
   res.json({ success: true, message: "If that email exists, a reset link has been sent" });

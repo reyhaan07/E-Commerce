@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { io } from 'socket.io-client'
 import './styles.css'
 
 const API_BASE = 'http://localhost:5000/api'
@@ -24,6 +25,7 @@ function consumeAuthHandoff() {
     role,
     name: params.get('authName') || 'Delivery Partner',
     email: params.get('authEmail') || '',
+    token: params.get('authToken') || null,
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
 
@@ -31,6 +33,7 @@ function consumeAuthHandoff() {
   params.delete('authName')
   params.delete('authEmail')
   params.delete('authRole')
+  params.delete('authToken')
   const query = params.toString()
   window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash)
   return user
@@ -40,6 +43,13 @@ function getStoredUser() {
   const handoff = consumeAuthHandoff()
   if (handoff) return handoff
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null }
+}
+
+function authHeaders() {
+  try {
+    const token = JSON.parse(localStorage.getItem(STORAGE_KEY))?.token
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch { return {} }
 }
 
 function formatMoney(value) {
@@ -54,6 +64,7 @@ function formatDate(value) {
 function App() {
   const [user, setUser] = useState(getStoredUser)
   const [orders, setOrders] = useState([])
+  const [returnPickups, setReturnPickups] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -85,6 +96,14 @@ function App() {
 
       setOrders(assignedOrders)
       setSelectedId((current) => current && assignedOrders.some((order) => order.id === current) ? current : assignedOrders[0]?.id || '')
+
+      // reverse pickups for returns assigned to this partner (Feature 11)
+      const returnsResponse = await fetch(`${API_BASE}/returns`, { headers: authHeaders() })
+      const returnsResult = await returnsResponse.json()
+      if (returnsResponse.ok && returnsResult.success) {
+        setReturnPickups(returnsResult.returns.filter((ret) => ['Pickup Scheduled', 'Picked Up'].includes(ret.status)))
+      }
+
       setLastSynced(new Date())
     } catch (err) {
       setError(err.message || 'Unable to load delivery orders')
@@ -95,14 +114,40 @@ function App() {
 
   useEffect(() => { loadOrders() }, [loadOrders])
 
+  // live refresh when the admin assigns work or a return moves
+  useEffect(() => {
+    if (!user) return
+    const socket = io('http://localhost:5000', { query: { role: 'delivery', userId: user.id } })
+    socket.on('delivery-assigned', loadOrders)
+    socket.on('order-updated', loadOrders)
+    socket.on('return-updated', loadOrders)
+    return () => socket.disconnect()
+  }, [user, loadOrders])
+
+  const advanceReturn = async (ret, nextStatus) => {
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE}/returns/${ret.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) throw new Error(result.message || 'Failed to update return')
+      loadOrders()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const selectedOrder = orders.find((order) => order.id === selectedId) || orders[0]
 
   const metrics = useMemo(() => {
     const completed = orders.filter((order) => order.deliveryStatus === 'Delivered').length
     return [
-      { label: 'Assigned Orders', value: orders.length, detail: 'Loaded from MongoDB', icon: '??' },
-      { label: 'Pending', value: orders.length - completed, detail: 'Needs delivery action', icon: '??' },
-      { label: 'Delivered', value: completed, detail: 'Completed orders', icon: '?' },
+      { label: 'Assigned Orders', value: orders.length, detail: 'Loaded from MongoDB', icon: '📦' },
+      { label: 'Pending', value: orders.length - completed, detail: 'Needs delivery action', icon: '📦' },
+      { label: 'Delivered', value: completed, detail: 'Completed orders', icon: '✅' },
     ]
   }, [orders])
 
@@ -175,7 +220,7 @@ function App() {
             </section>
 
             <section className="panel">
-              <div className="row"><h2>Assigned Orders</h2><span>??</span></div>
+              <div className="row"><h2>Assigned Orders</h2><span>🚚</span></div>
               <input className="search" placeholder="Search order, customer, status" value={query} onChange={(event) => setQuery(event.target.value)} />
               <div className="stack" style={{ marginTop: 14 }}>
                 {filteredOrders.length === 0 ? <p className="muted">No delivery orders found.</p> : filteredOrders.map((order) => (
@@ -215,24 +260,45 @@ function App() {
               <Timeline status={selectedOrder.deliveryStatus} />
 
               <section className="actions">
-                <ActionPanel title="Pickup Process" icon="??" actions={[
-                  { label: 'View Seller Details', icon: '??', onClick: () => setDialog({ title: 'Seller Details', rows: sellerRows(selectedOrder) }) },
-                  { label: 'Navigate to Seller', icon: '??', onClick: () => openMaps(selectedOrder.sellerAddress) },
-                  { label: 'Mark Accepted', icon: '?', primary: selectedOrder.deliveryStatus === 'Assigned', disabled: statusIndex(selectedOrder.deliveryStatus) >= statusIndex('Accepted'), onClick: () => updateStatus(selectedOrder, 'Accepted') },
-                  { label: 'Mark Picked Up', icon: '??', primary: selectedOrder.deliveryStatus === 'Accepted', disabled: statusIndex(selectedOrder.deliveryStatus) >= statusIndex('Picked Up') || statusIndex(selectedOrder.deliveryStatus) < statusIndex('Accepted'), onClick: () => updateStatus(selectedOrder, 'Picked Up') },
+                <ActionPanel title="Pickup Process" icon="📦" actions={[
+                  { label: 'View Seller Details', icon: '🏬', onClick: () => setDialog({ title: 'Seller Details', rows: sellerRows(selectedOrder) }) },
+                  { label: 'Navigate to Seller', icon: '🗺️', onClick: () => openMaps(selectedOrder.sellerAddress) },
+                  { label: 'Mark Accepted', icon: '✅', primary: selectedOrder.deliveryStatus === 'Assigned', disabled: statusIndex(selectedOrder.deliveryStatus) >= statusIndex('Accepted'), onClick: () => updateStatus(selectedOrder, 'Accepted') },
+                  { label: 'Mark Picked Up', icon: '📦', primary: selectedOrder.deliveryStatus === 'Accepted', disabled: statusIndex(selectedOrder.deliveryStatus) >= statusIndex('Picked Up') || statusIndex(selectedOrder.deliveryStatus) < statusIndex('Accepted'), onClick: () => updateStatus(selectedOrder, 'Picked Up') },
                 ]} />
-                <ActionPanel title="Delivery Process" icon="??" actions={[
-                  { label: 'View Customer Details', icon: '??', onClick: () => setDialog({ title: 'Customer Details', rows: customerRows(selectedOrder) }) },
-                  { label: 'Navigate to Customer', icon: '??', onClick: () => openMaps(selectedOrder.customerAddress) },
-                  { label: 'Call Customer', icon: '??', onClick: () => callNumber(selectedOrder.customerPhone) },
-                  { label: 'Advance Status', icon: '??', primary: selectedOrder.deliveryStatus !== 'Delivered', disabled: selectedOrder.deliveryStatus === 'Delivered', onClick: () => advanceStatus(selectedOrder) },
-                  { label: 'Mark Delivered', icon: '?', primary: selectedOrder.deliveryStatus === 'Out For Delivery', disabled: selectedOrder.deliveryStatus === 'Delivered' || statusIndex(selectedOrder.deliveryStatus) < statusIndex('Out For Delivery'), onClick: () => updateStatus(selectedOrder, 'Delivered') },
+                <ActionPanel title="Delivery Process" icon="🚚" actions={[
+                  { label: 'View Customer Details', icon: '👤', onClick: () => setDialog({ title: 'Customer Details', rows: customerRows(selectedOrder) }) },
+                  { label: 'Navigate to Customer', icon: '🗺️', onClick: () => openMaps(selectedOrder.customerAddress) },
+                  { label: 'Call Customer', icon: '📞', onClick: () => callNumber(selectedOrder.customerPhone) },
+                  { label: 'Advance Status', icon: '➡️', primary: selectedOrder.deliveryStatus !== 'Delivered', disabled: selectedOrder.deliveryStatus === 'Delivered', onClick: () => advanceStatus(selectedOrder) },
+                  { label: 'Mark Delivered', icon: '✅', primary: selectedOrder.deliveryStatus === 'Out For Delivery', disabled: selectedOrder.deliveryStatus === 'Delivered' || statusIndex(selectedOrder.deliveryStatus) < statusIndex('Out For Delivery'), onClick: () => updateStatus(selectedOrder, 'Delivered') },
                 ]} />
               </section>
             </section>
           ) : <section className="card details"><p>No assigned orders yet.</p></section>}
 
           <aside className="stack">
+            <section className="panel">
+              <div className="row"><h2>Return Pickups</h2><span>↩️</span></div>
+              <div className="stack" style={{ marginTop: 14 }}>
+                {returnPickups.length === 0 ? <p className="muted">No reverse pickups in your queue.</p> : returnPickups.map((ret) => (
+                  <div className="note" key={ret.id}>
+                    <div className="row"><strong>{ret.id}</strong><span className="status active">{ret.status}</span></div>
+                    <p style={{ marginTop: 6 }}>{ret.items[0]?.name}</p>
+                    <p className="muted">{ret.customerName} · order {ret.orderId}</p>
+                    <p className="muted">Reason: {ret.reason}</p>
+                    <div className="action-list" style={{ marginTop: 8 }}>
+                      {ret.status === 'Pickup Scheduled' && (
+                        <button className="primary" onClick={() => advanceReturn(ret, 'Picked Up')}><span>Mark Picked Up</span> <span>📦</span></button>
+                      )}
+                      {ret.status === 'Picked Up' && (
+                        <button className="primary" onClick={() => advanceReturn(ret, 'Under Inspection')}><span>Delivered to Seller</span> <span>🏬</span></button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
             <section className="panel">
               <h2>Route Contacts</h2>
               {selectedOrder ? <div className="stack" style={{ marginTop: 14 }}>
@@ -300,7 +366,7 @@ function ActionPanel({ title, icon, actions }) {
 }
 
 function Dialog({ dialog, close }) {
-  return <div className="dialog-backdrop" onClick={close}><section className="dialog" onClick={(event) => event.stopPropagation()}><div className="row"><div><p className="eyebrow">Details</p><h2>{dialog.title}</h2></div><button className="top-button" onClick={close}>?</button></div><div className="stack" style={{ marginTop: 16 }}>{dialog.rows.map(([label, value]) => <Info key={label} label={label} value={value} />)}</div></section></div>
+  return <div className="dialog-backdrop" onClick={close}><section className="dialog" onClick={(event) => event.stopPropagation()}><div className="row"><div><p className="eyebrow">Details</p><h2>{dialog.title}</h2></div><button className="top-button" onClick={close}>✕</button></div><div className="stack" style={{ marginTop: 16 }}>{dialog.rows.map(([label, value]) => <Info key={label} label={label} value={value} />)}</div></section></div>
 }
 
 createRoot(document.getElementById('root')).render(<App />)
