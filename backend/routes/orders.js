@@ -28,9 +28,9 @@ function newTrackingId() {
   return `TRK-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
-// GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&pickupRequested=
+// GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&sellerId=&pickupRequested=
 router.get("/", asyncHandler(async (req, res) => {
-  const { deliveryPartnerId, sellerStatus, deliveryStatus, userId, pickupRequested } = req.query;
+  const { deliveryPartnerId, sellerStatus, deliveryStatus, userId, sellerId, pickupRequested } = req.query;
 
   // filtering by deliveryPartnerId/sellerStatus/deliveryStatus is used by the
   // admin/seller/delivery apps and stays open like before - but asking for a
@@ -50,6 +50,7 @@ router.get("/", asyncHandler(async (req, res) => {
   if (sellerStatus) filter.sellerStatus = sellerStatus;
   if (deliveryStatus) filter.deliveryStatus = deliveryStatus;
   if (userId) filter.userId = userId;
+  if (sellerId) filter.sellerId = sellerId; // seller console shows only its own orders
   if (pickupRequested !== undefined) filter.pickupRequested = pickupRequested === "true";
 
   const orders = await Order.find(filter).sort({ createdAt: -1 });

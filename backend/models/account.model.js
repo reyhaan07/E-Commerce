@@ -90,6 +90,14 @@ const accountSchema = new mongoose.Schema({
   // seller-only: aggregate rating across approved reviews of their products
   sellerRating: { type: Number, default: 0 },
   sellerRatingCount: { type: Number, default: 0 },
+  // seller-only: store identity shown on product pages / seller verification
+  storeDescription: { type: String, default: "" },
+  supportEmail: { type: String, default: "" },
+  supportPhone: { type: String, default: "" },
+  gstin: { type: String, default: "" }, // demo-format registration id
+  verificationStatus: { type: String, enum: ["Pending", "Verified", "Suspended", null], default: null },
+  // admin-only: role within the operations org, for the admin roster
+  jobTitle: { type: String, default: "" },
   notifyByEmail: { type: Boolean, default: true },
   notifyBySms: { type: Boolean, default: false },
   loyaltyPoints: { type: Number, default: 0 },

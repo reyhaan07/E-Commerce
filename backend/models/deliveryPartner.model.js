@@ -10,8 +10,9 @@ const deliveryPartnerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   phone: String,
-  vehicle: { type: String, default: "Bike" },
-  status: { type: String, default: "Active" },
+  vehicle: { type: String, default: "Bike" }, // Bike / Van / Truck
+  zone: { type: String, default: "" }, // service city
+  status: { type: String, default: "Active" }, // Active / On Delivery / Offline
 });
 
 deliveryPartnerSchema.set("toJSON", {

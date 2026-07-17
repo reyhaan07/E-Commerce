@@ -5,6 +5,7 @@ const { Review } = require("../models/review.model");
 const { Account } = require("../models/account.model");
 const { requireAuth, requireRole, getAuthFromHeader } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const { CATEGORY_TREE, isValidPlacement } = require("../data/categories");
 const { notifyRole } = require("../utils/notify");
 const { emitToRole } = require("../realtime");
 
@@ -37,7 +38,7 @@ async function nextProductId() {
 // sellerId=me (with a seller token) to manage its own products regardless of
 // approval status; the admin console passes approvalStatus=... (admin token).
 router.get("/", asyncHandler(async (req, res) => {
-  const { q, category, minPrice, maxPrice, minRating, sort, sellerId, approvalStatus } = req.query;
+  const { q, category, subcategory, productType, minPrice, maxPrice, minRating, sort, sellerId, approvalStatus } = req.query;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(48, Math.max(1, parseInt(req.query.limit, 10) || 12));
 
@@ -66,9 +67,11 @@ router.get("/", asyncHandler(async (req, res) => {
 
   if (q && typeof q === "string") {
     const rx = new RegExp(escapeRegex(q.trim()), "i");
-    filter.$or = [{ name: rx }, { description: rx }, { category: rx }];
+    filter.$or = [{ name: rx }, { description: rx }, { category: rx }, { brand: rx }];
   }
   if (category) filter.category = category;
+  if (subcategory) filter.subcategory = subcategory;
+  if (productType) filter.productType = productType;
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice) || 0;
@@ -90,14 +93,28 @@ router.get("/", asyncHandler(async (req, res) => {
   });
 }));
 
-// GET /api/products/categories — distinct categories with counts, for filters
+// GET /api/products/categories — the canonical taxonomy.
+// `categories`: flat [{name, count}] (back-compat with older clients);
+// `tree`: the full Category → Subcategory → Product Type hierarchy with
+// live product counts per category.
 router.get("/categories", asyncHandler(async (req, res) => {
-  const categories = await Product.aggregate([
+  const counted = await Product.aggregate([
     { $match: { approvalStatus: "Approved" } },
     { $group: { _id: "$category", count: { $sum: 1 } } },
-    { $sort: { _id: 1 } },
   ]);
-  res.json({ success: true, categories: categories.map((c) => ({ name: c._id, count: c.count })) });
+  const countByName = Object.fromEntries(counted.map((c) => [c._id, c.count]));
+
+  const tree = CATEGORY_TREE.map((cat) => ({
+    name: cat.name,
+    count: countByName[cat.name] || 0,
+    subcategories: cat.subcategories,
+  }));
+
+  res.json({
+    success: true,
+    categories: tree.filter((c) => c.count > 0).map((c) => ({ name: c.name, count: c.count })),
+    tree,
+  });
 }));
 
 // GET /api/products/:id — product details + seller info + related products
@@ -161,6 +178,13 @@ function validateProductBody(body, { partial = false } = {}) {
   }
   if (body.images !== undefined && !Array.isArray(body.images)) return "images must be an array";
   if (body.specs !== undefined && !Array.isArray(body.specs)) return "specs must be an array";
+  // placement must exist in the canonical taxonomy when hierarchy fields are sent
+  if (body.subcategory !== undefined || body.productType !== undefined) {
+    const category = body.category;
+    if (category !== undefined && !isValidPlacement(category, body.subcategory, body.productType)) {
+      return "category/subcategory/productType is not a valid placement in the catalog taxonomy";
+    }
+  }
   return null;
 }
 
@@ -169,7 +193,7 @@ router.post("/", requireAuth, requireRole("seller", "admin"), asyncHandler(async
   const error = validateProductBody(req.body);
   if (error) return res.status(400).json({ success: false, message: error });
 
-  const { name, description, category, price, oldPrice, images, specs, sku, stock, isNewArrival } = req.body;
+  const { name, description, brand, category, subcategory, productType, price, oldPrice, images, specs, sku, stock, isNewArrival } = req.body;
   const id = await nextProductId();
   const numericPrice = Number(price);
   const numericOldPrice = oldPrice ? Number(oldPrice) : null;
@@ -180,7 +204,10 @@ router.post("/", requireAuth, requireRole("seller", "admin"), asyncHandler(async
     name: name.trim(),
     slug: `${slugify(name)}-${id}`,
     description: description || "",
+    brand: brand || "",
     category: category.trim(),
+    subcategory: subcategory || "",
+    productType: productType || "",
     price: numericPrice,
     oldPrice: numericOldPrice,
     discount: numericOldPrice && numericOldPrice > numericPrice
@@ -222,7 +249,7 @@ router.put("/:id", requireAuth, requireRole("seller", "admin"), asyncHandler(asy
   const error = validateProductBody(req.body, { partial: true });
   if (error) return res.status(400).json({ success: false, message: error });
 
-  const editable = ["name", "description", "category", "price", "oldPrice", "images", "specs", "sku", "stock", "isNewArrival"];
+  const editable = ["name", "description", "brand", "category", "subcategory", "productType", "price", "oldPrice", "images", "specs", "sku", "stock", "isNewArrival"];
   for (const field of editable) {
     if (req.body[field] !== undefined) product[field] = req.body[field];
   }
