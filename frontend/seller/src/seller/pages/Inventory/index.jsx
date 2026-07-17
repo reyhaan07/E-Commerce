@@ -1,39 +1,60 @@
 import React, { useState, useEffect } from 'react'
 import { SkeletonTable, SkeletonCard } from '../../components/Skeleton'
 import EmptyState from '../../components/EmptyState'
-import { FiLayers, FiAlertTriangle, FiRefreshCw, FiSearch } from 'react-icons/fi'
+import { FiLayers, FiAlertTriangle, FiSearch, FiCheck } from 'react-icons/fi'
 import StatCard from '../../components/cards/StatCard'
+import { apiRequest } from '../../api/client'
+import { useAuth } from '../../hooks/useAuth'
 
-const inventoryData = [
-  { name: 'Wireless Headphones Pro', sku: 'SKU-1001', category: 'Electronics', qty: 14,  threshold: 10, status: 'healthy'  },
-  { name: 'Smart Watch Series X',    sku: 'SKU-1002', category: 'Electronics', qty: 3,   threshold: 5,  status: 'low'      },
-  { name: 'Linen Casual Shirt',      sku: 'SKU-1003', category: 'Clothing',    qty: 0,   threshold: 5,  status: 'out'      },
-  { name: 'Bamboo Desk Organizer',   sku: 'SKU-1004', category: 'Home',        qty: 22,  threshold: 8,  status: 'healthy'  },
-  { name: 'Running Shoes Ultra',     sku: 'SKU-1005', category: 'Sports',      qty: 7,   threshold: 10, status: 'low'      },
-  { name: 'Skincare Glow Kit',       sku: 'SKU-1006', category: 'Beauty',      qty: 0,   threshold: 5,  status: 'out'      },
-  { name: 'Noise-Cancel Earbuds',    sku: 'SKU-1007', category: 'Electronics', qty: 5,   threshold: 5,  status: 'low'      },
-  { name: 'Yoga Mat Premium',        sku: 'SKU-1008', category: 'Sports',      qty: 18,  threshold: 8,  status: 'healthy'  },
-  { name: 'Coffee Grinder Pro',      sku: 'SKU-1009', category: 'Home',        qty: 9,   threshold: 8,  status: 'healthy'  },
-  { name: 'Face Serum Vitamin C',    sku: 'SKU-1010', category: 'Beauty',      qty: 4,   threshold: 5,  status: 'low'      },
-]
+const LOW_THRESHOLD = 5
 
+const statusOf = (stock) => (stock === 0 ? 'out' : stock <= LOW_THRESHOLD ? 'low' : 'healthy')
 const statusLabel = { healthy: 'In Stock', low: 'Low Stock', out: 'Out of Stock' }
 const statusClass = { healthy: 'badge-success', low: 'badge-warning', out: 'badge-danger' }
 
 export default function Inventory() {
+  const { user } = useAuth()
+  const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [query,   setQuery]   = useState('')
   const [filter,  setFilter]  = useState('all')
+  const [drafts, setDrafts] = useState({}) // productId -> stock being typed
+  const [savingId, setSavingId] = useState(null)
+  const [feedback, setFeedback] = useState('')
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 1200); return () => clearTimeout(t) }, [])
+  function refresh() {
+    if (!user) return
+    apiRequest('/products?sellerId=me&limit=48')
+      .then((d) => setItems(d.products))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
 
-  const totalStock = inventoryData.reduce((a, b) => a + b.qty, 0)
-  const lowStock   = inventoryData.filter(i => i.status === 'low').length
-  const outStock   = inventoryData.filter(i => i.status === 'out').length
+  useEffect(refresh, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = inventoryData.filter(i => {
-    const matchQ = i.name.toLowerCase().includes(query.toLowerCase()) || i.sku.toLowerCase().includes(query.toLowerCase())
-    const matchF = filter === 'all' || i.status === filter
+  async function saveStock(product) {
+    const value = Number(drafts[product.id])
+    if (!Number.isFinite(value) || value < 0) return
+    setSavingId(product.id)
+    try {
+      await apiRequest(`/products/${product.id}/stock`, { method: 'PATCH', body: JSON.stringify({ stock: value }) })
+      setFeedback(`${product.name} stock updated to ${value}`)
+      setDrafts((d) => ({ ...d, [product.id]: undefined }))
+      refresh()
+    } catch (err) {
+      setFeedback(err.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const totalStock = items.reduce((a, b) => a + b.stock, 0)
+  const lowStock   = items.filter(i => statusOf(i.stock) === 'low').length
+  const outStock   = items.filter(i => statusOf(i.stock) === 'out').length
+
+  const filtered = items.filter(i => {
+    const matchQ = i.name.toLowerCase().includes(query.toLowerCase()) || (i.sku || '').toLowerCase().includes(query.toLowerCase())
+    const matchF = filter === 'all' || statusOf(i.stock) === filter
     return matchQ && matchF
   })
 
@@ -42,9 +63,8 @@ export default function Inventory() {
       <div className="page-header">
         <div>
           <h2 className="page-title">Inventory</h2>
-          <p className="page-subtitle">Track and manage stock levels</p>
+          <p className="page-subtitle">Stock levels for your {items.length} products</p>
         </div>
-        <button className="btn-primary"><FiRefreshCw size={14} /> Sync Stock</button>
       </div>
 
       {/* Stats */}
@@ -64,6 +84,8 @@ export default function Inventory() {
           </>
         )}
       </div>
+
+      {feedback && <div className="glass p-3 text-sm font-medium" style={{ borderRadius: 12 }}>{feedback}</div>}
 
       {/* Filter tabs + search */}
       <div className="glass p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3" style={{ borderRadius: 16 }}>
@@ -100,27 +122,28 @@ export default function Inventory() {
       ) : (
         <div className="table-wrapper">
           <table className="data-table">
-            <thead><tr><th>Product</th><th>SKU</th><th>Category</th><th>Qty</th><th>Threshold</th><th>Status</th><th>Stock Level</th></tr></thead>
+            <thead><tr><th>Product</th><th>SKU</th><th>Placement</th><th>Qty</th><th>Status</th><th>Update Stock</th></tr></thead>
             <tbody>
-              {filtered.map((item, i) => {
-                const pct = item.threshold > 0 ? Math.min(100, Math.round((item.qty / (item.threshold * 3)) * 100)) : 0
+              {filtered.map((item) => {
+                const status = statusOf(item.stock)
+                const draft = drafts[item.id]
                 return (
-                  <tr key={i}>
-                    <td className="font-medium max-w-[180px] truncate">{item.name}</td>
+                  <tr key={item.id}>
+                    <td className="font-medium max-w-[200px] truncate">{item.name}</td>
                     <td><code className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#f1f5f9', color: 'var(--text-soft)' }}>{item.sku}</code></td>
-                    <td>{item.category}</td>
-                    <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{item.qty}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{item.threshold}</td>
-                    <td><span className={`badge ${statusClass[item.status]}`}>{statusLabel[item.status]}</span></td>
-                    <td style={{ minWidth: 120 }}>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 progress-bar">
-                          <div className="progress-fill" style={{
-                            width: `${pct}%`,
-                            background: item.status === 'out' ? '#e11d48' : item.status === 'low' ? '#d97706' : '#059669'
-                          }} />
-                        </div>
-                        <span className="text-xs w-8 text-right" style={{ color: 'var(--text-muted)' }}>{pct}%</span>
+                    <td className="text-xs">{item.category}{item.productType ? ` → ${item.productType}` : ''}</td>
+                    <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{item.stock}</td>
+                    <td><span className={`badge ${statusClass[status]}`}>{statusLabel[status]}</span></td>
+                    <td style={{ minWidth: 150 }}>
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" min="0" className="input h-8 text-xs" style={{ width: 72 }}
+                          value={draft !== undefined ? draft : item.stock}
+                          onChange={e => setDrafts(d => ({ ...d, [item.id]: e.target.value }))} />
+                        <button className="btn-icon" title="Save" style={{ width: 28, height: 28 }}
+                          disabled={savingId === item.id || draft === undefined || Number(draft) === item.stock}
+                          onClick={() => saveStock(item)}>
+                          <FiCheck size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>

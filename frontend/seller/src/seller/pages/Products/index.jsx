@@ -1,130 +1,126 @@
-import React, { useState, useEffect } from 'react'
-import ProductCard from '../../components/cards/ProductCard'
+import React, { useState, useEffect, useMemo } from 'react'
 import EmptyState from '../../components/EmptyState'
 import { SkeletonProductGrid } from '../../components/Skeleton'
-import { FiPlus, FiSearch, FiGrid, FiList, FiFilter, FiChevronDown, FiBox } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiBox, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import { apiRequest } from '../../api/client'
+import { useAuth } from '../../hooks/useAuth'
 
-const CATEGORIES = ['All', 'Electronics', 'Clothing', 'Home & Living', 'Sports', 'Beauty']
-
-const sample = [
-  { id: 1, name: 'Wireless Headphones Pro', category: 'Electronics', price: 129, stock: 14,
-    image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=400&q=80' },
-  { id: 2, name: 'Smart Watch Series X', category: 'Electronics', price: 299, stock: 3,
-    image: 'https://images.unsplash.com/photo-1517059224940-d4af9eec41e8?auto=format&fit=crop&w=400&q=80' },
-  { id: 3, name: 'Linen Casual Shirt', category: 'Clothing', price: 49, stock: 0,
-    image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=400&q=80' },
-  { id: 4, name: 'Bamboo Desk Organizer', category: 'Home & Living', price: 34, stock: 22,
-    image: 'https://images.unsplash.com/photo-1512499617640-c2f99990672c?auto=format&fit=crop&w=400&q=80' },
-  { id: 5, name: 'Running Shoes Ultra', category: 'Sports', price: 189, stock: 7,
-    image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80' },
-  { id: 6, name: 'Skincare Glow Kit', category: 'Beauty', price: 79, stock: 0,
-    image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80' },
-  { id: 7, name: 'Noise-Cancel Earbuds', category: 'Electronics', price: 89, stock: 5,
-    image: 'https://images.unsplash.com/photo-1517502166878-35c93a0072bb?auto=format&fit=crop&w=400&q=80' },
-  { id: 8, name: 'Yoga Mat Premium', category: 'Sports', price: 55, stock: 18,
-    image: 'https://images.unsplash.com/photo-1599058917764-602b97aa2047?auto=format&fit=crop&w=400&q=80' },
-  { id: 9, name: 'Coffee Grinder Pro', category: 'Home & Living', price: 64, stock: 9,
-    image: 'https://images.unsplash.com/photo-1511381939415-8af74912c8ab?auto=format&fit=crop&w=400&q=80' },
-  { id: 10, name: 'Graphic Tee Vintage', category: 'Clothing', price: 28, stock: 0,
-    image: 'https://images.unsplash.com/photo-1495121605193-b116b5b9c5d6?auto=format&fit=crop&w=400&q=80' },
-  { id: 11, name: 'USB-C Hub 7-Port', category: 'Electronics', price: 45, stock: 33,
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80' },
-  { id: 12, name: 'Face Serum Vitamin C', category: 'Beauty', price: 42, stock: 4,
-    image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=400&q=80' },
-]
+const EMPTY_FORM = {
+  name: '', brand: '', category: '', subcategory: '', productType: '',
+  price: '', oldPrice: '', stock: '', sku: '', image: '', description: '',
+}
 
 export default function Products() {
-  const [products, setProducts] = useState(() => {
-    try {
-      const raw = localStorage.getItem('seller_products')
-      return raw ? JSON.parse(raw) : sample
-    } catch (e) {
-      return sample
-    }
-  })
-  const [view,     setView]     = useState('grid')
-  const [query,    setQuery]    = useState('')
+  const { user } = useAuth()
+  const [products, setProducts] = useState([])
+  const [tree, setTree] = useState([])
+  const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
-  const [loading,  setLoading]  = useState(true)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [editProduct, setEditProduct] = useState(null)
-  const [editImage, setEditImage] = useState('')
-  const [previewValid, setPreviewValid] = useState(true)
-  const [uploadPreview, setUploadPreview] = useState(null)
-  const [viewProduct, setViewProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(null) // null = closed, {...EMPTY_FORM, id?} = open
+  const [feedback, setFeedback] = useState(null) // { text, error }
 
-  useEffect(() => { const t = setTimeout(() => setLoading(false), 1200); return () => clearTimeout(t) }, [])
-
-  // Persist products to localStorage so edits survive refresh
-  useEffect(() => {
+  async function refresh() {
+    if (!user) return
     try {
-      localStorage.setItem('seller_products', JSON.stringify(products))
-    } catch (e) {
-      // ignore storage errors
+      const data = await apiRequest('/products?sellerId=me&limit=48')
+      setProducts(data.products)
+    } catch (err) {
+      setFeedback({ text: err.message, error: true })
+    } finally {
+      setLoading(false)
     }
-  }, [products])
+  }
 
+  useEffect(() => { refresh() }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    apiRequest('/products/categories').then((d) => setTree(d.tree)).catch(() => {})
+  }, [])
+
+  const myCategories = useMemo(() => ['All', ...new Set(products.map(p => p.category))], [products])
   const filtered = products.filter(p => {
     const matchQ = p.name.toLowerCase().includes(query.toLowerCase())
     const matchC = category === 'All' || p.category === category
     return matchQ && matchC
   })
 
-  const startEdit = product => {
-    setEditProduct(product)
-    setEditImage(product.image || '')
+  // cascading dropdown options driven by the canonical taxonomy
+  const activeCategory = tree.find(c => c.name === form?.category)
+  const activeSubcategory = activeCategory?.subcategories.find(s => s.name === form?.subcategory)
+
+  function openAdd() { setForm({ ...EMPTY_FORM }) }
+  function openEdit(p) {
+    setForm({
+      id: p.id, name: p.name, brand: p.brand || '', category: p.category,
+      subcategory: p.subcategory || '', productType: p.productType || '',
+      price: String(p.price), oldPrice: p.oldPrice ? String(p.oldPrice) : '',
+      stock: String(p.stock), sku: p.sku || '', image: p.images?.[0] || '', description: p.description || '',
+    })
   }
 
-  const saveImage = () => {
-    if (!editProduct) return
-    setProducts(products.map(p => p.id === editProduct.id ? { ...p, image: editImage || p.image } : p))
-    setEditProduct(null)
-    setEditImage('')
+  function setField(key, value) {
+    setForm((f) => {
+      const next = { ...f, [key]: value }
+      if (key === 'category') { next.subcategory = ''; next.productType = '' }
+      if (key === 'subcategory') next.productType = ''
+      return next
+    })
   }
 
-  // validate preview image URL
-  useEffect(() => {
-    if (!editImage) return setPreviewValid(true)
-    let mounted = true
-    const img = new Image()
-    img.onload = () => { if (mounted) setPreviewValid(true) }
-    img.onerror = () => { if (mounted) setPreviewValid(false) }
-    img.src = editImage
-    return () => { mounted = false }
-  }, [editImage])
-
-  const handleFileChange = e => {
-    const file = e.target.files && e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result
-      setEditImage(dataUrl)
-      setUploadPreview(dataUrl)
-      setPreviewValid(true)
+  async function save(e) {
+    e.preventDefault()
+    const body = {
+      name: form.name, brand: form.brand, category: form.category,
+      subcategory: form.subcategory, productType: form.productType,
+      price: Number(form.price), oldPrice: form.oldPrice ? Number(form.oldPrice) : null,
+      stock: Number(form.stock), sku: form.sku,
+      images: form.image ? [form.image] : [], description: form.description,
     }
-    reader.readAsDataURL(file)
+    try {
+      if (form.id) {
+        await apiRequest(`/products/${form.id}`, { method: 'PUT', body: JSON.stringify(body) })
+        setFeedback({ text: `${form.name} updated` })
+      } else {
+        await apiRequest('/products', { method: 'POST', body: JSON.stringify(body) })
+        setFeedback({ text: `${form.name} created — it will appear in the storefront once an admin approves it` })
+      }
+      setForm(null)
+      refresh()
+    } catch (err) {
+      setFeedback({ text: err.message, error: true })
+    }
   }
 
-  const cancelEdit = () => {
-    setEditProduct(null)
-    setEditImage('')
+  async function remove(p) {
+    if (!window.confirm(`Delete ${p.name}? This cannot be undone.`)) return
+    try {
+      await apiRequest(`/products/${p.id}`, { method: 'DELETE' })
+      setFeedback({ text: `${p.name} deleted` })
+      refresh()
+    } catch (err) {
+      setFeedback({ text: err.message, error: true })
+    }
   }
 
-  const startView = product => setViewProduct(product)
-  const closeView = () => setViewProduct(null)
+  const badge = (p) => p.approvalStatus === 'Approved'
+    ? (p.stock === 0 ? ['badge-danger', 'Out of Stock'] : p.stock <= 5 ? ['badge-warning', `Low Stock (${p.stock})`] : ['badge-success', 'Live'])
+    : p.approvalStatus === 'Pending' ? ['badge-warning', 'Awaiting Approval'] : ['badge-danger', 'Rejected']
 
   return (
     <div className="space-y-5 animate-fade-in">
-
-      {/* Header */}
       <div className="page-header">
         <div>
           <h2 className="page-title">Products</h2>
-          <p className="page-subtitle">{products.length} total products</p>
+          <p className="page-subtitle">{products.length} products in your store</p>
         </div>
-        <button className="btn-primary"><FiPlus size={15} /> Add Product</button>
+        <button className="btn-primary" onClick={openAdd}><FiPlus size={15} /> Add Product</button>
       </div>
+
+      {feedback && (
+        <div className="glass p-3 text-sm font-medium" style={{ borderRadius: 12, color: feedback.error ? '#e11d48' : '#059669' }}>
+          {feedback.text}
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="glass p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3" style={{ borderRadius: 16 }}>
@@ -133,202 +129,89 @@ export default function Products() {
           <input type="text" placeholder="Search products…" className="input pl-9 h-9 text-sm"
             value={query} onChange={e => setQuery(e.target.value)} />
         </div>
-
-        {/* Category dropdown */}
-        <div className="relative">
-          <button className="btn-ghost h-9 text-sm gap-2 w-full sm:w-auto"
-            onClick={() => setFiltersOpen(o => !o)}>
-            <FiFilter size={14} /> {category} <FiChevronDown size={14} />
-          </button>
-          {filtersOpen && (
-            <div className="absolute right-0 top-11 z-30 py-1 min-w-[160px] animate-scale-in"
-              style={{
-                background: 'white', border: '1px solid var(--border)', borderRadius: 14,
-                boxShadow: 'var(--shadow-lg)'
-              }}>
-              {CATEGORIES.map(c => (
-                <button key={c} className="block w-full text-left px-4 py-2 text-sm transition-colors"
-                  style={{
-                    color: c === category ? 'var(--accent)' : 'var(--text-soft)',
-                    background: c === category ? 'rgba(99,102,241,0.06)' : 'transparent',
-                    fontWeight: c === category ? 600 : 400,
-                  }}
-                  onClick={() => { setCategory(c); setFiltersOpen(false) }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* View toggle */}
-        <div className="flex items-center gap-1 p-1 rounded-xl"
-          style={{ background: '#f1f5f9', border: '1px solid var(--border)' }}>
-          {[['grid', FiGrid], ['list', FiList]].map(([v, Icon]) => (
-            <button key={v}
-              className="flex items-center justify-center w-8 h-7 rounded-lg transition-all duration-200"
-              style={{
-                background: view === v ? 'white' : 'transparent',
-                color: view === v ? 'var(--accent)' : 'var(--text-muted)',
-                boxShadow: view === v ? 'var(--shadow-sm)' : 'none',
-              }}
-              onClick={() => setView(v)}>
-              <Icon size={15} />
-            </button>
-          ))}
-        </div>
+        <select className="input h-9 text-sm w-full sm:w-56" value={category} onChange={e => setCategory(e.target.value)}>
+          {myCategories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
-      {editProduct && (
-        <div className="glass p-4 flex flex-col sm:flex-row items-stretch gap-3" style={{ borderRadius: 20 }}>
-          <div className="flex-1">
-            <p className="text-sm font-semibold mb-2">Edit image for: <span className="text-accent">{editProduct.name}</span></p>
-            <input
-              type="text"
-              placeholder="Paste a direct image URL"
-              className="input w-full"
-              value={editImage}
-              onChange={e => setEditImage(e.target.value)}
-            />
-            <div className="flex items-center gap-3 mt-3">
-              <div style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: '#f8fafc' }}>
-                {editImage ? (
-                  previewValid ? (
-                    <img src={editImage} alt="preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex items-center justify-center text-xs text-red-500 w-full h-full">Invalid image</div>
-                  )
-                ) : (
-                  <img src={editProduct.image} alt="current" className="w-full h-full object-cover" />
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-muted">Preview</p>
-                {!previewValid && editImage && <p className="text-xs text-red-500">Cannot load image from the URL.</p>}
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <label className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                Upload image
-                <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-              </label>
-              {uploadPreview && <button className="btn-ghost" onClick={() => { setUploadPreview(null); setEditImage(editProduct.image || ''); }}>Revert upload</button>}
-            </div>
-            <p className="text-xs text-muted mt-2">Enter an image URL to update the product image. If the URL is invalid, it will fall back to a placeholder image.</p>
+      {/* Add / Edit form with cascading taxonomy dropdowns */}
+      {form && (
+        <form onSubmit={save} className="glass p-5 space-y-4" style={{ borderRadius: 20 }}>
+          <p className="text-sm font-semibold">{form.id ? `Edit ${form.id}` : 'Add a new product'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input required className="input" placeholder="Product name" value={form.name} onChange={e => setField('name', e.target.value)} />
+            <input className="input" placeholder="Brand" value={form.brand} onChange={e => setField('brand', e.target.value)} />
+            <select required className="input" value={form.category} onChange={e => setField('category', e.target.value)}>
+              <option value="">Category…</option>
+              {tree.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+            <select required className="input" value={form.subcategory} onChange={e => setField('subcategory', e.target.value)} disabled={!activeCategory}>
+              <option value="">Subcategory…</option>
+              {activeCategory?.subcategories.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+            </select>
+            <select required className="input" value={form.productType} onChange={e => setField('productType', e.target.value)} disabled={!activeSubcategory}>
+              <option value="">Product type…</option>
+              {activeSubcategory?.productTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input required type="number" min="0" className="input" placeholder="Price (₹)" value={form.price} onChange={e => setField('price', e.target.value)} />
+            <input type="number" min="0" className="input" placeholder="Old price (optional)" value={form.oldPrice} onChange={e => setField('oldPrice', e.target.value)} />
+            <input required type="number" min="0" className="input" placeholder="Stock" value={form.stock} onChange={e => setField('stock', e.target.value)} />
+            <input className="input" placeholder="SKU" value={form.sku} onChange={e => setField('sku', e.target.value)} />
+            <input className="input" placeholder="Image URL" value={form.image} onChange={e => setField('image', e.target.value)} />
           </div>
+          <textarea className="input w-full" rows={3} placeholder="Description" value={form.description} onChange={e => setField('description', e.target.value)} />
           <div className="flex items-center gap-2">
-            <button className="btn-primary" onClick={saveImage} disabled={!!editImage && !previewValid}>Save Image</button>
-            <button className="btn-ghost" onClick={cancelEdit}>Cancel</button>
+            <button type="submit" className="btn-primary">{form.id ? 'Save Changes' : 'Create Product'}</button>
+            <button type="button" className="btn-ghost" onClick={() => setForm(null)}>Cancel</button>
           </div>
-        </div>
+        </form>
       )}
 
-      {viewProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={closeView} />
-          <div className="relative bg-white rounded-lg overflow-hidden" style={{ width: 'min(90vw,800px)', maxHeight: '90vh' }}>
-            <button className="btn-ghost" style={{ position: 'absolute', right: 8, top: 8 }} onClick={closeView}>Close</button>
-            <img src={viewProduct.image} alt={viewProduct.name} style={{ display: 'block', maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
-            <div className="p-3"><p className="font-semibold">{viewProduct.name}</p></div>
-          </div>
+      {/* Product table */}
+      {loading ? (
+        <SkeletonProductGrid count={8} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<FiBox />}
+          title="No products found"
+          description="Try adjusting your search, or add your first product."
+          action={<button className="btn-primary" onClick={() => { setQuery(''); setCategory('All') }}>Clear Filters</button>}
+        />
+      ) : (
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead><tr><th>Product</th><th>Placement</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {filtered.map(p => {
+                const [cls, label] = badge(p)
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <img src={p.images?.[0]} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" style={{ border: '1px solid var(--border)', background: '#f8fafc' }} />
+                        <div>
+                          <span className="font-medium">{p.name}</span>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.sku} · ★{p.rating || '—'} ({p.ratingCount})</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-xs">{p.category}{p.subcategory ? ` → ${p.subcategory}` : ''}{p.productType ? ` → ${p.productType}` : ''}</td>
+                    <td style={{ color: 'var(--accent)', fontWeight: 600 }}>₹{p.price}</td>
+                    <td>{p.stock}</td>
+                    <td><span className={`badge ${cls}`}>{label}</span></td>
+                    <td>
+                      <div className="flex items-center gap-1.5">
+                        <button className="btn-icon" title="Edit" style={{ width: 28, height: 28 }} onClick={() => openEdit(p)}><FiEdit2 size={13} /></button>
+                        <button className="btn-icon" title="Delete" style={{ width: 28, height: 28, color: '#e11d48', borderColor: 'rgba(225,29,72,0.2)' }} onClick={() => remove(p)}><FiTrash2 size={13} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
-
-      {/* Desktop Sidebar Filters + Content */}
-      <div className="flex gap-4">
-        {/* Sidebar filters — desktop only */}
-        <aside className="hidden lg:block w-52 shrink-0 space-y-4">
-          <div className="glass p-4" style={{ borderRadius: 16 }}>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Categories</h4>
-            <div className="space-y-1">
-              {CATEGORIES.map(c => (
-                <button key={c} className="w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 font-medium"
-                  style={{
-                    background: category === c ? 'rgba(99,102,241,0.08)' : 'transparent',
-                    color: category === c ? 'var(--accent)' : 'var(--text-muted)',
-                    border: category === c ? '1px solid rgba(99,102,241,0.18)' : '1px solid transparent',
-                  }}
-                  onClick={() => setCategory(c)}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass p-4" style={{ borderRadius: 16 }}>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Stock Status</h4>
-            <div className="space-y-2">
-              {['All', 'In Stock', 'Low Stock', 'Out of Stock'].map(s => (
-                <label key={s} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-soft)' }}>
-                  <input type="checkbox" defaultChecked={s === 'All'} className="accent-indigo-500 rounded" />
-                  {s}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass p-4" style={{ borderRadius: 16 }}>
-            <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Price Range</h4>
-            <div className="flex items-center gap-2">
-              <input type="number" placeholder="Min" className="input text-xs h-8 px-2" />
-              <span style={{ color: 'var(--text-muted)' }}>–</span>
-              <input type="number" placeholder="Max" className="input text-xs h-8 px-2" />
-            </div>
-          </div>
-        </aside>
-
-        {/* Product grid / table */}
-        <div className="flex-1 min-w-0">
-          {loading ? (
-            <SkeletonProductGrid count={8} />
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              icon={<FiBox />}
-              title="No products found"
-              description="Try adjusting your search or filter to find what you're looking for."
-              action={<button className="btn-primary" onClick={() => { setQuery(''); setCategory('All') }}>Clear Filters</button>}
-            />
-          ) : view === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 stagger">
-              {filtered.map(p => <ProductCard key={p.id} product={p} onEdit={startEdit} onView={startView} />)}
-            </div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {filtered.map((p, i) => {
-                    const inStock = p.stock > 0
-                    const low = p.stock > 0 && p.stock <= 5
-                    return (
-                      <tr key={i}>
-                        <td>
-                          <div className="flex items-center gap-3">
-                            <img src={p.image} alt={p.name}
-                              className="w-10 h-10 rounded-lg object-cover shrink-0"
-                              style={{ border: '1px solid var(--border)' }} />
-                            <span className="font-medium">{p.name}</span>
-                          </div>
-                        </td>
-                        <td>{p.category}</td>
-                        <td style={{ color: 'var(--accent)', fontWeight: 600 }}>₹{p.price}</td>
-                        <td>{p.stock}</td>
-                        <td><span className={`badge ${!inStock ? 'badge-danger' : low ? 'badge-warning' : 'badge-success'}`}>{!inStock ? 'Out of Stock' : low ? 'Low Stock' : 'In Stock'}</span></td>
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <button className="btn-icon" style={{ width: 28, height: 28, fontSize: 12 }} onClick={() => startEdit(p)}>✏️</button>
-                            <button className="btn-icon" style={{ width: 28, height: 28, fontSize: 12, color: '#e11d48', borderColor: 'rgba(225,29,72,0.2)' }}>🗑</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
