@@ -1,19 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import StatusBadge from '../components/StatusBadge';
 import StatusTimeline from '../components/StatusTimeline';
 import { getOrder } from '../api/orders';
+import { useAuth } from '../hooks/useAuth';
 import { HiOutlineSearch, HiOutlinePhone, HiOutlineUser } from 'react-icons/hi';
+
+const SOCKET_URL = 'http://localhost:5000';
 
 const TrackOrder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [orderId, setOrderId] = useState(id || '');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [liveNote, setLiveNote] = useState('');
+  const orderRef = useRef(null);
+  orderRef.current = order;
 
   useEffect(() => {
     if (id) {
@@ -21,6 +29,22 @@ const TrackOrder = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Feature 8: each delivery-status change is broadcast over Socket.io, so
+  // the timeline refreshes itself without a manual reload.
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { query: { role: 'user', userId: user?.id || '' } });
+    socket.on('order-updated', (payload) => {
+      const current = orderRef.current;
+      if (current && payload.orderId === current.id) {
+        getOrder(current.id).then((fresh) => {
+          setOrder(fresh);
+          setLiveNote(`Updated live at ${new Date().toLocaleTimeString()}`);
+        }).catch(() => {});
+      }
+    });
+    return () => socket.disconnect();
+  }, [user]);
 
   async function handleLookup(lookupId) {
     const targetId = (lookupId || orderId).trim();
@@ -80,6 +104,8 @@ const TrackOrder = () => {
                     Placed on {new Date(order.createdAt).toLocaleDateString()}
                   </p>
                   <h3 className="text-xl font-extrabold text-gray-900">{order.id}</h3>
+                  {order.trackingId && <p className="text-xs font-bold text-primary mt-1">Tracking id: {order.trackingId}</p>}
+                  {liveNote && <p className="text-[11px] text-green-600 font-bold mt-1">● {liveNote}</p>}
                 </div>
                 <StatusBadge status={order.deliveryStatus} />
               </div>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4 } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -7,6 +7,14 @@ import { useWishlist } from '../context/WishlistContext';
 const Navbar = () => {
   const { itemCount } = useCart();
   const { items: wishlistItems } = useWishlist();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
+
+  function handleSearch(e) {
+    e.preventDefault();
+    navigate(query.trim() ? `/products?q=${encodeURIComponent(query.trim())}` : '/products');
+  }
 
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-sm border-b">
@@ -18,14 +26,18 @@ const Navbar = () => {
         </Link>
 
         {/* Search Bar - Desktop */}
-        <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8 relative">
           <input
             type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for products, brands and more..."
             className="w-full px-4 py-2 bg-gray-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none"
           />
-          <HiOutlineSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl cursor-pointer hover:text-primary transition-colors" />
-        </div>
+          <button type="submit" aria-label="Search">
+            <HiOutlineSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl cursor-pointer hover:text-primary transition-colors" />
+          </button>
+        </form>
 
         {/* Actions */}
         <div className="flex items-center gap-4 sm:gap-6">

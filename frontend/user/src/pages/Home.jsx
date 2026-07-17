@@ -1,25 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Banner from '../components/Banner';
 import CategoryCard from '../components/CategoryCard';
 import ProductCard from '../components/ProductCard';
 import { motion } from 'framer-motion';
+import { listProducts, getCategories, toCardProduct } from '../api/products';
+
+// cover images for category tiles, keyed by catalog category name
+const CATEGORY_IMAGES = {
+  Electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800',
+  Fashion: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800',
+  'Home & Kitchen': 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?q=80&w=800',
+  Accessories: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800',
+  Footwear: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800',
+  Sports: 'https://images.unsplash.com/photo-1592432678016-e910b452f9a2?q=80&w=800',
+};
 
 const Home = () => {
-  const categories = [
-    { id: 1, name: 'Electronics', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800' },
-    { id: 2, name: 'Fashion', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800' },
-    { id: 3, name: 'Home Decor', image: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?q=80&w=800' },
-    { id: 4, name: 'Gadgets', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800' },
-  ];
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
 
-  const featuredProducts = [
-    { id: 1, name: 'Premium Wireless Headphones', price: 14999, oldPrice: 19999, rating: 5, reviews: 128, isNew: true, discount: 25, category: 'Lifestyle', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800' },
-    { id: 2, name: 'Minimalist Analog Watch', price: 4999, rating: 4, reviews: 85, category: 'Fashion', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800' },
-    { id: 3, name: 'Portable Bluetooth Speaker', price: 2499, oldPrice: 3499, discount: 28, rating: 4, reviews: 42, category: 'Electronics', image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?q=80&w=800' },
-    { id: 4, name: 'Smart Home Controller', price: 8999, rating: 5, reviews: 210, isNew: true, category: 'Gadgets', image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800' },
-  ];
+  useEffect(() => {
+    getCategories()
+      .then((cats) => setCategories(cats.slice(0, 4).map((c, idx) => ({
+        id: idx,
+        name: c.name,
+        image: CATEGORY_IMAGES[c.name] || CATEGORY_IMAGES.Electronics,
+      }))))
+      .catch(() => {});
+    listProducts({ sort: 'rating', limit: 4 })
+      .then(({ products }) => setFeaturedProducts(products.map(toCardProduct)))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -34,7 +49,7 @@ const Home = () => {
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Shop by Category</h2>
               <p className="text-gray-500">Pick from our curated categories for you</p>
             </div>
-            <button className="text-primary font-bold hover:underline">View All</button>
+            <button onClick={() => navigate('/products')} className="text-primary font-bold hover:underline">View All</button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.map(cat => <CategoryCard key={cat.id} category={cat} />)}

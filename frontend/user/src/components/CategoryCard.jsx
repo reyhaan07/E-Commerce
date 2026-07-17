@@ -1,11 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiArrowRight } from 'react-icons/hi';
 
 const CategoryCard = ({ category }) => {
+  const navigate = useNavigate();
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ scale: 1.05 }}
+      onClick={() => navigate(`/products?category=${encodeURIComponent(category.name)}`)}
       className="relative h-48 rounded-2xl overflow-hidden group cursor-pointer"
     >
       <img 

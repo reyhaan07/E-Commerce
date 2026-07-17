@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { HiStar } from 'react-icons/hi';
 import { HiOutlineHeart, HiOutlineShoppingBag } from 'react-icons/hi';
 import { motion } from 'framer-motion';
@@ -42,11 +43,13 @@ const ProductCard = ({ product }) => {
       className="card-hover group border border-transparent hover:border-primary/10"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-        <img 
-          src={product.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'} 
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+        <Link to={`/product/${product.id}`}>
+          <img
+            src={product.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        </Link>
         <div className="absolute top-3 left-3 flex flex-col gap-2">
             {product.isNew && <span className="bg-primary text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">New</span>}
             {product.discount && <span className="bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">-{product.discount}%</span>}
@@ -66,7 +69,9 @@ const ProductCard = ({ product }) => {
       
       <div className="p-4">
         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">{product.category || 'Lifestyle'}</p>
-        <h3 className="font-semibold text-gray-800 line-clamp-1 mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+        <Link to={`/product/${product.id}`}>
+          <h3 className="font-semibold text-gray-800 line-clamp-1 mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+        </Link>
         <div className="flex items-center gap-1 mb-3">
             {[...Array(5)].map((_, i) => (
                 <HiStar key={i} className={`text-sm ${i < (product.rating || 4) ? 'text-yellow-400' : 'text-gray-200'}`} />

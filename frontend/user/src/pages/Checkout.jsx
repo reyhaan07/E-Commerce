@@ -9,6 +9,53 @@ import { apiRequest } from '../api/client';
 
 const PAYMENT_METHOD_MAP = { card: 'Prepaid', upi: 'Prepaid', cod: 'Cash on Delivery' };
 
+// Real Razorpay test checkout when the backend has test keys; otherwise the
+// backend's built-in mock stands in (signature verification still happens
+// server-side either way).
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) return resolve();
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load the Razorpay checkout'));
+    document.body.appendChild(script);
+  });
+}
+
+async function collectPayment(paymentOrder, user) {
+  if (paymentOrder.mock) {
+    const pay = await apiRequest('/payments/mock-pay', {
+      method: 'POST',
+      body: JSON.stringify({ razorpayOrderId: paymentOrder.id }),
+    });
+    return {
+      razorpayOrderId: pay.razorpayOrderId,
+      razorpayPaymentId: pay.razorpayPaymentId,
+      razorpaySignature: pay.razorpaySignature,
+    };
+  }
+
+  await loadRazorpayScript();
+  return new Promise((resolve, reject) => {
+    const checkout = new window.Razorpay({
+      key: paymentOrder.keyId,
+      amount: paymentOrder.amount,
+      currency: paymentOrder.currency,
+      name: 'ShopSphere',
+      order_id: paymentOrder.id,
+      prefill: { name: user.name, email: user.email },
+      handler: (response) => resolve({
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      }),
+      modal: { ondismiss: () => reject(new Error('Payment was cancelled')) },
+    });
+    checkout.open();
+  });
+}
+
 const Checkout = () => {
   const { items: cartItems, clearCart } = useCart();
   const { user } = useAuth();
@@ -64,6 +111,19 @@ const Checkout = () => {
 
     setPlacing(true);
     try {
+      const method = PAYMENT_METHOD_MAP[selectedPayment?.type || paymentMethod] || 'Prepaid';
+
+      // Prepaid runs through Razorpay (test mode) first; the backend verifies
+      // the signature before it will create the order.
+      let payment = {};
+      if (method === 'Prepaid') {
+        const { paymentOrder } = await apiRequest('/payments/create-order', {
+          method: 'POST',
+          body: JSON.stringify({ amount: total }),
+        });
+        payment = await collectPayment(paymentOrder, user);
+      }
+
       await apiRequest('/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -72,9 +132,10 @@ const Checkout = () => {
           customerEmail: user.email,
           customerPhone: selectedAddress?.phone || profile?.phone,
           customerAddress,
-          items: cartItems.map((i) => ({ name: i.name, qty: i.quantity })),
+          items: cartItems.map((i) => ({ productId: i.id, name: i.name, qty: i.quantity, price: i.price })),
           amount: total,
-          paymentMethod: PAYMENT_METHOD_MAP[selectedPayment?.type || paymentMethod] || 'Prepaid',
+          paymentMethod: method,
+          ...payment,
         }),
       });
       clearCart();
