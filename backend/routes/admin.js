@@ -38,6 +38,23 @@ router.patch("/accounts/:id/status", asyncHandler(async (req, res) => {
   res.json({ success: true, account });
 }));
 
+// PATCH /api/admin/accounts/:id/verification  { verificationStatus } — seller stores
+router.patch("/accounts/:id/verification", asyncHandler(async (req, res) => {
+  const { verificationStatus } = req.body;
+  if (!["Pending", "Verified", "Suspended"].includes(verificationStatus)) {
+    return res.status(400).json({ success: false, message: "Invalid verificationStatus" });
+  }
+  const account = await Account.findOneAndUpdate(
+    { id: req.params.id, role: "seller" },
+    { verificationStatus },
+    { new: true }
+  );
+  if (!account) {
+    return res.status(404).json({ success: false, message: "Seller not found" });
+  }
+  res.json({ success: true, account });
+}));
+
 // GET /api/admin/stats — dashboard tiles + analytics aggregates
 router.get("/stats", asyncHandler(async (req, res) => {
   const [users, sellers, products, orders, activeCarts, pendingReviews, openReturns, revenueAgg, ordersByStatus] =

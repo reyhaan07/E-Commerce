@@ -13,6 +13,7 @@ import RefundTracking from "../pages/admin/RefundTracking";
 import AnalyticsDashboard from "../pages/admin/AnalyticsDashboard";
 import SellerVerification from "../pages/admin/SellerVerification";
 import ProductApproval from "../pages/admin/ProductApproval";
+import ReviewModeration from "../pages/admin/ReviewModeration";
 import DeliveryPartners from "../pages/admin/DeliveryPartners";
 import DeliveryAssignment from "../pages/admin/DeliveryAssignment";
 import DeliveryTracking from "../pages/admin/DeliveryTracking";
@@ -57,6 +58,7 @@ export default function AppRoutes() {
         <Route path="product-approval" element={<ProductApproval />} />
         <Route path="products" element={<ProductManagement />} />
         <Route path="orders" element={<OrderMonitoring />} />
+        <Route path="reviews" element={<ReviewModeration />} />
         <Route path="refunds" element={<RefundTracking />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="delivery-partners" element={<DeliveryPartners />} />

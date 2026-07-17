@@ -1,119 +1,60 @@
-import { useState } from "react";
-import { FaCheck, FaTimes, FaEye } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaCheck, FaTimes } from "react-icons/fa";
+import { apiRequest } from "../../api/client";
 
 export default function ProductApproval() {
-  const [products] = useState([
-    { id: 1, name: "Premium Headphones", seller: "Tech Store", category: "Electronics", price: "₹3,999", submitted: "2024-05-15", status: "pending" },
-    { id: 2, name: "Organic Face Cream", seller: "Beauty World", category: "Beauty", price: "₹599", submitted: "2024-05-14", status: "pending" },
-    { id: 3, name: "Wool Sweater", seller: "Fashion Hub", category: "Fashion", price: "₹1,499", submitted: "2024-05-10", status: "approved" },
-    { id: 4, name: "Kitchen Blender", seller: "Home Essentials", category: "Home", price: "₹2,499", submitted: "2024-05-08", status: "rejected" },
-    { id: 5, name: "Sports Jacket", seller: "Fashion Hub", category: "Fashion", price: "₹1,899", submitted: "2024-05-16", status: "pending" },
-  ]);
+  const [products, setProducts] = useState([]);
+  const [feedback, setFeedback] = useState("");
 
-  const [selectedProducts, setSelectedProducts] = useState([]);
+  function refresh() {
+    apiRequest("/products?approvalStatus=Pending&limit=48")
+      .then((data) => setProducts(data.products))
+      .catch((err) => setFeedback(err.message));
+  }
 
-  const toggleProductSelect = (id) => {
-    setSelectedProducts(prev =>
-      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
-    );
-  };
+  useEffect(refresh, []);
 
-  const toggleAllProducts = () => {
-    setSelectedProducts(selectedProducts.length === products.length ? [] : products.map(p => p.id));
-  };
+  async function decide(product, approvalStatus) {
+    try {
+      await apiRequest(`/products/${product.id}/approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ approvalStatus }),
+      });
+      setFeedback(`${product.name} ${approvalStatus.toLowerCase()}`);
+      refresh();
+    } catch (err) {
+      setFeedback(err.message);
+    }
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Product Approval</h1>
+      <p className="text-sm text-slate-500">{products.length} products waiting for review. Approved products go live in the storefront; rejected ones never appear.</p>
+      {feedback && <p className="text-sm font-medium text-blue-700">{feedback}</p>}
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Pending Approval</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.status === "pending").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Approved</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.status === "approved").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Rejected</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.status === "rejected").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Total Products</p>
-          <p className="text-3xl font-bold mt-2">{products.length}</p>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {products.map((p) => (
+          <div key={p.id} className="bg-white rounded-xl shadow p-5 flex gap-4">
+            <img src={p.images?.[0]} alt="" className="w-20 h-20 rounded-lg object-cover bg-slate-100 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold truncate">{p.name}</h3>
+              <p className="text-xs text-slate-500">{p.category} → {p.subcategory} → {p.productType}</p>
+              <p className="text-xs text-slate-500">Seller {p.sellerId} · ₹{p.price} · stock {p.stock}</p>
+              <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.description}</p>
+              <div className="flex gap-3 mt-3">
+                <button onClick={() => decide(p, "Approved")} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700">
+                  <FaCheck /> Approve
+                </button>
+                <button onClick={() => decide(p, "Rejected")} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100">
+                  <FaTimes /> Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
-
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow">
-        <table className="w-full">
-          <thead className="border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left">
-                <input
-                  type="checkbox"
-                  checked={selectedProducts.length === products.length && products.length > 0}
-                  onChange={toggleAllProducts}
-                  className="w-4 h-4"
-                />
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Product Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Seller</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Category</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Price</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Submitted</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedProducts.includes(product.id)}
-                    onChange={() => toggleProductSelect(product.id)}
-                    className="w-4 h-4"
-                  />
-                </td>
-                <td className="px-6 py-4 text-sm font-medium">{product.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{product.seller}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{product.category}</td>
-                <td className="px-6 py-4 text-sm font-semibold">{product.price}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                    product.status === "approved"
-                      ? "bg-green-50 text-green-700"
-                      : product.status === "pending"
-                      ? "bg-yellow-50 text-yellow-700"
-                      : "bg-red-50 text-red-700"
-                  }`}>
-                    {product.status === "approved" ? <FaCheck /> : product.status === "pending" ? <FaEye /> : <FaTimes />}
-                    {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{product.submitted}</td>
-                <td className="px-6 py-4 flex gap-2">
-                  {product.status === "pending" && (
-                    <>
-                      <button className="text-green-600 hover:text-green-800 text-lg">
-                        <FaCheck />
-                      </button>
-                      <button className="text-red-600 hover:text-red-800 text-lg">
-                        <FaTimes />
-                      </button>
-                    </>
-                  )}
-                  <button className="text-blue-600 hover:text-blue-800">
-                    <FaEye />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {products.length === 0 && <p className="text-slate-400 text-center py-10">The approval queue is empty. 🎉</p>}
     </div>
   );
 }

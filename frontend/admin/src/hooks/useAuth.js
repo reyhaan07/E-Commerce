@@ -18,12 +18,14 @@ function consumeAuthHandoff() {
     id,
     name: params.get('authName') || '',
     email: params.get('authEmail') || '',
+    token: params.get('authToken') || null,
   }))
 
   params.delete('authId')
   params.delete('authName')
   params.delete('authEmail')
   params.delete('authRole')
+  params.delete('authToken')
   const query = params.toString()
   window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash)
 }
@@ -41,7 +43,7 @@ export function useAuth() {
   }, [])
 
   const login = useCallback((payload) => {
-    const u = { id: payload.id, name: payload.name, email: payload.email }
+    const u = { id: payload.id, name: payload.name, email: payload.email, token: payload.token || null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
     setUser(u)
     return u

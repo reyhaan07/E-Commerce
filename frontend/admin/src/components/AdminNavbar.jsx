@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { FaArrowLeft, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../hooks/useAuth";
+import NotificationBell from "./NotificationBell";
 
 // Shared login page runs on its own origin (frontend/login), so leaving
 // the admin app after logout is a hard cross-origin redirect.
@@ -28,6 +29,7 @@ export default function AdminNavbar() {
           <FaArrowLeft size={14} />
           Back to Store
         </Link>
+        <NotificationBell />
         <span className="text-slate-600 font-medium">{user?.name || "Admin"}</span>
         <button
           onClick={handleLogout}

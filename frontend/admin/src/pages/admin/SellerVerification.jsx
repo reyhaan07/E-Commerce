@@ -1,119 +1,92 @@
-import { useState } from "react";
-import { FaCheck, FaTimes, FaEye } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { apiRequest } from "../../api/client";
+
+const BADGE = {
+  Verified: "bg-green-50 text-green-700",
+  Pending: "bg-amber-50 text-amber-700",
+  Suspended: "bg-red-50 text-red-700",
+};
 
 export default function SellerVerification() {
-  const [sellers] = useState([
-    { id: 1, name: "Tech Store", email: "tech@example.com", phone: "9876543210", documents: "Verified", status: "verified", applied: "2024-04-10" },
-    { id: 2, name: "Fashion Hub", email: "fashion@example.com", phone: "9876543211", documents: "Pending", status: "pending", applied: "2024-05-15" },
-    { id: 3, name: "Home Essentials", email: "home@example.com", phone: "9876543212", documents: "Incomplete", status: "rejected", applied: "2024-05-01" },
-    { id: 4, name: "Electronics Plus", email: "electronics@example.com", phone: "9876543213", documents: "Verified", status: "verified", applied: "2023-11-20" },
-    { id: 5, name: "Beauty World", email: "beauty@example.com", phone: "9876543214", documents: "Under Review", status: "pending", applied: "2024-05-10" },
-  ]);
+  const [sellers, setSellers] = useState([]);
+  const [feedback, setFeedback] = useState("");
 
-  const [selectedSellers, setSelectedSellers] = useState([]);
+  function refresh() {
+    apiRequest("/admin/accounts?role=seller")
+      .then((data) => setSellers(data.accounts))
+      .catch((err) => setFeedback(err.message));
+  }
 
-  const toggleSellerSelect = (id) => {
-    setSelectedSellers(prev =>
-      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-    );
-  };
+  useEffect(refresh, []);
 
-  const toggleAllSellers = () => {
-    setSelectedSellers(selectedSellers.length === sellers.length ? [] : sellers.map(s => s.id));
-  };
+  async function setVerification(seller, verificationStatus) {
+    try {
+      await apiRequest(`/admin/accounts/${seller.id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ verificationStatus }),
+      });
+      setFeedback(`${seller.name} marked ${verificationStatus}`);
+      refresh();
+    } catch (err) {
+      setFeedback(err.message);
+    }
+  }
+
+  const pending = sellers.filter((s) => s.verificationStatus === "Pending");
+  const rest = sellers.filter((s) => s.verificationStatus !== "Pending");
+
+  const table = (rows) => (
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow">
+      <table className="w-full">
+        <thead className="border-b border-slate-200 bg-slate-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-sm font-semibold">Store</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">Support Email</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">GSTIN</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">City</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">Verification</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((seller) => (
+            <tr key={seller.id} className="border-b border-slate-100 hover:bg-slate-50">
+              <td className="px-6 py-4 text-sm font-medium">{seller.name}</td>
+              <td className="px-6 py-4 text-sm text-slate-600">{seller.supportEmail || seller.email}</td>
+              <td className="px-6 py-4 text-sm"><code className="text-xs">{seller.gstin || "—"}</code></td>
+              <td className="px-6 py-4 text-sm text-slate-600">{seller.addresses?.[0]?.city || "—"}</td>
+              <td className="px-6 py-4">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${BADGE[seller.verificationStatus] || "bg-slate-100 text-slate-600"}`}>
+                  {seller.verificationStatus || "—"}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex gap-3">
+                  {seller.verificationStatus !== "Verified" && (
+                    <button onClick={() => setVerification(seller, "Verified")} className="text-sm font-semibold text-green-600 hover:text-green-800">Approve</button>
+                  )}
+                  {seller.verificationStatus !== "Suspended" && (
+                    <button onClick={() => setVerification(seller, "Suspended")} className="text-sm font-semibold text-red-600 hover:text-red-800">Suspend</button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Seller Verification</h1>
+      {feedback && <p className="text-sm font-medium text-blue-700">{feedback}</p>}
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Total Applications</p>
-          <p className="text-3xl font-bold mt-2">{sellers.length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Verified</p>
-          <p className="text-3xl font-bold mt-2">{sellers.filter(s => s.status === "verified").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Pending</p>
-          <p className="text-3xl font-bold mt-2">{sellers.filter(s => s.status === "pending").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Rejected</p>
-          <p className="text-3xl font-bold mt-2">{sellers.filter(s => s.status === "rejected").length}</p>
-        </div>
-      </div>
+      <h2 className="font-bold text-lg">Awaiting Verification ({pending.length})</h2>
+      {pending.length ? table(pending) : <p className="text-slate-400">No stores waiting for verification.</p>}
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow">
-        <table className="w-full">
-          <thead className="border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="px-6 py-3 text-left">
-                <input
-                  type="checkbox"
-                  checked={selectedSellers.length === sellers.length && sellers.length > 0}
-                  onChange={toggleAllSellers}
-                  className="w-4 h-4"
-                />
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Store Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Phone</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Documents</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Applied</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sellers.map((seller) => (
-              <tr key={seller.id} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedSellers.includes(seller.id)}
-                    onChange={() => toggleSellerSelect(seller.id)}
-                    className="w-4 h-4"
-                  />
-                </td>
-                <td className="px-6 py-4 text-sm font-medium">{seller.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{seller.email}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{seller.phone}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{seller.documents}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                    seller.status === "verified"
-                      ? "bg-green-50 text-green-700"
-                      : seller.status === "pending"
-                      ? "bg-yellow-50 text-yellow-700"
-                      : "bg-red-50 text-red-700"
-                  }`}>
-                    {seller.status === "verified" ? <FaCheck /> : seller.status === "pending" ? <FaEye /> : <FaTimes />}
-                    {seller.status.charAt(0).toUpperCase() + seller.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{seller.applied}</td>
-                <td className="px-6 py-4 flex gap-2">
-                  {seller.status === "pending" && (
-                    <>
-                      <button className="text-green-600 hover:text-green-800 text-lg">
-                        <FaCheck />
-                      </button>
-                      <button className="text-red-600 hover:text-red-800 text-lg">
-                        <FaTimes />
-                      </button>
-                    </>
-                  )}
-                  <button className="text-blue-600 hover:text-blue-800">
-                    <FaEye />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h2 className="font-bold text-lg pt-4">All Stores</h2>
+      {table(rest)}
     </div>
   );
 }

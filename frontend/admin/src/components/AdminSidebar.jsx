@@ -35,6 +35,10 @@ export default function AdminSidebar() {
           Order Monitoring
         </Link>
 
+        <Link to="/admin/reviews">
+          Review Moderation
+        </Link>
+
         <Link to="/admin/refunds">
           Refund Tracking
         </Link>

@@ -1,116 +1,105 @@
-import { useState } from "react";
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
+import { apiRequest } from "../../api/client";
+
+const BADGE = {
+  Approved: "bg-green-50 text-green-700",
+  Pending: "bg-amber-50 text-amber-700",
+  Rejected: "bg-red-50 text-red-700",
+};
 
 export default function ProductManagement() {
-  const [products] = useState([
-    { id: 1, name: "Wireless Headphones", category: "Electronics", seller: "Tech Store", price: "₹2,499", stock: 45, status: "active", added: "2024-01-10" },
-    { id: 2, name: "Blue Denim Jeans", category: "Fashion", seller: "Fashion Hub", price: "₹999", stock: 120, status: "active", added: "2024-02-15" },
-    { id: 3, name: "Coffee Maker", category: "Home", seller: "Home Essentials", price: "₹1,899", stock: 0, status: "out_of_stock", added: "2024-03-01" },
-    { id: 4, name: "Smart Watch", category: "Electronics", seller: "Tech Store", price: "₹4,999", stock: 32, status: "active", added: "2024-01-20" },
-    { id: 5, name: "Face Serum", category: "Beauty", seller: "Beauty World", price: "₹899", stock: 200, status: "active", added: "2024-04-05" },
-    { id: 6, name: "Running Shoes", category: "Fashion", seller: "Fashion Hub", price: "₹3,499", stock: 15, status: "active", added: "2024-04-10" },
-  ]);
+  const [products, setProducts] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [feedback, setFeedback] = useState("");
 
-  const [selectedProducts, setSelectedProducts] = useState([]);
+  function refresh() {
+    const params = new URLSearchParams({ page: String(page), limit: "15" });
+    if (query.trim()) params.set("q", query.trim());
+    apiRequest(`/products?${params.toString()}`)
+      .then((data) => { setProducts(data.products); setPagination(data.pagination); })
+      .catch((err) => setFeedback(err.message));
+  }
 
-  const toggleProductSelect = (id) => {
-    setSelectedProducts(prev =>
-      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
-    );
-  };
+  useEffect(refresh, [page, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleAllProducts = () => {
-    setSelectedProducts(selectedProducts.length === products.length ? [] : products.map(p => p.id));
-  };
+  async function remove(product) {
+    if (!window.confirm(`Delete ${product.name} from the catalog?`)) return;
+    try {
+      await apiRequest(`/products/${product.id}`, { method: "DELETE" });
+      setFeedback(`${product.name} deleted`);
+      refresh();
+    } catch (err) {
+      setFeedback(err.message);
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Product Management</h1>
-        <button className="btn-primary">Add New Product</button>
+        <input
+          className="border border-slate-200 rounded-lg px-4 py-2 w-72"
+          placeholder="Search the catalog…"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+        />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Total Products</p>
-          <p className="text-3xl font-bold mt-2">{products.length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Active</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.status === "active").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Out of Stock</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.status === "out_of_stock").length}</p>
-        </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-slate-600">Low Stock</p>
-          <p className="text-3xl font-bold mt-2">{products.filter(p => p.stock < 50 && p.stock > 0).length}</p>
-        </div>
-      </div>
+      <p className="text-sm text-slate-500">{pagination.total} products in the catalog (all sellers, all statuses)</p>
+      {feedback && <p className="text-sm font-medium text-blue-700">{feedback}</p>}
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow">
         <table className="w-full">
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left">
-                <input
-                  type="checkbox"
-                  checked={selectedProducts.length === products.length && products.length > 0}
-                  onChange={toggleAllProducts}
-                  className="w-4 h-4"
-                />
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Product Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Category</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold">Product</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold">Placement</th>
               <th className="px-6 py-3 text-left text-sm font-semibold">Seller</th>
               <th className="px-6 py-3 text-left text-sm font-semibold">Price</th>
               <th className="px-6 py-3 text-left text-sm font-semibold">Stock</th>
               <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold">Action</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50">
+            {products.map((p) => (
+              <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedProducts.includes(product.id)}
-                    onChange={() => toggleProductSelect(product.id)}
-                    className="w-4 h-4"
-                  />
+                  <p className="text-sm font-medium">{p.name}</p>
+                  <p className="text-xs text-slate-400">{p.id} · {p.sku} · ★{p.rating || "—"}</p>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium">{product.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{product.category}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{product.seller}</td>
-                <td className="px-6 py-4 text-sm font-semibold">{product.price}</td>
-                <td className="px-6 py-4 text-sm">{product.stock}</td>
+                <td className="px-6 py-4 text-xs text-slate-600">{p.category}{p.productType ? ` → ${p.productType}` : ""}</td>
+                <td className="px-6 py-4 text-xs text-slate-600">{p.sellerId}</td>
+                <td className="px-6 py-4 text-sm font-semibold">₹{p.price}</td>
+                <td className="px-6 py-4 text-sm">{p.stock}</td>
                 <td className="px-6 py-4">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                    product.status === "active" 
-                      ? "bg-green-50 text-green-700" 
-                      : "bg-red-50 text-red-700"
-                  }`}>
-                    {product.status === "active" ? "Active" : "Out of Stock"}
-                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${BADGE[p.approvalStatus]}`}>{p.approvalStatus}</span>
                 </td>
-                <td className="px-6 py-4 flex gap-3">
-                  <button className="text-slate-600 hover:text-slate-800">
-                    <FaEye />
-                  </button>
-                  <button className="text-blue-600 hover:text-blue-800">
-                    <FaEdit />
-                  </button>
-                  <button className="text-red-600 hover:text-red-800">
-                    <FaTrash />
-                  </button>
+                <td className="px-6 py-4">
+                  <button onClick={() => remove(p)} className="text-red-600 hover:text-red-800"><FaTrash /></button>
                 </td>
               </tr>
             ))}
+            {products.length === 0 && (
+              <tr><td colSpan={7} className="px-6 py-10 text-center text-slate-400">No products match.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {pagination.pages > 1 && (
+        <div className="flex items-center gap-2">
+          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => setPage(n)}
+              className={`w-9 h-9 rounded-lg text-sm font-bold ${n === pagination.page ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600"}`}>
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
