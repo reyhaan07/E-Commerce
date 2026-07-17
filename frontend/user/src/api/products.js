@@ -36,3 +36,9 @@ export async function getCategories() {
   const data = await apiRequest('/products/categories');
   return data.categories;
 }
+
+// Full Category → Subcategory → Product Type tree with live counts.
+export async function getCategoryTree() {
+  const data = await apiRequest('/products/categories');
+  return data.tree;
+}

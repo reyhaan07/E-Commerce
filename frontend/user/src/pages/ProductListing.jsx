@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
-import { HiOutlineFilter, HiOutlineChevronDown } from 'react-icons/hi';
-import { listProducts, getCategories, toCardProduct } from '../api/products';
+import { Link } from 'react-router-dom';
+import { HiOutlineFilter, HiOutlineChevronDown, HiChevronRight } from 'react-icons/hi';
+import { listProducts, getCategoryTree, toCardProduct } from '../api/products';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -19,43 +20,51 @@ const ProductListing = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 12 });
-  const [categories, setCategories] = useState([]);
+  const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const q = searchParams.get('q') || '';
   const category = searchParams.get('category') || '';
+  const subcategory = searchParams.get('subcategory') || '';
+  const productType = searchParams.get('productType') || '';
   const maxPrice = searchParams.get('maxPrice') || '';
   const minRating = searchParams.get('minRating') || '';
   const sort = searchParams.get('sort') || 'newest';
   const page = parseInt(searchParams.get('page'), 10) || 1;
 
-  // updates one query param and resets to page 1, keeping the rest intact
+  // updates one query param and resets to page 1, keeping the rest intact;
+  // changing a level of the hierarchy clears the levels below it
   function setParam(key, value) {
     const next = new URLSearchParams(searchParams);
     if (value === '' || value === null) next.delete(key);
     else next.set(key, value);
+    if (key === 'category') { next.delete('subcategory'); next.delete('productType'); }
+    if (key === 'subcategory') next.delete('productType');
     if (key !== 'page') next.delete('page');
     setSearchParams(next);
   }
 
   useEffect(() => {
-    getCategories().then(setCategories).catch(() => {});
+    getCategoryTree().then(setTree).catch(() => {});
   }, []);
 
   useEffect(() => {
     setLoading(true);
     setError('');
-    listProducts({ q, category, maxPrice, minRating, sort, page, limit: 12 })
+    listProducts({ q, category, subcategory, productType, maxPrice, minRating, sort, page, limit: 12 })
       .then(({ products, pagination }) => {
         setProducts(products.map(toCardProduct));
         setPagination(pagination);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [q, category, maxPrice, minRating, sort, page]);
+  }, [q, category, subcategory, productType, maxPrice, minRating, sort, page]);
 
-  const heading = q ? `Results for “${q}”` : category ? `${category} Collection` : 'All Products';
+  const activeCategory = tree.find((c) => c.name === category);
+  const activeSubcategory = activeCategory?.subcategories.find((s) => s.name === subcategory);
+  const heading = q ? `Results for “${q}”`
+    : productType || subcategory || (category ? `${category}` : 'All Products');
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const to = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -73,21 +82,56 @@ const ProductListing = () => {
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <HiOutlineFilter /> Filters
                 </h3>
-                <div className="space-y-3 font-medium">
+                <div className="space-y-2 font-medium max-h-72 overflow-y-auto pr-1">
                   <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Category</p>
-                  {categories.map((cat) => (
+                  {!activeCategory && tree.filter((c) => c.count > 0).map((cat) => (
                     <label key={cat.name} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
-                        checked={category === cat.name}
-                        onChange={() => setParam('category', category === cat.name ? '' : cat.name)}
+                        checked={false}
+                        onChange={() => setParam('category', cat.name)}
                         className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 transition-colors"
                       />
-                      <span className="text-gray-600 group-hover:text-primary transition-colors">
+                      <span className="text-sm text-gray-600 group-hover:text-primary transition-colors">
                         {cat.name} <span className="text-xs text-gray-400">({cat.count})</span>
                       </span>
                     </label>
                   ))}
+                  {/* drill-down: inside a category show its subcategories, then product types */}
+                  {activeCategory && (
+                    <div className="space-y-2">
+                      <button onClick={() => setParam('category', '')} className="text-xs font-bold text-primary hover:underline">← All categories</button>
+                      <p className="font-bold text-gray-900 text-sm">{activeCategory.name}</p>
+                      {activeCategory.subcategories.map((sub) => (
+                        <div key={sub.name} className="pl-1">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={subcategory === sub.name}
+                              onChange={() => setParam('subcategory', subcategory === sub.name ? '' : sub.name)}
+                              className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300"
+                            />
+                            <span className="text-sm text-gray-700 group-hover:text-primary font-semibold">{sub.name}</span>
+                          </label>
+                          {subcategory === sub.name && (
+                            <div className="pl-6 pt-1 space-y-1">
+                              {sub.productTypes.map((type) => (
+                                <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                                  <input
+                                    type="checkbox"
+                                    checked={productType === type}
+                                    onChange={() => setParam('productType', productType === type ? '' : type)}
+                                    className="w-3.5 h-3.5 rounded text-primary focus:ring-primary border-gray-300"
+                                  />
+                                  <span className="text-xs text-gray-500 group-hover:text-primary">{type}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -127,6 +171,14 @@ const ProductListing = () => {
 
           {/* Main Content */}
           <section className="flex-1">
+            {/* Breadcrumbs reflecting the Category → Subcategory → Product Type hierarchy */}
+            <nav className="flex items-center flex-wrap gap-1 text-sm text-gray-500 mb-4">
+              <Link to="/products" className="hover:text-primary font-medium">All Products</Link>
+              {category && (<><HiChevronRight className="text-gray-300" /><button onClick={() => { setParam('subcategory', ''); }} className="hover:text-primary font-medium">{category}</button></>)}
+              {subcategory && (<><HiChevronRight className="text-gray-300" /><button onClick={() => setParam('productType', '')} className="hover:text-primary font-medium">{subcategory}</button></>)}
+              {productType && (<><HiChevronRight className="text-gray-300" /><span className="font-bold text-gray-900">{productType}</span></>)}
+            </nav>
+
             {/* Header / Sort */}
             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>

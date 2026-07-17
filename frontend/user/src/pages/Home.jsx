@@ -10,12 +10,16 @@ import { listProducts, getCategories, toCardProduct } from '../api/products';
 
 // cover images for category tiles, keyed by catalog category name
 const CATEGORY_IMAGES = {
-  Electronics: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800',
-  Fashion: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800',
-  'Home & Kitchen': 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?q=80&w=800',
-  Accessories: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800',
-  Footwear: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800',
-  Sports: 'https://images.unsplash.com/photo-1592432678016-e910b452f9a2?q=80&w=800',
+  'Electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=800',
+  'Mobile Phones & Accessories': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800',
+  'Computers & Laptops': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=800',
+  'Audio': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800',
+  'Men\'s Fashion': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800',
+  'Women\'s Fashion': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800',
+  'Kitchen & Dining': 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?q=80&w=800',
+  'Footwear': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800',
+  'Sports & Outdoors': 'https://images.unsplash.com/photo-1592432678016-e910b452f9a2?q=80&w=800',
+  'Tablets & Accessories': 'https://images.unsplash.com/photo-1585060544812-6b45742d762f?q=80&w=800',
 };
 
 const Home = () => {

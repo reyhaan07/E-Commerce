@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
@@ -16,6 +16,7 @@ const SHARED_LOGIN_URL = 'http://localhost:5177';
 
 const ProductDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { addItem } = useCart();
   const { isWishlisted, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlist();
@@ -76,6 +77,12 @@ const ProductDetails = () => {
     addItem(cartShape, quantity);
   }
 
+  function handleBuyNow() {
+    if (!user) return requireLogin();
+    addItem(cartShape, quantity);
+    navigate('/checkout');
+  }
+
   function handleToggleWishlist() {
     if (!user) return requireLogin();
     if (wishlisted) removeFromWishlist(product.id);
@@ -89,6 +96,16 @@ const ProductDetails = () => {
       <Navbar />
 
       <main className="container mx-auto px-4 py-12">
+        {/* placement breadcrumbs */}
+        <nav className="flex items-center flex-wrap gap-1 text-sm text-gray-500 mb-6">
+          <Link to="/products" className="hover:text-primary font-medium">All Products</Link>
+          <span className="text-gray-300">/</span>
+          <Link to={`/products?category=${encodeURIComponent(product.category)}`} className="hover:text-primary font-medium">{product.category}</Link>
+          {product.subcategory && (<><span className="text-gray-300">/</span><Link to={`/products?category=${encodeURIComponent(product.category)}&subcategory=${encodeURIComponent(product.subcategory)}`} className="hover:text-primary font-medium">{product.subcategory}</Link></>)}
+          {product.productType && (<><span className="text-gray-300">/</span><Link to={`/products?category=${encodeURIComponent(product.category)}&subcategory=${encodeURIComponent(product.subcategory)}&productType=${encodeURIComponent(product.productType)}`} className="hover:text-primary font-medium">{product.productType}</Link></>)}
+          <span className="text-gray-300">/</span>
+          <span className="font-bold text-gray-900 truncate max-w-[16rem]">{product.name}</span>
+        </nav>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
 
           {/* Product Gallery */}
@@ -170,6 +187,9 @@ const ProductDetails = () => {
                 </div>
                 <button onClick={handleAddToCart} disabled={!inStock} className="flex-1 btn-primary py-4 flex items-center justify-center gap-2 shadow-xl shadow-primary/20 disabled:opacity-50">
                   <HiOutlineShoppingBag className="text-xl" /> {inStock ? 'Add to Cart' : 'Out of Stock'}
+                </button>
+                <button onClick={handleBuyNow} disabled={!inStock} className="flex-1 py-4 rounded-xl font-bold border-2 border-primary text-primary hover:bg-primary/5 transition-colors disabled:opacity-50">
+                  Buy Now
                 </button>
                 <button onClick={handleToggleWishlist} className={`w-14 h-14 border rounded-xl flex items-center justify-center hover:bg-red-50 hover:border-red-500 hover:text-red-500 transition-all ${wishlisted ? 'bg-red-50 border-red-500 text-red-500' : 'border-gray-200'}`}>
                   <HiOutlineHeart className="text-2xl" />

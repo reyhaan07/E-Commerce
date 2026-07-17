@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4 } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import CategoryMenu from './CategoryMenu';
 
 const Navbar = () => {
   const { itemCount } = useCart();
@@ -20,10 +21,15 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">S</div>
-          <span className="hidden sm:inline">ShopSphere</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">S</div>
+            <span className="hidden sm:inline">ShopSphere</span>
+          </Link>
+          <div className="hidden lg:block">
+            <CategoryMenu />
+          </div>
+        </div>
 
         {/* Search Bar - Desktop */}
         <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8 relative">
