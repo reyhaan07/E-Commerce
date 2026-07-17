@@ -44,4 +44,14 @@ function requireSelfOrAdmin(paramName) {
   };
 }
 
-module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin };
+// Use after requireAuth - only accounts with one of the given roles pass.
+function requireRole(...roles) {
+  return function (req, res, next) {
+    if (roles.includes(req.auth.role)) {
+      return next();
+    }
+    return res.status(403).json({ success: false, message: "You don't have access to this resource" });
+  };
+}
+
+module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin, requireRole };

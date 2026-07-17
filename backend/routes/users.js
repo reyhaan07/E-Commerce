@@ -3,6 +3,7 @@ const router = express.Router();
 const { Account } = require("../models/account.model");
 const { requireAuth, requireSelfOrAdmin } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const { emitToRole } = require("../realtime");
 
 const PINCODE_RE = /^\d{6}$/;
 const LAST4_RE = /^\d{4}$/;
@@ -292,6 +293,10 @@ router.put("/:id/cart", ...protect, asyncHandler(async (req, res) => {
     qty: Math.floor(Number(item.qty)),
   }));
   await account.save();
+
+  // Feature 5: the admin dashboard shows a live count of active carts
+  const activeCarts = await Account.countDocuments({ role: "user", "cart.0": { $exists: true } });
+  emitToRole("admin", "cart-activity", { activeCarts });
 
   res.json({ success: true, cart: account.cart });
 }));

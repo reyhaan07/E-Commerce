@@ -84,6 +84,12 @@ const accountSchema = new mongoose.Schema({
   deliveryInstructions: String,
   resetToken: { type: String, default: null },
   resetTokenExpiry: { type: Date, default: null },
+  // registration email verification (Feature 1)
+  otpCode: { type: String, default: null },
+  otpExpiry: { type: Date, default: null },
+  // seller-only: aggregate rating across approved reviews of their products
+  sellerRating: { type: Number, default: 0 },
+  sellerRatingCount: { type: Number, default: 0 },
   notifyByEmail: { type: Boolean, default: true },
   notifyBySms: { type: Boolean, default: false },
   loyaltyPoints: { type: Number, default: 0 },
@@ -107,6 +113,8 @@ accountSchema.set("toJSON", {
     delete ret.password;
     delete ret.resetToken;
     delete ret.resetTokenExpiry;
+    delete ret.otpCode;
+    delete ret.otpExpiry;
     return ret;
   },
 });
