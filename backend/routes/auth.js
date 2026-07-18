@@ -11,6 +11,7 @@ const { notifyRole } = require("../utils/notify");
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const LOGIN_APP_URL = process.env.LOGIN_APP_URL || "http://localhost:5177";
+const LOCAL_DEMO_EMAIL_FALLBACK = !process.env.SMTP_HOST;
 
 function newOtp() {
   return String(crypto.randomInt(100000, 1000000));
@@ -148,12 +149,17 @@ router.post("/register", asyncHandler(async (req, res) => {
 
   await sendMail({ to: email, ...templates.otp(name, otp) });
 
-  res.status(201).json({
+  const responsePayload = {
     success: true,
     otpRequired: true,
     email: account.email,
     message: "We've emailed you a 6-digit verification code",
-  });
+  };
+  if (LOCAL_DEMO_EMAIL_FALLBACK) {
+    responsePayload.otp = otp;
+  }
+
+  res.status(201).json(responsePayload);
 }));
 
 // POST /api/verify-otp  { email, otp }
@@ -207,7 +213,16 @@ router.post("/resend-otp", asyncHandler(async (req, res) => {
     await account.save();
     await sendMail({ to: account.email, ...templates.otp(account.name, account.otpCode) });
   }
-  res.json({ success: true, message: "If a pending registration exists, a new code has been sent" });
+
+  const responsePayload = {
+    success: true,
+    message: "If a pending registration exists, a new code has been sent",
+  };
+  if (LOCAL_DEMO_EMAIL_FALLBACK && account?.otpCode) {
+    responsePayload.otp = account.otpCode;
+  }
+
+  res.json(responsePayload);
 }));
 
 // POST /api/forgot-password  { email }

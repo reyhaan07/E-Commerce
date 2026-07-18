@@ -40,9 +40,12 @@ const Register = () => {
         }),
       });
       setNotice(data.message || 'We emailed you a 6-digit code');
+      if (data.otp) {
+        setNotice(`${data.message || 'We emailed you a 6-digit code'} — code: ${data.otp}`);
+      }
       setOtpStep(true);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Registration failed');
     } finally {
       setSubmitting(false);
     }
@@ -60,7 +63,7 @@ const Register = () => {
       login(data);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Verification failed');
     } finally {
       setSubmitting(false);
     }
@@ -73,9 +76,13 @@ const Register = () => {
         method: 'POST',
         body: JSON.stringify({ email: form.email }),
       });
-      setNotice(data.message || 'A new code has been sent');
+      if (data.otp) {
+        setNotice(`${data.message || 'A new code has been sent'} — code: ${data.otp}`);
+      } else {
+        setNotice(data.message || 'A new code has been sent');
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Could not resend the code');
     }
   }
 
