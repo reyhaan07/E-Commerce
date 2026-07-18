@@ -38,10 +38,14 @@ const Navbar = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for products, brands and more..."
-            className="w-full px-4 py-2 bg-gray-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none"
+            className="w-full px-4 py-2 pr-11 bg-gray-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none"
           />
-          <button type="submit" aria-label="Search">
-            <HiOutlineSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl cursor-pointer hover:text-primary transition-colors" />
+          <button
+            type="submit"
+            aria-label="Search"
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-400 hover:text-primary transition-colors"
+          >
+            <HiOutlineSearch className="text-xl" />
           </button>
         </form>
 
@@ -70,6 +74,24 @@ const Navbar = () => {
           </button>
         </div>
       </div>
+
+      {/* Search Bar - Mobile (the desktop bar is hidden below md) */}
+      <form onSubmit={handleSearch} className="md:hidden px-4 pb-3 relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search for products, brands and more..."
+          className="w-full px-4 py-2 pr-11 bg-gray-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none"
+        />
+        <button
+          type="submit"
+          aria-label="Search"
+          className="absolute right-5 top-1/2 -translate-y-[calc(50%+6px)] p-2 rounded-md text-gray-400 hover:text-primary transition-colors"
+        >
+          <HiOutlineSearch className="text-xl" />
+        </button>
+      </form>
     </nav>
   );
 };
