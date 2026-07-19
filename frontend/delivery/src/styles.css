@@ -43,5 +43,41 @@ h1 { font-size: clamp(28px, 4vw, 44px); }
 .loading { min-height: 60vh; display: grid; place-items: center; color: #64748b; }
 .dialog-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.42); display: grid; place-items: center; padding: 18px; backdrop-filter: blur(4px); }
 .dialog { width: min(100%, 560px); background: white; border-radius: 24px; padding: 22px; box-shadow: 0 24px 70px rgba(15,23,42,.22); }
-@media (max-width: 1050px) { .grid { grid-template-columns: 1fr; } .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 620px) { .app { padding: 14px; } .info-grid, .actions, .timeline { grid-template-columns: 1fr; } }
+/* ── Tabs ─────────────────────────────────────────── */
+.tabs { display: inline-flex; gap: 6px; padding: 5px; background: #eef2ff; border: 1px solid #dbeafe; border-radius: 16px; }
+.tab { border: 0; background: transparent; border-radius: 12px; padding: 9px 16px; font-weight: 800; color: #64748b; display: inline-flex; align-items: center; gap: 7px; }
+.tab.active { background: white; color: #1d4ed8; box-shadow: 0 4px 12px rgba(37,99,235,.14); }
+
+/* ── Stat tiles ───────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.tile { border: 1px solid #dbeafe; background: white; border-radius: 18px; padding: 16px; }
+.tile .eyebrow { font-size: 11px; }
+.tile strong { display: block; margin-top: 8px; font-size: 28px; line-height: 1; }
+.tile .sub { color: #64748b; font-size: 12px; margin-top: 6px; }
+
+/* ── Profile ──────────────────────────────────────── */
+.avatar-lg { width: 76px; height: 76px; border-radius: 22px; display: grid; place-items: center; font-size: 30px; font-weight: 900; color: white; background: linear-gradient(135deg, #4f46e5, #1d4ed8); overflow: hidden; }
+.avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
+.field { display: grid; gap: 6px; }
+.field label { color: #64748b; font-size: 11px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.field input, .field select { border: 1px solid #dbeafe; border-radius: 14px; padding: 11px 12px; outline: none; background: white; }
+.field input:focus, .field select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.12); }
+.field input:disabled, .field select:disabled { background: #f8fafc; color: #64748b; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+/* ── History table ────────────────────────────────── */
+.filters { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+.filters input, .filters select { border: 1px solid #dbeafe; border-radius: 14px; padding: 11px 12px; outline: none; background: white; }
+.filters input:focus, .filters select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.12); }
+.htable { width: 100%; border-collapse: collapse; margin-top: 14px; }
+.htable th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #64748b; padding: 10px 12px; border-bottom: 1px solid #dbeafe; }
+.htable td { padding: 12px; border-bottom: 1px solid #eef2ff; color: #334155; font-size: 14px; }
+.htable tr:last-child td { border-bottom: 0; }
+.htable tbody tr:hover { background: #f8fafc; }
+.chip { display: inline-flex; border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 900; }
+.chip.delivered { background: #4f46e5; color: white; }
+.chip.cancelled { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.chip.return { background: #ecfeff; color: #0891b2; border: 1px solid #67e8f9; }
+
+@media (max-width: 1050px) { .grid { grid-template-columns: 1fr; } .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .app { padding: 14px; } .info-grid, .actions, .timeline, .form-grid { grid-template-columns: 1fr; } .tiles { grid-template-columns: 1fr; } .htable { display: block; overflow-x: auto; } }

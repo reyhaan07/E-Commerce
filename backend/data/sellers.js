@@ -36,10 +36,22 @@ function sellerForCategory(category) {
   return sellerByCategory[category] || "seller-1";
 }
 
+// a 1x1 transparent PNG so the admin verification screen has a real (if tiny)
+// document to preview for the seeded pending store.
+const DEMO_DOC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const DEMO_DOCS = [
+  { type: "gst", label: "GST Certificate", fileName: "gst-certificate.png", dataUrl: DEMO_DOC },
+  { type: "pan", label: "PAN Card", fileName: "pan-card.png", dataUrl: DEMO_DOC },
+  { type: "cheque", label: "Cancelled Cheque", fileName: "cancelled-cheque.png", dataUrl: DEMO_DOC },
+  { type: "id", label: "Government ID", fileName: "govt-id.png", dataUrl: DEMO_DOC },
+];
+
 // Expand to full Account documents (password hashing happens via the
 // Account pre-save hook when the seed uses Account.create()).
 function sellerAccounts() {
-  return SELLERS.map((s, idx) => ({
+  return SELLERS.map((s, idx) => {
+    const isPending = idx === 18; // one store awaiting verification
+    return {
     id: s.id,
     name: s.name,
     email: s.email,
@@ -52,7 +64,11 @@ function sellerAccounts() {
     supportEmail: s.email,
     supportPhone: `+91 80${String(40000000 + idx * 211).slice(0, 8)}`,
     gstin: `29ABCDE${String(1000 + idx)}F1Z${idx % 10}`,
-    verificationStatus: idx === 18 ? "Pending" : "Verified", // one store awaiting verification
+    panNumber: `ABCP${String.fromCharCode(65 + (idx % 26))}${String(1000 + idx)}${String.fromCharCode(65 + ((idx * 3) % 26))}`,
+    businessName: `${s.name} Pvt Ltd`,
+    businessAddress: `${10 + idx} Market Road, ${s.city}, India`,
+    documents: isPending ? DEMO_DOCS : [],
+    verificationStatus: isPending ? "Pending" : "Verified",
     addresses: [{
       label: "Store",
       line1: `${10 + idx} Market Road`,
@@ -63,7 +79,8 @@ function sellerAccounts() {
       phone: `+91 98${String(20000000 + idx * 137).slice(0, 8)}`,
       isDefault: true,
     }],
-  }));
+    };
+  });
 }
 
 module.exports = { SELLERS, sellerForCategory, sellerAccounts };

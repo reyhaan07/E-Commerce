@@ -22,6 +22,7 @@ const paymentsRoutes = require("./routes/payments");
 const notificationsRoutes = require("./routes/notifications");
 const returnsRoutes = require("./routes/returns");
 const adminRoutes = require("./routes/admin");
+const payrollRoutes = require("./routes/payroll");
 
 app.use("/api", authRoutes);
 app.use("/api/orders", ordersRoutes);
@@ -33,6 +34,7 @@ app.use("/api/payments", paymentsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/returns", returnsRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/payroll", payrollRoutes);
 
 // Catches errors passed to next(err) (e.g. by asyncHandler) so a Mongoose
 // validation/duplicate-key error comes back as normal JSON instead of

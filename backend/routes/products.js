@@ -190,6 +190,17 @@ function validateProductBody(body, { partial = false } = {}) {
 
 // POST /api/products — seller creates a product (lands in admin approval queue)
 router.post("/", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+  // Feature 6: a seller can only publish once their store is Verified.
+  if (req.auth.role === "seller") {
+    const seller = await Account.findOne({ id: req.auth.id, role: "seller" });
+    if (!seller || seller.verificationStatus !== "Verified") {
+      return res.status(403).json({
+        success: false,
+        message: "Your store is pending verification. You can add products once an admin approves your application.",
+      });
+    }
+  }
+
   const error = validateProductBody(req.body);
   if (error) return res.status(400).json({ success: false, message: error });
 

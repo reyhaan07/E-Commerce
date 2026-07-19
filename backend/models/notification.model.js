@@ -16,6 +16,11 @@ const NOTIFICATION_TYPES = [
   "product-submitted",
   "refund-processed",
   "pickup-requested",
+  // seller onboarding + payroll (Features 5 & 6)
+  "seller-application",
+  "seller-approved",
+  "seller-rejected",
+  "payroll-paid",
 ];
 
 const notificationSchema = new mongoose.Schema({

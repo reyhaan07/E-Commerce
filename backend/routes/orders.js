@@ -28,9 +28,29 @@ function newTrackingId() {
   return `TRK-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
-// GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&sellerId=&pickupRequested=
+// GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&sellerId=&pickupRequested=&history=true
 router.get("/", asyncHandler(async (req, res) => {
-  const { deliveryPartnerId, sellerStatus, deliveryStatus, userId, sellerId, pickupRequested } = req.query;
+  const { deliveryPartnerId, sellerStatus, deliveryStatus, userId, sellerId, pickupRequested, history } = req.query;
+
+  // Delivery History (Feature 4): terminal-state jobs for one partner —
+  // delivered, cancelled or returned work, newest first. The demo partner
+  // ("delivery-demo") sees every partner's terminal jobs, mirroring how the
+  // console already lets it see all live orders.
+  if (history === "true") {
+    const terminal = {
+      $or: [
+        { deliveryStatus: "Delivered" },
+        { "cancellation.status": "Approved" },
+        { sellerStatus: { $in: ["Cancelled", "Returned"] } },
+      ],
+    };
+    const filter =
+      deliveryPartnerId && deliveryPartnerId !== "delivery-demo"
+        ? { deliveryPartnerId, ...terminal }
+        : terminal;
+    const jobs = await Order.find(filter).sort({ createdAt: -1 });
+    return res.json({ success: true, orders: jobs });
+  }
 
   // filtering by deliveryPartnerId/sellerStatus/deliveryStatus is used by the
   // admin/seller/delivery apps and stays open like before - but asking for a

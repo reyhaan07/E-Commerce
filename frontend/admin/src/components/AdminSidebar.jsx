@@ -67,6 +67,18 @@ export default function AdminSidebar() {
           Delivery Analytics
         </Link>
 
+        <Link to="/admin/payroll">
+          Payroll
+        </Link>
+
+        <div className="mt-2 pt-2 border-t border-slate-700 text-xs uppercase tracking-wide text-slate-400">
+          Account
+        </div>
+
+        <Link to="/admin/profile">
+          My Profile
+        </Link>
+
       </div>
     </div>
   );

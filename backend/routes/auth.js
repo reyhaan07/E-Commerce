@@ -31,9 +31,24 @@ async function nextUserId() {
   return `user-${maxNum + 1}`;
 }
 
+async function nextSellerId() {
+  const accounts = await Account.find({ role: "seller" }, "id").lean();
+  const maxNum = accounts.reduce((max, a) => {
+    const num = parseInt(String(a.id).replace("seller-", ""), 10);
+    return Number.isFinite(num) && num > max ? num : max;
+  }, 0);
+  return `seller-${maxNum + 1}`;
+}
+
 function isEmailShaped(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
+
+// Indian GSTIN / PAN formats (Feature 6). GSTIN is 15 chars; PAN is 10.
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const REQUIRED_DOC_TYPES = ["gst", "pan", "cheque", "id"];
+const DOC_LABELS = { gst: "GST certificate", pan: "PAN card", cheque: "cancelled cheque / bank proof", id: "government ID" };
 
 router.post("/login", asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
@@ -71,8 +86,8 @@ router.post("/login", asyncHandler(async (req, res) => {
 
   // Real delivery partners created by Admin can also login to the delivery app.
   if (role === "delivery") {
-    const partner = await DeliveryPartner.findOne({ email, password });
-    if (partner) {
+    const partner = await DeliveryPartner.findOne({ email });
+    if (partner && (await partner.comparePassword(password))) {
       return res.json({
         success: true,
         token: signToken({ id: partner.id, role: "delivery" }),
@@ -160,6 +175,111 @@ router.post("/register", asyncHandler(async (req, res) => {
   }
 
   res.status(201).json(responsePayload);
+}));
+
+// POST /api/register/seller
+// Feature 6: self-serve seller onboarding. Unlike user register this is
+// multi-field and demands a well-formed GSTIN + PAN and the required proof
+// documents up front. The account is created as a Pending seller so it can
+// log in immediately but stays gated until an admin verifies it; the admin
+// bell lights up via a real-time notification.
+router.post("/register/seller", asyncHandler(async (req, res) => {
+  const { name, email, password, phone, businessName, businessAddress, gstin, panNumber, documents } = req.body;
+
+  if (typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ success: false, message: "name is required" });
+  }
+  if (!isEmailShaped(email)) {
+    return res.status(400).json({ success: false, message: "a valid email is required" });
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    return res.status(400).json({ success: false, message: "password must be at least 8 characters" });
+  }
+
+  // collect everything that's missing/invalid so the seller sees it all at once
+  const problems = [];
+  if (typeof businessName !== "string" || !businessName.trim()) problems.push("a business name");
+  if (typeof businessAddress !== "string" || !businessAddress.trim()) problems.push("a business address");
+
+  const gst = String(gstin || "").toUpperCase().trim();
+  const pan = String(panNumber || "").toUpperCase().trim();
+  if (!GSTIN_RE.test(gst)) problems.push("a valid 15-character GSTIN");
+  if (!PAN_RE.test(pan)) problems.push("a valid 10-character PAN");
+
+  const docs = Array.isArray(documents) ? documents : [];
+  const providedTypes = new Set(
+    docs.filter((d) => d && typeof d.dataUrl === "string" && d.dataUrl && REQUIRED_DOC_TYPES.includes(d.type)).map((d) => d.type)
+  );
+  const missingDocs = REQUIRED_DOC_TYPES.filter((t) => !providedTypes.has(t));
+  for (const t of missingDocs) problems.push(`the ${DOC_LABELS[t]} document`);
+
+  if (problems.length) {
+    return res.status(400).json({
+      success: false,
+      message: `Your application is missing ${problems.join(", ")}. Please provide everything before submitting.`,
+    });
+  }
+
+  const existing = await Account.findOne({ email });
+  if (existing) {
+    return res.status(400).json({ success: false, message: "An account with this email already exists" });
+  }
+
+  const cleanDocs = docs
+    .filter((d) => d && REQUIRED_DOC_TYPES.includes(d.type) && typeof d.dataUrl === "string" && d.dataUrl)
+    .map((d) => ({
+      type: d.type,
+      label: d.label || DOC_LABELS[d.type],
+      fileName: d.fileName || "",
+      dataUrl: d.dataUrl,
+      uploadedAt: new Date(),
+    }));
+
+  let account;
+  try {
+    account = await Account.create({
+      id: await nextSellerId(),
+      name: name.trim(),
+      email,
+      password,
+      phone,
+      role: "seller",
+      status: "active",
+      emailVerified: true,
+      businessName: businessName.trim(),
+      businessAddress: businessAddress.trim(),
+      supportEmail: email,
+      supportPhone: phone || "",
+      gstin: gst,
+      panNumber: pan,
+      documents: cleanDocs,
+      verificationStatus: "Pending",
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ success: false, message: "An account with this email already exists" });
+    }
+    throw err;
+  }
+
+  await notifyRole(
+    "admin",
+    "seller-application",
+    "New seller application",
+    `${account.businessName || account.name} (${account.email}) is awaiting verification`,
+    { sellerId: account.id }
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Application submitted — pending admin approval",
+    token: signToken(account),
+    role: account.role,
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    verificationStatus: account.verificationStatus,
+  });
 }));
 
 // POST /api/verify-otp  { email, otp }

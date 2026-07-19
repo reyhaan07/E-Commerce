@@ -66,7 +66,9 @@ async function seedDatabase() {
   const products = buildProducts();
 
   if ((await DeliveryPartner.countDocuments()) === 0) {
-    await DeliveryPartner.insertMany(deliveryPartners());
+    // .create() (not insertMany) so the pre-save hook bcrypt-hashes the
+    // plain-text demo passwords, matching how Account passwords are stored.
+    await DeliveryPartner.create(deliveryPartners());
     console.log("Seeded 20 delivery partners");
   }
 

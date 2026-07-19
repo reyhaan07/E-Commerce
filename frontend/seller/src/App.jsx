@@ -8,6 +8,7 @@ import InventoryPage from './seller/pages/Inventory/index'
 import OrdersPage    from './seller/pages/Orders/index'
 import ProfilePage   from './seller/pages/Profile/index'
 import SettingsPage  from './seller/pages/Settings/index'
+import RegisterPage  from './seller/pages/Auth/Register'
 import { useAuth } from './seller/hooks/useAuth'
 
 // Seller runs on its own dev-server origin, separate from the shared login
@@ -53,6 +54,9 @@ export default function App() {
 
   return (
     <Routes location={location} key={location.pathname}>
+      {/* Public self-serve seller onboarding (Feature 6) — no auth required */}
+      <Route path="/seller/register" element={<PageWrapper><RegisterPage /></PageWrapper>} />
+      <Route path="/register" element={<PageWrapper><RegisterPage /></PageWrapper>} />
       <Route path="/seller" element={<RequireAuth><SellerLayout /></RequireAuth>}>
         <Route index        element={<PageWrapper><DashboardPage /></PageWrapper>} />
         <Route path="dashboard" element={<PageWrapper><DashboardPage /></PageWrapper>} />

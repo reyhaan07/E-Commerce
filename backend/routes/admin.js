@@ -9,6 +9,7 @@ const { Review } = require("../models/review.model");
 const { ReturnRequest } = require("../models/returnRequest.model");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const { notifyUser } = require("../utils/notify");
 
 router.use(requireAuth, requireRole("admin"));
 
@@ -38,20 +39,43 @@ router.patch("/accounts/:id/status", asyncHandler(async (req, res) => {
   res.json({ success: true, account });
 }));
 
-// PATCH /api/admin/accounts/:id/verification  { verificationStatus } — seller stores
+// PATCH /api/admin/accounts/:id/verification  { verificationStatus, reason? }
+// Approve / reject (Suspended) a seller store and notify the seller in real
+// time. A rejection can carry an optional reason (Feature 6).
 router.patch("/accounts/:id/verification", asyncHandler(async (req, res) => {
-  const { verificationStatus } = req.body;
+  const { verificationStatus, reason } = req.body;
   if (!["Pending", "Verified", "Suspended"].includes(verificationStatus)) {
     return res.status(400).json({ success: false, message: "Invalid verificationStatus" });
   }
-  const account = await Account.findOneAndUpdate(
-    { id: req.params.id, role: "seller" },
-    { verificationStatus },
-    { new: true }
-  );
+
+  const account = await Account.findOne({ id: req.params.id, role: "seller" });
   if (!account) {
     return res.status(404).json({ success: false, message: "Seller not found" });
   }
+
+  account.verificationStatus = verificationStatus;
+  account.verificationReason = verificationStatus === "Suspended" ? (reason || "") : "";
+  await account.save();
+
+  // notify the seller of the decision
+  if (verificationStatus === "Verified") {
+    await notifyUser(
+      account.id,
+      "seller-approved",
+      "Your store has been verified",
+      "You now have full seller access — you can publish products and manage orders.",
+      { sellerId: account.id }
+    );
+  } else if (verificationStatus === "Suspended") {
+    await notifyUser(
+      account.id,
+      "seller-rejected",
+      "Your seller application was rejected",
+      reason ? `Reason: ${reason}` : "Please review your submitted details and documents.",
+      { sellerId: account.id, reason: reason || "" }
+    );
+  }
+
   res.json({ success: true, account });
 }));
 

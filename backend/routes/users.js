@@ -37,6 +37,100 @@ function isValidAvatar(value) {
   return value === "" || (typeof value === "string" && value.length <= MAX_AVATAR_LENGTH && (URL_RE.test(value) || AVATAR_DATA_URL_RE.test(value)));
 }
 
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+// GET /api/users/me — the logged-in account's own profile. Works for any role
+// that has an Account (user / seller / admin); delivery partners use
+// /api/delivery-partners/me. Defined before the /:id routes so "me" is never
+// treated as an account id.
+router.get("/me", requireAuth, asyncHandler(async (req, res) => {
+  const account = await Account.findOne({ id: req.auth.id });
+  if (!account) {
+    return res.status(404).json({ success: false, message: "Account not found" });
+  }
+  res.json({ success: true, user: account });
+}));
+
+// PATCH /api/users/me — update the fields the account's role is allowed to edit
+router.patch("/me", requireAuth, asyncHandler(async (req, res) => {
+  const account = await Account.findOne({ id: req.auth.id });
+  if (!account) {
+    return res.status(404).json({ success: false, message: "Account not found" });
+  }
+
+  const b = req.body;
+
+  // ── fields common to every role ──────────────────────────────────────
+  if (b.name !== undefined) {
+    if (isBlank(b.name)) return res.status(400).json({ success: false, message: "name cannot be blank" });
+    account.name = b.name.trim();
+  }
+  if (!optionalString(b.phone, 20)) {
+    return res.status(400).json({ success: false, message: "phone must be text under 20 characters" });
+  }
+  if (b.avatar !== undefined && !isValidAvatar(b.avatar)) {
+    return res.status(400).json({ success: false, message: "avatar must be a valid image URL or uploaded PNG/JPEG/WebP image under 1.5MB" });
+  }
+  if (b.notifyByEmail !== undefined && typeof b.notifyByEmail !== "boolean") {
+    return res.status(400).json({ success: false, message: "notifyByEmail must be boolean" });
+  }
+  if (b.notifyBySms !== undefined && typeof b.notifyBySms !== "boolean") {
+    return res.status(400).json({ success: false, message: "notifyBySms must be boolean" });
+  }
+  if (b.phone !== undefined) account.phone = b.phone;
+  if (b.avatar !== undefined) account.avatar = b.avatar;
+  if (b.notifyByEmail !== undefined) account.notifyByEmail = b.notifyByEmail;
+  if (b.notifyBySms !== undefined) account.notifyBySms = b.notifyBySms;
+
+  // ── user-only ────────────────────────────────────────────────────────
+  if (account.role === "user") {
+    if (!optionalString(b.deliveryInstructions, 500)) {
+      return res.status(400).json({ success: false, message: "deliveryInstructions must be text under 500 characters" });
+    }
+    if (b.deliveryInstructions !== undefined) account.deliveryInstructions = b.deliveryInstructions;
+  }
+
+  // ── seller-only store identity ───────────────────────────────────────
+  if (account.role === "seller") {
+    if (!optionalString(b.storeDescription, 1000)) {
+      return res.status(400).json({ success: false, message: "storeDescription must be text under 1000 characters" });
+    }
+    if (b.supportEmail !== undefined && b.supportEmail !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.supportEmail)) {
+      return res.status(400).json({ success: false, message: "supportEmail must be a valid email" });
+    }
+    if (b.storeDescription !== undefined) account.storeDescription = b.storeDescription;
+    if (b.supportEmail !== undefined) account.supportEmail = b.supportEmail;
+    if (b.supportPhone !== undefined) account.supportPhone = b.supportPhone;
+    if (b.businessName !== undefined) account.businessName = b.businessName;
+    if (b.businessAddress !== undefined) account.businessAddress = b.businessAddress;
+
+    // GSTIN/PAN can only change while the store isn't Verified yet
+    const locked = account.verificationStatus === "Verified";
+    if (b.gstin !== undefined && !locked) {
+      const g = String(b.gstin).toUpperCase().trim();
+      if (g && !GSTIN_RE.test(g)) return res.status(400).json({ success: false, message: "gstin must be a valid 15-character GSTIN" });
+      account.gstin = g;
+    }
+    if (b.panNumber !== undefined && !locked) {
+      const p = String(b.panNumber).toUpperCase().trim();
+      if (p && !PAN_RE.test(p)) return res.status(400).json({ success: false, message: "panNumber must be a valid 10-character PAN" });
+      account.panNumber = p;
+    }
+  }
+
+  // ── admin-only ───────────────────────────────────────────────────────
+  if (account.role === "admin") {
+    if (!optionalString(b.jobTitle, 120)) {
+      return res.status(400).json({ success: false, message: "jobTitle must be text under 120 characters" });
+    }
+    if (b.jobTitle !== undefined) account.jobTitle = b.jobTitle;
+  }
+
+  await account.save();
+  res.json({ success: true, user: account });
+}));
+
 // GET /api/users/:id
 router.get("/:id", ...protect, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);

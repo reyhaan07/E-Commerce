@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   FiGrid, FiBox, FiLayers, FiShoppingBag, FiUser, FiSettings,
-  FiMenu, FiX, FiBell, FiSearch, FiTrendingUp, FiLogOut
+  FiMenu, FiX, FiBell, FiSearch, FiTrendingUp, FiLogOut, FiClock, FiAlertTriangle
 } from 'react-icons/fi'
 import { useAuth } from '../hooks/useAuth'
+import { apiRequest } from '../api/client'
 
 const SHARED_LOGIN_URL = 'http://localhost:5177'
 
@@ -34,14 +35,33 @@ function SidebarLink({ to, label, Icon, onClick }) {
 
 export default function SellerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [verification, setVerification] = useState(null) // account verificationStatus
   const location = useLocation()
   const { user, logout } = useAuth()
   const currentPage = navItems.find(n => location.pathname.startsWith(n.to))?.label || 'Dashboard'
+
+  // Surface a persistent banner while the store isn't Verified yet (Feature 6).
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    apiRequest('/users/me')
+      .then((data) => { if (!cancelled) setVerification(data.user?.verificationStatus || null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user, location.pathname])
 
   function handleLogout() {
     logout()
     window.location.href = `${SHARED_LOGIN_URL}?role=seller`
   }
+
+  const banner = verification && verification !== 'Verified'
+    ? (verification === 'Suspended'
+        ? { cls: 'rgba(225,29,72,0.08)', border: 'rgba(225,29,72,0.25)', color: '#e11d48', Icon: FiAlertTriangle,
+            text: 'Your store is suspended. Publishing is disabled until an admin reinstates your account.' }
+        : { cls: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.25)', color: '#d97706', Icon: FiClock,
+            text: 'Your store is pending verification. You can set things up now, but publishing products stays disabled until an admin approves your application.' })
+    : null
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
@@ -158,6 +178,18 @@ export default function SellerLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto px-4 lg:px-6 py-6 pb-24 lg:pb-6">
+          {banner && (
+            <div className="flex items-start gap-3 mb-5 px-4 py-3 rounded-2xl animate-fade-in"
+              style={{ background: banner.cls, border: `1px solid ${banner.border}` }}>
+              <banner.Icon size={18} style={{ color: banner.color, marginTop: 1, flexShrink: 0 }} />
+              <div className="text-sm" style={{ color: 'var(--text-soft)' }}>
+                <span className="font-semibold" style={{ color: banner.color }}>
+                  {verification === 'Suspended' ? 'Store suspended' : 'Verification in progress'}
+                </span>
+                <span> — {banner.text}</span>
+              </div>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

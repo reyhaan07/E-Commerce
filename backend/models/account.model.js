@@ -64,6 +64,20 @@ const reviewSchema = new mongoose.Schema(
   { _id: true }
 );
 
+// seller onboarding documents (Feature 6). Uploads arrive as data URLs, same
+// as return-request photos, and server.js already accepts a 10mb JSON body.
+const SELLER_DOC_TYPES = ["gst", "pan", "cheque", "id"];
+const sellerDocumentSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: SELLER_DOC_TYPES, required: true },
+    label: String,
+    fileName: String,
+    dataUrl: { type: String, required: true }, // data: URL or http(s) URL
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const accountSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -95,7 +109,12 @@ const accountSchema = new mongoose.Schema({
   supportEmail: { type: String, default: "" },
   supportPhone: { type: String, default: "" },
   gstin: { type: String, default: "" }, // demo-format registration id
+  panNumber: { type: String, default: "" }, // seller PAN (Feature 6)
+  businessName: { type: String, default: "" }, // legal/business name
+  businessAddress: { type: String, default: "" },
+  documents: { type: [sellerDocumentSchema], default: [] }, // uploaded proofs
   verificationStatus: { type: String, enum: ["Pending", "Verified", "Suspended", null], default: null },
+  verificationReason: { type: String, default: "" }, // admin note on reject/suspend
   // admin-only: role within the operations org, for the admin roster
   jobTitle: { type: String, default: "" },
   notifyByEmail: { type: Boolean, default: true },
@@ -129,4 +148,4 @@ accountSchema.set("toJSON", {
 
 const Account = mongoose.model("Account", accountSchema);
 
-module.exports = { Account, ROLES, ACCOUNT_STATUSES };
+module.exports = { Account, ROLES, ACCOUNT_STATUSES, SELLER_DOC_TYPES };

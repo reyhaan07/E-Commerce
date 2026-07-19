@@ -63,6 +63,7 @@ function formatDate(value) {
 
 function App() {
   const [user, setUser] = useState(getStoredUser)
+  const [tab, setTab] = useState('console') // console | history | profile
   const [orders, setOrders] = useState([])
   const [returnPickups, setReturnPickups] = useState([])
   const [selectedId, setSelectedId] = useState('')
@@ -205,9 +206,18 @@ function App() {
           </div>
         </header>
 
-        {error && <div className="error">{error}</div>}
+        <div className="tabs">
+          <button className={`tab ${tab === 'console' ? 'active' : ''}`} onClick={() => setTab('console')}>🚚 Console</button>
+          <button className={`tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>🗂️ History</button>
+          <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>👤 Profile</button>
+        </div>
 
-        <section className="grid">
+        {error && tab === 'console' && <div className="error">{error}</div>}
+
+        {tab === 'history' && <HistoryView user={user} />}
+        {tab === 'profile' && <ProfileView user={user} onNameChange={(name) => setUser((u) => ({ ...u, name }))} />}
+
+        {tab === 'console' && <section className="grid">
           <aside className="stack">
             <section className="metrics">
               {metrics.map((metric) => (
@@ -320,7 +330,7 @@ function App() {
               </div>
             </section>
           </aside>
-        </section>
+        </section>}
       </section>
 
       {dialog && <Dialog dialog={dialog} close={() => setDialog(null)} />}
@@ -367,6 +377,304 @@ function ActionPanel({ title, icon, actions }) {
 
 function Dialog({ dialog, close }) {
   return <div className="dialog-backdrop" onClick={close}><section className="dialog" onClick={(event) => event.stopPropagation()}><div className="row"><div><p className="eyebrow">Details</p><h2>{dialog.title}</h2></div><button className="top-button" onClick={close}>✕</button></div><div className="stack" style={{ marginTop: 16 }}>{dialog.rows.map(([label, value]) => <Info key={label} label={label} value={value} />)}</div></section></div>
+}
+
+// ── shared helpers for History + Profile ─────────────────────────────
+function deliveredTs(order) {
+  const hops = (order.statusHistory || []).filter((h) => h.status === 'Delivered')
+  return hops.length ? new Date(hops[hops.length - 1].timestamp) : new Date(order.createdAt)
+}
+
+function computeStats(orders, id) {
+  const now = new Date()
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  let delivered = 0, cancelled = 0, month = 0
+  for (const o of orders) {
+    if (o.deliveryStatus === 'Delivered') { delivered++; if (deliveredTs(o) >= monthStart) month++ }
+    else if (o.cancellation?.status === 'Approved') cancelled++
+  }
+  const attempts = delivered + cancelled
+  return { totalDelivered: delivered, totalCancelled: cancelled, thisMonthDeliveries: month, successRate: attempts ? Math.round((delivered / attempts) * 100) : 100 }
+}
+
+// ── History tab ──────────────────────────────────────────────────────
+function HistoryView({ user }) {
+  const [orders, setOrders] = useState([])
+  const [returns, setReturns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [status, setStatus] = useState('all')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [q, setQ] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true); setError('')
+      try {
+        const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`)
+        const data = await res.json()
+        if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load history')
+        let rets = []
+        try {
+          const rres = await fetch(`${API_BASE}/returns`, { headers: authHeaders() })
+          const rdata = await rres.json()
+          if (rres.ok && rdata.success) {
+            rets = (rdata.returns || []).filter((r) => {
+              const mine = user.id === 'delivery-demo' ? Boolean(r.pickupPartnerId) : r.pickupPartnerId === user.id
+              return mine && ['Picked Up', 'Under Inspection', 'Refund Approved', 'Refunded'].includes(r.status)
+            })
+          }
+        } catch { /* returns are best-effort */ }
+        if (!cancelled) { setOrders(data.orders || []); setReturns(rets) }
+      } catch (err) {
+        if (!cancelled) setError(err.message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user])
+
+  const rows = useMemo(() => {
+    const list = []
+    for (const o of orders) {
+      const isDelivered = o.deliveryStatus === 'Delivered'
+      const isCancelled = o.cancellation?.status === 'Approved' || ['Cancelled', 'Returned'].includes(o.sellerStatus)
+      if (isDelivered) {
+        list.push({ key: `o-${o.id}`, kind: 'delivered', id: o.id, customer: o.customerName, address: o.customerAddress, amount: o.amount, status: 'Delivered', date: deliveredTs(o) })
+      } else if (isCancelled) {
+        list.push({ key: `o-${o.id}`, kind: 'cancelled', id: o.id, customer: o.customerName, address: o.customerAddress, amount: o.amount, status: o.sellerStatus === 'Returned' ? 'Returned' : 'Cancelled', date: new Date(o.cancellation?.resolvedAt || o.createdAt) })
+      }
+    }
+    for (const r of returns) {
+      const hist = r.statusHistory || []
+      list.push({ key: `r-${r.id}`, kind: 'return', id: r.id, customer: r.customerName, address: `Order ${r.orderId}`, amount: r.refund?.amount || 0, status: `Return · ${r.status}`, date: new Date(hist.length ? hist[hist.length - 1].timestamp : r.createdAt) })
+    }
+    return list.sort((a, b) => b.date - a.date)
+  }, [orders, returns])
+
+  const filtered = rows.filter((r) => {
+    if (status !== 'all' && r.kind !== status) return false
+    if (from && r.date < new Date(from)) return false
+    if (to && r.date > new Date(new Date(to).getTime() + 24 * 60 * 60 * 1000)) return false
+    if (q) {
+      const text = `${r.id} ${r.customer} ${r.address} ${r.status}`.toLowerCase()
+      if (!text.includes(q.toLowerCase())) return false
+    }
+    return true
+  })
+
+  return (
+    <section className="panel">
+      <div className="row"><div><p className="eyebrow">Past & cancelled work</p><h2>Delivery History</h2></div><span>🗂️</span></div>
+      {error && <div className="error" style={{ marginTop: 12 }}>{error}</div>}
+
+      <div className="filters">
+        <input placeholder="Search order, customer, address" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="all">All jobs</option>
+          <option value="delivered">Completed deliveries</option>
+          <option value="cancelled">Cancelled / returned</option>
+          <option value="return">Returns handled</option>
+        </select>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} title="From date" />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} title="To date" />
+      </div>
+
+      {loading ? (
+        <p className="muted" style={{ marginTop: 16 }}>Loading history…</p>
+      ) : filtered.length === 0 ? (
+        <p className="muted" style={{ marginTop: 16 }}>No matching jobs in your history.</p>
+      ) : (
+        <table className="htable">
+          <thead><tr><th>Reference</th><th>Customer</th><th>Address</th><th>Amount</th><th>Outcome</th><th>Date</th></tr></thead>
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.key}>
+                <td><strong>{r.id}</strong></td>
+                <td>{r.customer || '—'}</td>
+                <td className="muted" style={{ maxWidth: 220 }}>{r.address || '—'}</td>
+                <td>{formatMoney(r.amount)}</td>
+                <td><span className={`chip ${r.kind}`}>{r.status}</span></td>
+                <td className="muted">{formatDate(r.date)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="muted" style={{ marginTop: 12 }}>{filtered.length} of {rows.length} past jobs</p>
+    </section>
+  )
+}
+
+// ── Profile tab ──────────────────────────────────────────────────────
+function fromPartner(p) {
+  return { name: p.name || '', phone: p.phone || '', vehicle: p.vehicle || 'Bike', zone: p.zone || '', status: p.status || 'Active' }
+}
+
+function ProfileView({ user, onNameChange }) {
+  const [partner, setPartner] = useState(null)
+  const [stats, setStats] = useState(null)
+  const [payslips, setPayslips] = useState([])
+  const [form, setForm] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [error, setError] = useState('')
+  const canEdit = Boolean(user.token) && user.id !== 'delivery-demo'
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/delivery-partners/me`, { headers: authHeaders() })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          if (!cancelled) { setPartner(data.deliveryPartner); setStats(data.stats); setForm(fromPartner(data.deliveryPartner)) }
+        } else { throw new Error('no profile') }
+      } catch {
+        // demo / no token: read-only identity + stats computed from history
+        if (!cancelled) {
+          const fallback = { id: user.id, name: user.name, email: user.email, phone: '', vehicle: '—', zone: '—', status: 'Active' }
+          setPartner(fallback); setForm(fromPartner(fallback))
+        }
+        try {
+          const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`)
+          const data = await res.json()
+          if (res.ok && data.success && !cancelled) setStats(computeStats(data.orders, user.id))
+        } catch { /* ignore */ }
+      }
+      try {
+        const res = await fetch(`${API_BASE}/payroll?staffId=me`, { headers: authHeaders() })
+        const data = await res.json()
+        if (res.ok && data.success && !cancelled) setPayslips(data.payroll || [])
+      } catch { /* payslips are real-partner only */ }
+    })()
+    return () => { cancelled = true }
+  }, [user])
+
+  async function save() {
+    setSaving(true); setError(''); setMsg('')
+    try {
+      const res = await fetch(`${API_BASE}/delivery-partners/me`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ name: form.name, phone: form.phone, vehicle: form.vehicle, zone: form.zone, status: form.status }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.message || 'Could not save profile')
+      setPartner(data.deliveryPartner); setStats(data.stats); setEditing(false); setMsg('Profile saved')
+      onNameChange?.(data.deliveryPartner.name)
+    } catch (err) { setError(err.message) } finally { setSaving(false) }
+  }
+
+  if (!partner || !form) return <section className="panel"><p className="muted">Loading profile…</p></section>
+
+  const paidEarnings = payslips.filter((p) => p.status === 'Paid').reduce((s, p) => s + p.netPay, 0)
+  const latest = payslips[0]
+  const tiles = [
+    { label: 'Delivered', value: stats?.totalDelivered ?? '—', sub: 'Lifetime', color: '#4f46e5' },
+    { label: 'Cancelled', value: stats?.totalCancelled ?? '—', sub: 'Lifetime', color: '#dc2626' },
+    { label: 'Success rate', value: stats ? `${stats.successRate}%` : '—', sub: 'Delivered / attempts', color: '#0891b2' },
+    { label: 'This month', value: stats?.thisMonthDeliveries ?? '—', sub: 'Deliveries', color: '#1d4ed8' },
+    { label: 'Paid earnings', value: canEdit ? formatMoney(paidEarnings) : '—', sub: canEdit ? 'From payslips' : 'Sign in to view', color: '#059669' },
+  ]
+
+  return (
+    <div className="stack">
+      {error && <div className="error">{error}</div>}
+      {msg && <div className="status active" style={{ padding: '10px 14px' }}>{msg}</div>}
+
+      {/* Identity card */}
+      <section className="card details">
+        <div className="row" style={{ alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div className="avatar-lg">{partner.avatar ? <img src={partner.avatar} alt="" /> : (partner.name?.[0]?.toUpperCase() || 'D')}</div>
+            <div>
+              <p className="eyebrow">Delivery partner</p>
+              <h2>{partner.name}</h2>
+              <p className="muted">{partner.email}</p>
+              <span className={`status ${partner.status === 'Active' ? 'active' : ''}`} style={{ marginTop: 8 }}>{partner.status}</span>
+            </div>
+          </div>
+          {canEdit && !editing && <button className="top-button primary" onClick={() => setEditing(true)}>Edit profile</button>}
+        </div>
+
+        <div className="form-grid" style={{ marginTop: 20 }}>
+          <div className="field"><label>Name</label><input value={form.name} disabled={!editing} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></div>
+          <div className="field"><label>Phone</label><input value={form.phone} disabled={!editing} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} /></div>
+          <div className="field"><label>Vehicle</label>
+            <select value={form.vehicle} disabled={!editing} onChange={(e) => setForm((f) => ({ ...f, vehicle: e.target.value }))}>
+              <option>Bike</option><option>Van</option><option>Truck</option><option>Bicycle</option>
+            </select>
+          </div>
+          <div className="field"><label>Zone</label><input value={form.zone} disabled={!editing} onChange={(e) => setForm((f) => ({ ...f, zone: e.target.value }))} /></div>
+          <div className="field"><label>Status</label>
+            <select value={form.status} disabled={!editing} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+              <option>Active</option><option>On Delivery</option><option>Offline</option>
+            </select>
+          </div>
+        </div>
+        {editing && (
+          <div className="action-list" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))', display: 'grid' }}>
+            <button className="primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</button>
+            <button onClick={() => { setForm(fromPartner(partner)); setEditing(false) }}>Cancel</button>
+          </div>
+        )}
+        {!canEdit && <p className="muted" style={{ marginTop: 14 }}>You're viewing the shared demo console — sign in as a real partner to edit your profile and see payslips.</p>}
+      </section>
+
+      {/* Lifetime stat tiles */}
+      <div className="tiles">
+        {tiles.map((t) => (
+          <div className="tile" key={t.label}>
+            <span className="eyebrow">{t.label}</span>
+            <strong style={{ color: t.color }}>{t.value}</strong>
+            <p className="sub">{t.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Payslips */}
+      <section className="panel">
+        <div className="row"><h2>Payslips</h2><span>💰</span></div>
+        {payslips.length === 0 ? (
+          <p className="muted" style={{ marginTop: 12 }}>{canEdit ? 'No payslips generated yet. Your admin generates payroll each month.' : 'Sign in as a real partner to view your payslips.'}</p>
+        ) : (
+          <>
+            {latest && (
+              <div className="note" style={{ marginTop: 12 }}>
+                <div className="row"><strong>Latest · {latest.period}</strong><span className={`status ${latest.status === 'Paid' ? 'done' : 'active'}`}>{latest.status}</span></div>
+                <div className="info-grid" style={{ marginTop: 12 }}>
+                  <Info label="Base salary" value={formatMoney(latest.baseSalary)} />
+                  <Info label="Deliveries" value={String(latest.deliveriesCount)} />
+                  <Info label="Incentive" value={formatMoney(latest.incentiveTotal)} />
+                  <Info label="Deductions" value={formatMoney(latest.deductions)} />
+                  <Info label="Net pay" value={formatMoney(latest.netPay)} />
+                  <Info label="Paid on" value={latest.paidAt ? formatDate(latest.paidAt) : 'Pending'} />
+                </div>
+              </div>
+            )}
+            <table className="htable">
+              <thead><tr><th>Period</th><th>Deliveries</th><th>Net pay</th><th>Status</th></tr></thead>
+              <tbody>
+                {payslips.map((p) => (
+                  <tr key={p.id}>
+                    <td><strong>{p.period}</strong></td>
+                    <td>{p.deliveriesCount}</td>
+                    <td>{formatMoney(p.netPay)}</td>
+                    <td><span className={`chip ${p.status === 'Paid' ? 'delivered' : 'return'}`}>{p.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </section>
+    </div>
+  )
 }
 
 createRoot(document.getElementById('root')).render(<App />)

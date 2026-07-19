@@ -18,6 +18,8 @@ import DeliveryPartners from "../pages/admin/DeliveryPartners";
 import DeliveryAssignment from "../pages/admin/DeliveryAssignment";
 import DeliveryTracking from "../pages/admin/DeliveryTracking";
 import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
+import Payroll from "../pages/admin/Payroll";
+import AdminProfile from "../pages/admin/AdminProfile";
 
 // The shared login page lives in its own app (frontend/login) on its own
 // dev-server origin, so unauthenticated visits need a hard redirect there —
@@ -65,6 +67,8 @@ export default function AppRoutes() {
         <Route path="delivery-assignment" element={<DeliveryAssignment />} />
         <Route path="delivery-tracking" element={<DeliveryTracking />} />
         <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
+        <Route path="payroll" element={<Payroll />} />
+        <Route path="profile" element={<AdminProfile />} />
       </Route>
     </Routes>
   );

@@ -16,6 +16,25 @@ locally with test data and sandbox credentials only.
 | Delivery Console | `frontend/delivery` | React + Vite | 5176 |
 | Shared Login | `frontend/login` | React + Vite + Tailwind | 5177 |
 
+## What's new — auth, profiles, delivery history, payroll & seller onboarding
+
+- **Role-specific login** — the shared login app now has a role chooser plus dedicated
+  `/login/user`, `/login/seller`, `/login/delivery`, `/login/admin` screens (the old `?role=` /
+  `?redirect=` deep links still work).
+- **Seller onboarding with verification** — self-serve multi-step registration
+  (`POST /api/register/seller`) that validates GSTIN/PAN and required documents; the admin's
+  **Seller Verification** page previews the documents and approves/rejects (with reason), notifying
+  the seller. Publishing products is gated behind `verificationStatus === "Verified"`, and a pending
+  banner shows across the seller app.
+- **Profiles for every role** — real, editable profile pages for seller, admin and delivery partner,
+  backed by `GET/PATCH /api/users/me` and `GET/PATCH /api/delivery-partners/me`.
+- **Delivery history** — the delivery console gains **Profile** and **History** tabs: lifetime stat
+  tiles and a filterable list of completed / cancelled / returned jobs
+  (`GET /api/orders?history=true&deliveryPartnerId=…`).
+- **Payroll** — a new admin **Payroll** page and `/api/payroll` API: generate a month's payroll,
+  auto-count each partner's delivered orders, tune base/incentive/deductions, and mark rows Paid
+  (which notifies the staff member and surfaces their payslip in the delivery Profile tab).
+
 ## Setup
 
 Requirements: Node 20+, a local MongoDB on `mongodb://127.0.0.1:27017` (or set `MONGO_URI`).
@@ -35,6 +54,10 @@ timestamps). Run whenever the data gets messy from testing:
 ```bash
 cd backend && npm run reseed
 ```
+
+> **Upgrading an existing database?** Delivery-partner passwords are now bcrypt-hashed (previously
+> stored as plain text). Databases seeded before this change must be reseeded (`npm run reseed`) so
+> partner logins keep working.
 
 ### Environment variables (`backend/.env`)
 
