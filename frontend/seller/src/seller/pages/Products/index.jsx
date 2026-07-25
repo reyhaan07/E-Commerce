@@ -188,7 +188,7 @@ export default function Products() {
                   <tr key={p.id}>
                     <td>
                       <div className="flex items-center gap-3">
-                        <img src={p.images?.[0]} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" style={{ border: '1px solid var(--border)', background: '#f8fafc' }} />
+                        <img src={p.images?.[0]} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" style={{ border: '1px solid var(--border)', background: 'var(--surface-2)' }} />
                         <div>
                           <span className="font-medium">{p.name}</span>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.sku} · ★{p.rating || '—'} ({p.ratingCount})</p>

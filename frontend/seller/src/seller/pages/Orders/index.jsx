@@ -111,16 +111,16 @@ export default function Orders() {
           <button key={s}
             className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap"
             style={{
-              background: status === s ? 'rgba(99,102,241,0.1)' : 'white',
+              background: status === s ? 'var(--accent-soft)' : 'var(--surface)',
               color: status === s ? 'var(--accent)' : 'var(--text-muted)',
-              border: status === s ? '1px solid rgba(99,102,241,0.25)' : '1px solid var(--border)',
+              border: status === s ? '1px solid var(--border-hover)' : '1px solid var(--border)',
               fontWeight: status === s ? 600 : 500,
               boxShadow: status === s ? '0 2px 8px rgba(99,102,241,0.1)' : 'var(--shadow-sm)',
             }}
             onClick={() => setStatus(s)}>
             {s}
             <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full"
-              style={{ background: '#f1f5f9', color: 'var(--text-muted)' }}>{counts[s]}</span>
+              style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}>{counts[s]}</span>
           </button>
         ))}
       </div>
@@ -234,7 +234,7 @@ export default function Orders() {
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setDetail(null)} />
-          <div className="relative glass p-6 w-full max-w-lg space-y-3" style={{ borderRadius: 20, background: 'white', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div className="relative glass p-6 w-full max-w-lg space-y-3" style={{ borderRadius: 20, background: 'var(--surface)', maxHeight: '85vh', overflowY: 'auto' }}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold">{detail.id}</h3>
               <button className="btn-ghost text-xs" onClick={() => setDetail(null)}>Close</button>

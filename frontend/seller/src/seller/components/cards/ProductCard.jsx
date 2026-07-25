@@ -10,7 +10,7 @@ export default function ProductCard({ product, onEdit, onDelete, onView }) {
     <div
       className="group cursor-pointer"
       style={{
-        background: '#ffffff',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 20,
         overflow: 'hidden',
@@ -30,7 +30,7 @@ export default function ProductCard({ product, onEdit, onDelete, onView }) {
     >
       {/* Image */}
       <div className="relative w-full h-44 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
+        style={{ background: 'linear-gradient(135deg, var(--surface-2), var(--surface-3))' }}>
         {!imgLoaded && <div className="skeleton absolute inset-0" />}
         <img
           src={product.image}
@@ -42,7 +42,7 @@ export default function ProductCard({ product, onEdit, onDelete, onView }) {
         {/* Hover overlay */}
         <div
           className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(4px)' }}>
+          style={{ background: 'var(--surface-glass)', backdropFilter: 'blur(4px)' }}>
           <button className="btn-icon" onClick={e => { e.stopPropagation(); onEdit?.(product) }}>
             <FiEdit2 size={15} />
           </button>

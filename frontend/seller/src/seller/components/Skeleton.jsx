@@ -34,7 +34,7 @@ export function SkeletonProductGrid({ count = 8 }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="animate-fade-in p-4 space-y-3"
-          style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 20, boxShadow: 'var(--shadow-sm)' }}>
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, boxShadow: 'var(--shadow-sm)' }}>
           <Skeleton className="w-full h-44 rounded-xl" />
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-1/2" />

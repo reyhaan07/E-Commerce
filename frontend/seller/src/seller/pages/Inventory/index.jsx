@@ -94,12 +94,12 @@ export default function Inventory() {
           <input type="text" placeholder="Search by name or SKU…" className="input pl-9 h-9 text-sm"
             value={query} onChange={e => setQuery(e.target.value)} />
         </div>
-        <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#f1f5f9', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--surface-3)', border: '1px solid var(--border)' }}>
           {['all','healthy','low','out'].map(f => (
             <button key={f}
               className="px-3 h-7 rounded-lg text-xs font-medium transition-all duration-200 capitalize"
               style={{
-                background: filter === f ? 'white' : 'transparent',
+                background: filter === f ? 'var(--surface)' : 'transparent',
                 color: filter === f ? 'var(--accent)' : 'var(--text-muted)',
                 boxShadow: filter === f ? 'var(--shadow-sm)' : 'none',
                 fontWeight: filter === f ? 600 : 500,
@@ -130,7 +130,7 @@ export default function Inventory() {
                 return (
                   <tr key={item.id}>
                     <td className="font-medium max-w-[200px] truncate">{item.name}</td>
-                    <td><code className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#f1f5f9', color: 'var(--text-soft)' }}>{item.sku}</code></td>
+                    <td><code className="text-xs px-2 py-0.5 rounded-md" style={{ background: 'var(--surface-3)', color: 'var(--text-soft)' }}>{item.sku}</code></td>
                     <td className="text-xs">{item.category}{item.productType ? ` → ${item.productType}` : ''}</td>
                     <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{item.stock}</td>
                     <td><span className={`badge ${statusClass[status]}`}>{statusLabel[status]}</span></td>

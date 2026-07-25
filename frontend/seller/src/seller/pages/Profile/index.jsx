@@ -137,7 +137,7 @@ export default function Profile() {
           <div className="flex items-end justify-between -mt-10 mb-4">
             <div className="relative">
               <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', border: '4px solid white', boxShadow: 'var(--shadow-md)' }}>
+                style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-deep))', color: 'white', border: '4px solid var(--surface)', boxShadow: 'var(--shadow-md)' }}>
                 {account.avatar ? <img src={account.avatar} alt="" className="w-full h-full object-cover" /> : (account.name?.[0]?.toUpperCase() || 'S')}
               </div>
               <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg flex items-center justify-center"
@@ -187,7 +187,7 @@ export default function Profile() {
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Store Description</label>
           <textarea rows={3} className="input resize-none" value={form.storeDescription} disabled={!editing}
             onChange={(e) => setForm((f) => ({ ...f, storeDescription: e.target.value }))}
-            style={{ opacity: editing ? 1 : 0.75, background: editing ? 'white' : '#f8fafc' }} />
+            style={{ opacity: editing ? 1 : 0.75, background: editing ? 'var(--input-bg)' : 'var(--surface-2)' }} />
         </div>
         {editing && (
           <div className="flex gap-3 pt-1 animate-fade-in">
@@ -217,7 +217,7 @@ function FormField({ label, icon: Icon, value, editing, onChange, placeholder })
         <Icon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
         <input type="text" className="input pl-10" value={value || ''} disabled={!editing} placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          style={{ opacity: editing ? 1 : 0.75, background: editing ? 'white' : '#f8fafc' }} />
+          style={{ opacity: editing ? 1 : 0.75, background: editing ? 'var(--input-bg)' : 'var(--surface-2)' }} />
       </div>
     </div>
   )
