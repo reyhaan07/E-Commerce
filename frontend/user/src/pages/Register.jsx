@@ -10,10 +10,7 @@ const Register = () => {
   const { login } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [otpStep, setOtpStep] = useState(false);
-  const [otp, setOtp] = useState('');
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,11 +36,9 @@ const Register = () => {
           password: form.password,
         }),
       });
-      setNotice(data.message || 'We emailed you a 6-digit code');
-      if (data.otp) {
-        setNotice(`${data.message || 'We emailed you a 6-digit code'} — code: ${data.otp}`);
-      }
-      setOtpStep(true);
+      // account is created and logged in straight away
+      login(data);
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -51,44 +46,9 @@ const Register = () => {
     }
   }
 
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      const data = await apiRequest('/verify-otp', {
-        method: 'POST',
-        body: JSON.stringify({ email: form.email, otp }),
-      });
-      login(data);
-      navigate('/');
-    } catch (err) {
-      setError(err.message || 'Verification failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleResendOtp() {
-    setError('');
-    try {
-      const data = await apiRequest('/resend-otp', {
-        method: 'POST',
-        body: JSON.stringify({ email: form.email }),
-      });
-      if (data.otp) {
-        setNotice(`${data.message || 'A new code has been sent'} — code: ${data.otp}`);
-      } else {
-        setNotice(data.message || 'A new code has been sent');
-      }
-    } catch (err) {
-      setError(err.message || 'Could not resend the code');
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden my-8"
@@ -99,45 +59,10 @@ const Register = () => {
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">B</div>
                 BlueCart
             </Link>
-            <h2 className="text-2xl font-bold text-gray-900">{otpStep ? 'Verify Your Email' : 'Create Account'}</h2>
-            <p className="text-gray-500 mt-2">
-              {otpStep ? `Enter the 6-digit code we sent to ${form.email}` : 'Join us for a better shopping experience'}
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+            <p className="text-gray-500 mt-2">Join us for a better shopping experience</p>
           </div>
 
-          {otpStep ? (
-            <form className="space-y-5" onSubmit={handleVerifyOtp}>
-              {error && (
-                <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>
-              )}
-              {notice && !error && (
-                <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-xl px-4 py-3">{notice}</p>
-              )}
-
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="6-digit code"
-                className="w-full text-center tracking-[0.5em] text-2xl font-bold py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                required
-              />
-
-              <button type="submit" disabled={submitting || otp.length !== 6} className="w-full btn-primary py-4 text-lg shadow-lg shadow-primary/20 disabled:opacity-60">
-                {submitting ? 'Verifying...' : 'Verify & Continue'}
-              </button>
-
-              <p className="text-center text-sm text-gray-500">
-                Didn't get the code?{' '}
-                <button type="button" onClick={handleResendOtp} className="text-primary font-semibold hover:underline">
-                  Resend
-                </button>
-                {' '}(when SMTP isn't configured, the code is printed in the backend console)
-              </p>
-            </form>
-          ) : (
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
               <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>
@@ -216,7 +141,6 @@ const Register = () => {
               {submitting ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
-          )}
 
           <p className="mt-8 text-center text-gray-600">
             Already have an account? <a href="http://localhost:5177?role=user" className="font-bold text-primary hover:text-primary-dark transition-colors underline underline-offset-4">Sign In</a>

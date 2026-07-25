@@ -33,10 +33,6 @@ async function sendMail({ to, subject, text, html }) {
 }
 
 const templates = {
-  otp: (name, code) => ({
-    subject: "Your ShopSphere verification code",
-    text: `Hi ${name},\n\nYour one-time verification code is ${code}. It expires in 10 minutes.\n\n— ShopSphere`,
-  }),
   welcome: (name) => ({
     subject: "Welcome to ShopSphere!",
     text: `Hi ${name},\n\nYour account is ready. Happy shopping!\n\n— ShopSphere`,

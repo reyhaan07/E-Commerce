@@ -89,7 +89,6 @@ const accountSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   lastLogin: { type: Date, default: null },
   status: { type: String, enum: ACCOUNT_STATUSES, default: "active" },
-  emailVerified: { type: Boolean, default: false },
   addresses: [addressSchema],
   paymentMethods: [paymentMethodSchema],
   cart: [cartItemSchema],
@@ -98,9 +97,6 @@ const accountSchema = new mongoose.Schema({
   deliveryInstructions: String,
   resetToken: { type: String, default: null },
   resetTokenExpiry: { type: Date, default: null },
-  // registration email verification (Feature 1)
-  otpCode: { type: String, default: null },
-  otpExpiry: { type: Date, default: null },
   // seller-only: aggregate rating across approved reviews of their products
   sellerRating: { type: Number, default: 0 },
   sellerRatingCount: { type: Number, default: 0 },
@@ -140,8 +136,6 @@ accountSchema.set("toJSON", {
     delete ret.password;
     delete ret.resetToken;
     delete ret.resetTokenExpiry;
-    delete ret.otpCode;
-    delete ret.otpExpiry;
     return ret;
   },
 });
