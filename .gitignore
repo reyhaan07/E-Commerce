@@ -4,3 +4,8 @@ dist/
 *.log
 .claude/
 state.json
+
+# Local working docs (status notes, demo credentials, archived prompts) — kept off the repo
+/PROJECT-STATUS.md
+/DEMO-LOGINS.md
+/_archive/

@@ -1,6 +1,6 @@
 // 20 users, 20 admins and 20 delivery partners for the demo world.
 // Passwords follow "<firstname>123" so the README credentials table stays
-// predictable. All accounts are emailVerified so they can log in.
+// predictable.
 
 const CITIES = [
   ["Mumbai", "Maharashtra", "400001"],
@@ -109,7 +109,6 @@ function userAccounts() {
       password,
       role: "user",
       phone: `+91 9${String(800000000 + idx * 7211).slice(0, 9)}`,
-      emailVerified: true,
       status: "active",
       addresses: [addressFor(idx, name)],
       loyaltyPoints: (idx * 17) % 120,
@@ -138,7 +137,6 @@ function adminAccounts() {
     password,
     role: "admin",
     phone: `+91 9${String(900000000 + idx * 4159).slice(0, 9)}`,
-    emailVerified: true,
     status: "active",
     jobTitle,
     createdAt: new Date(Date.UTC(2026, 3, 1 + idx, 10, 0, 0)),

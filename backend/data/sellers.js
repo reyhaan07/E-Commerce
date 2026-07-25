@@ -58,7 +58,6 @@ function sellerAccounts() {
     password: s.password,
     role: "seller",
     phone: `+91 98${String(20000000 + idx * 137).slice(0, 8)}`,
-    emailVerified: true,
     status: "active",
     storeDescription: s.description,
     supportEmail: s.email,

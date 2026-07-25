@@ -217,7 +217,6 @@ router.post("/register/seller", asyncHandler(async (req, res) => {
       phone,
       role: "seller",
       status: "active",
-      emailVerified: true,
       businessName: businessName.trim(),
       businessAddress: businessAddress.trim(),
       supportEmail: email,
