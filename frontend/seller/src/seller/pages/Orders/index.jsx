@@ -1,35 +1,36 @@
-import React, { useState, useEffect } from 'react'
-import { SkeletonTable } from '../../components/Skeleton'
-import EmptyState from '../../components/EmptyState'
+import React, { useState, useEffect, useMemo } from 'react'
+import PageHeader from '../../components/ui/PageHeader'
+import FilterBar from '../../components/ui/FilterBar'
+import SearchBar from '../../components/ui/SearchBar'
+import DataTable from '../../components/ui/DataTable'
 import StatusBadge from '../../components/StatusBadge'
-import { FiShoppingBag, FiSearch, FiEye, FiTruck, FiPackage, FiCheckCircle, FiThumbsUp, FiXCircle } from 'react-icons/fi'
-import { getOrders, updateSellerStatus, requestPickup, confirmDelivery, getOrderJourney } from '../../api/orders'
-import { useAuth } from '../../hooks/useAuth'
+import EmptyState from '../../components/EmptyState'
+import { SkeletonTable } from '../../components/Skeleton'
+import { useToast } from '../../components/ui/Toast'
+import AssignPartnerModal from '../../components/orders/AssignPartnerModal'
 import OrderJourney from '../../components/OrderJourney'
+import {
+  FiShoppingBag, FiEye, FiTruck, FiPackage, FiCheckCircle, FiThumbsUp,
+  FiXCircle, FiDownload, FiX, FiUserPlus,
+} from 'react-icons/fi'
+import { getOrders, updateSellerStatus, requestPickup, confirmDelivery, getOrderJourney } from '../../api/orders'
+import { apiRequest } from '../../api/client'
+import { useAuth } from '../../hooks/useAuth'
 
 const STATUSES = ['All', 'Processing', 'Accepted', 'Packed', 'Ready For Dispatch', 'Shipped', 'Delivered', 'Returned', 'Cancelled', 'Rejected']
-const statusClass = {
-  Processing: 'badge-info',
-  Accepted: 'badge-accent',
-  Packed: 'badge-warning',
-  'Ready For Dispatch': 'badge-warning',
-  Shipped: 'badge-accent',
-  Delivered: 'badge-success',
-  Returned: 'badge-danger',
-  Cancelled: 'badge-neutral',
-  Rejected: 'badge-danger',
-}
 
 export default function Orders() {
   const { user } = useAuth()
+  const toast = useToast()
   const [ordersData, setOrdersData] = useState([])
   const [returns, setReturns] = useState([])
   const [loading, setLoading] = useState(true)
-  const [query,   setQuery]   = useState('')
-  const [status,  setStatus]  = useState('All')
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState('All')
   const [updatingId, setUpdatingId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [journey, setJourney] = useState(null)
+  const [assignFor, setAssignFor] = useState(null)
 
   function loadOrders() {
     if (!user) return
@@ -37,8 +38,6 @@ export default function Orders() {
     getOrders(user.id)
       .then(async (orders) => {
         setOrdersData(orders)
-        // returns that belong to this seller's orders
-        const { apiRequest } = await import('../../api/client')
         const ret = await apiRequest('/returns')
         const ownIds = new Set(orders.map(o => o.id))
         setReturns(ret.returns.filter(r => ownIds.has(r.orderId)))
@@ -46,259 +45,196 @@ export default function Orders() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }
-
   useEffect(loadOrders, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function runAction(orderId, action) {
     setUpdatingId(orderId)
-    try {
-      await action()
-      loadOrders()
-    } catch (err) {
-      alert(err.message || 'Could not update order')
-    } finally {
-      setUpdatingId(null)
-    }
+    try { await action(); loadOrders() }
+    catch (err) { toast.error(err.message || 'Could not update order') }
+    finally { setUpdatingId(null) }
   }
-
-  // The seller half of the journey, one step at a time. The backend rejects
-  // anything that skips ahead, so the buttons mirror the allowed transitions.
-  const handleAccept = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Accepted'))
-  const handlePacked = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Packed'))
-  const handleMarkReady = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Ready For Dispatch'))
-  const handleRequestPickup = (orderId) => runAction(orderId, () => requestPickup(orderId))
-  const handleConfirmDelivery = (orderId) => runAction(orderId, () => confirmDelivery(orderId))
-
-  function handleReject(orderId) {
+  const handleAccept = (id) => runAction(id, () => updateSellerStatus(id, 'Accepted'))
+  const handlePacked = (id) => runAction(id, () => updateSellerStatus(id, 'Packed'))
+  const handleMarkReady = (id) => runAction(id, () => updateSellerStatus(id, 'Ready For Dispatch'))
+  const handleRequestPickup = (id) => runAction(id, () => requestPickup(id))
+  const handleConfirmDelivery = (id) => runAction(id, () => confirmDelivery(id))
+  function handleReject(id) {
     const note = window.prompt('Why are you rejecting this order? The customer will see this.')
     if (note === null) return
-    runAction(orderId, () => updateSellerStatus(orderId, 'Rejected', note))
+    runAction(id, () => updateSellerStatus(id, 'Rejected', note))
   }
 
-  // Opening the drawer pulls the authoritative timeline for that order.
   function openDetail(order) {
-    setDetail(order)
-    setJourney(null)
-    getOrderJourney(order.id)
-      .then(({ journey: j }) => setJourney(j))
-      .catch(() => {})
+    setDetail(order); setJourney(null)
+    getOrderJourney(order.id).then(({ journey: j }) => setJourney(j)).catch(() => {})
   }
-
   async function returnAction(ret, path, body) {
-    const { apiRequest } = await import('../../api/client')
-    try {
-      await apiRequest(`/returns/${ret.id}/${path}`, { method: 'PATCH', body: JSON.stringify(body) })
-      loadOrders()
-    } catch (err) {
-      alert(err.message)
-    }
+    try { await apiRequest(`/returns/${ret.id}/${path}`, { method: 'PATCH', body: JSON.stringify(body) }); loadOrders() }
+    catch (err) { toast.error(err.message) }
   }
 
   function exportCsv() {
     const header = 'Order ID,Customer,Items,Amount,Payment,Date,Seller Status,Delivery Status,Tracking\n'
-    const rows = ordersData.map(o => [
-      o.id, `"${o.customerName}"`, o.items.length, o.amount, o.paymentMethod,
-      new Date(o.createdAt).toISOString().slice(0, 10), o.sellerStatus, o.deliveryStatus || '', o.trackingId || '',
-    ].join(',')).join('\n')
+    const rows = ordersData.map(o => [o.id, `"${o.customerName}"`, o.items.length, o.amount, o.paymentMethod,
+      new Date(o.createdAt).toISOString().slice(0, 10), o.sellerStatus, o.deliveryStatus || '', o.trackingId || ''].join(',')).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = 'shopsphere-orders.csv'
-    link.click()
-    URL.revokeObjectURL(link.href)
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob); a.download = 'shopsphere-orders.csv'; a.click(); URL.revokeObjectURL(a.href)
   }
 
-  const filtered = ordersData.filter(o => {
-    const matchQ = o.id.toLowerCase().includes(query.toLowerCase()) || o.customerName.toLowerCase().includes(query.toLowerCase())
-    const matchS = status === 'All' || o.sellerStatus === status
-    return matchQ && matchS
-  })
-
-  const counts = STATUSES.reduce((acc, s) => {
+  const counts = useMemo(() => STATUSES.reduce((acc, s) => {
     acc[s] = s === 'All' ? ordersData.length : ordersData.filter(o => o.sellerStatus === s).length
     return acc
-  }, {})
+  }, {}), [ordersData])
+
+  const filtered = useMemo(() => ordersData.filter(o => {
+    const q = query.toLowerCase()
+    const matchQ = !q || o.id.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q)
+    return matchQ && (status === 'All' || o.sellerStatus === status)
+  }), [ordersData, query, status])
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Orders</h2>
-          <p className="page-subtitle">{ordersData.length} total orders</p>
-        </div>
-        <button className="btn-ghost" onClick={exportCsv}>Export CSV</button>
-      </div>
+      <PageHeader title="Orders" subtitle="Manage, process and track customer orders."
+        actions={<button className="btn-ghost" onClick={exportCsv}><FiDownload size={15} /> Export CSV</button>} />
 
       {/* Status tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {STATUSES.map(s => (
-          <button key={s}
-            className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap"
-            style={{
-              background: status === s ? 'var(--accent-soft)' : 'var(--surface)',
-              color: status === s ? 'var(--accent)' : 'var(--text-muted)',
-              border: status === s ? '1px solid var(--border-hover)' : '1px solid var(--border)',
-              fontWeight: status === s ? 600 : 500,
-              boxShadow: status === s ? '0 2px 8px rgba(99,102,241,0.1)' : 'var(--shadow-sm)',
-            }}
-            onClick={() => setStatus(s)}>
-            {s}
-            <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full"
-              style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}>{counts[s]}</span>
+          <button key={s} className={`chip${status === s ? ' active' : ''}`} onClick={() => setStatus(s)}>
+            {s} <span className="chip-count">{counts[s]}</span>
           </button>
         ))}
       </div>
 
       {/* Search */}
-      <div className="glass p-3 flex items-center gap-3" style={{ borderRadius: 16 }}>
-        <div className="relative flex-1">
-          <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-          <input type="text" placeholder="Search by order ID or customer…" className="input pl-9 h-9 text-sm"
-            value={query} onChange={e => setQuery(e.target.value)} />
-        </div>
-      </div>
+      <FilterBar><SearchBar value={query} onChange={setQuery} placeholder="Search by order ID or customer…" /></FilterBar>
 
       {/* Table */}
       {loading ? <SkeletonTable rows={7} /> : filtered.length === 0 ? (
         <EmptyState icon={<FiShoppingBag />} title="No orders found" description="Try adjusting your search or status filter."
-          action={<button className="btn-ghost" onClick={() => { setQuery(''); setStatus('All') }}>Clear Filters</button>} />
+          action={(query || status !== 'All') ? <button className="btn-ghost" onClick={() => { setQuery(''); setStatus('All') }}>Clear Filters</button> : null} />
       ) : (
-        <div className="table-wrapper">
-          <table className="data-table">
-            <thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Amount</th><th>Date</th><th>Status</th><th>Delivery</th><th>Action</th></tr></thead>
-            <tbody>
-              {filtered.map((o) => (
-                <tr key={o.id}>
-                  <td><span className="font-mono text-xs font-semibold" style={{ color: 'var(--accent)' }}>{o.id}</span></td>
-                  <td>{o.customerName}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{o.items.length} item{o.items.length > 1 ? 's' : ''}</td>
-                  <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>₹{o.amount}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(o.createdAt).toLocaleDateString()}</td>
-                  <td><span className={`badge ${statusClass[o.sellerStatus] || 'badge-neutral'}`}>{o.sellerStatus}</span></td>
-                  <td>
-                    <StatusBadge status={o.deliveryStatus} />
-                    {o.deliveryPartnerName && (
-                      <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{o.deliveryPartnerName}</div>
-                    )}
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-1.5">
-                      {o.sellerStatus === 'Processing' && (
-                        <>
-                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleAccept(o.id)}>
-                            <FiThumbsUp size={12} /> {updatingId === o.id ? 'Updating…' : 'Accept'}
-                          </button>
-                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px', color: '#e11d48' }} disabled={updatingId === o.id} onClick={() => handleReject(o.id)}>
-                            <FiXCircle size={12} /> Reject
-                          </button>
-                        </>
+        <DataTable minWidth={900} columns={[
+          { key: 'id', label: 'Order ID' },
+          { key: 'customer', label: 'Customer' },
+          { key: 'items', label: 'Items' },
+          { key: 'amount', label: 'Amount' },
+          { key: 'date', label: 'Date' },
+          { key: 'status', label: 'Status' },
+          { key: 'delivery', label: 'Delivery' },
+          { key: 'action', label: 'Action', align: 'right' },
+        ]}>
+          {filtered.map(o => (
+            <tr key={o.id}>
+              <td><span className="font-mono text-xs font-semibold" style={{ color: 'var(--accent-ink)' }}>{o.id}</span></td>
+              <td className="font-medium text-[13px]" style={{ color: 'var(--text-primary)' }}>{o.customerName}</td>
+              <td style={{ color: 'var(--text-muted)' }}>{o.items.length} item{o.items.length > 1 ? 's' : ''}</td>
+              <td className="font-semibold tnum" style={{ color: 'var(--text-primary)' }}>₹{o.amount.toLocaleString('en-IN')}</td>
+              <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
+              <td><StatusBadge status={o.sellerStatus} /></td>
+              <td>
+                <StatusBadge status={o.deliveryStatus} fallback="Not Assigned" />
+                {o.deliveryPartnerName && <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{o.deliveryPartnerName}</div>}
+              </td>
+              <td>
+                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                  {o.sellerStatus === 'Processing' && (
+                    <>
+                      <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleAccept(o.id)}><FiThumbsUp size={12} /> Accept</button>
+                      <button className="btn-ghost btn-sm" style={{ color: 'var(--danger)' }} disabled={updatingId === o.id} onClick={() => handleReject(o.id)}><FiXCircle size={12} /> Reject</button>
+                    </>
+                  )}
+                  {o.sellerStatus === 'Accepted' && (
+                    <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handlePacked(o.id)}><FiPackage size={12} /> Mark Packed</button>
+                  )}
+                  {o.sellerStatus === 'Packed' && (
+                    <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleMarkReady(o.id)}><FiTruck size={12} /> Mark Ready</button>
+                  )}
+                  {o.sellerStatus === 'Ready For Dispatch' && !o.deliveryStatus && (
+                    <>
+                      <button className="btn-primary btn-sm" onClick={() => setAssignFor(o)}><FiUserPlus size={12} /> Assign</button>
+                      {!o.pickupRequested && (
+                        <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleRequestPickup(o.id)}><FiPackage size={12} /> Pickup</button>
                       )}
-                      {o.sellerStatus === 'Accepted' && (
-                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handlePacked(o.id)}>
-                          <FiPackage size={12} /> {updatingId === o.id ? 'Updating…' : 'Mark Packed'}
-                        </button>
-                      )}
-                      {o.sellerStatus === 'Packed' && (
-                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleMarkReady(o.id)}>
-                          <FiTruck size={12} /> {updatingId === o.id ? 'Updating…' : 'Ready For Dispatch'}
-                        </button>
-                      )}
-                      {o.sellerStatus === 'Ready For Dispatch' && !o.pickupRequested && (
-                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleRequestPickup(o.id)}>
-                          <FiPackage size={12} /> {updatingId === o.id ? 'Updating…' : 'Request Pickup'}
-                        </button>
-                      )}
-                      {o.sellerStatus === 'Ready For Dispatch' && o.pickupRequested && !o.deliveryStatus && (
-                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Awaiting partner…</span>
-                      )}
-                      {o.deliveryStatus === 'Delivered' && !o.sellerConfirmedDelivery && (
-                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleConfirmDelivery(o.id)}>
-                          <FiCheckCircle size={12} /> {updatingId === o.id ? 'Updating…' : 'Confirm Delivery'}
-                        </button>
-                      )}
-                      <button className="btn-icon" title="Details" style={{ width: 30, height: 30 }} onClick={() => openDetail(o)}><FiEye size={13} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </>
+                  )}
+                  {o.sellerStatus === 'Ready For Dispatch' && o.deliveryStatus === 'Assigned' && (
+                    <button className="btn-ghost btn-sm" onClick={() => setAssignFor(o)}><FiUserPlus size={12} /> Reassign</button>
+                  )}
+                  {o.deliveryStatus === 'Delivered' && !o.sellerConfirmedDelivery && (
+                    <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleConfirmDelivery(o.id)}><FiCheckCircle size={12} /> Confirm</button>
+                  )}
+                  <button className="btn-icon w-8 h-8" title="Details" onClick={() => openDetail(o)}><FiEye size={13} /></button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Showing {filtered.length} of {ordersData.length} orders
-        </div>
+        <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>Showing {filtered.length} of {ordersData.length} orders</p>
       )}
 
-      {/* Returns needing seller action (Feature 11) */}
+      {/* Returns needing seller action */}
       {returns.length > 0 && (
-        <div className="glass p-5 space-y-3" style={{ borderRadius: 20 }}>
-          <h3 className="font-semibold">Returns on Your Orders</h3>
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead><tr><th>Return</th><th>Order</th><th>Item</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody>
-                {returns.map(r => (
-                  <tr key={r.id}>
-                    <td><span className="font-mono text-xs font-semibold" style={{ color: 'var(--accent)' }}>{r.id}</span></td>
-                    <td className="text-xs">{r.orderId}</td>
-                    <td className="text-xs max-w-[160px] truncate">{r.items[0]?.name}</td>
-                    <td className="text-xs max-w-[160px] truncate">{r.reason}</td>
-                    <td><span className="badge badge-info">{r.status}</span></td>
-                    <td>
-                      {r.status === 'Admin Review' && (
-                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} onClick={() => returnAction(r, 'status', { status: 'Seller Approved' })}>Approve Return</button>
-                      )}
-                      {r.status === 'Under Inspection' && (
-                        <div className="flex items-center gap-1.5">
-                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} onClick={() => returnAction(r, 'inspect', { result: 'Pass', note: 'Verified in good condition' })}>Pass</button>
-                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px', color: '#e11d48' }} onClick={() => returnAction(r, 'inspect', { result: 'Fail', note: 'Item damaged or used' })}>Fail</button>
-                        </div>
-                      )}
-                      {!['Admin Review', 'Under Inspection'].includes(r.status) && (
-                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>No action needed</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <section className="card p-5 space-y-3">
+          <h3 className="section-title">Returns on Your Orders</h3>
+          <DataTable minWidth={720} columns={[
+            { key: 'ret', label: 'Return' }, { key: 'order', label: 'Order' }, { key: 'item', label: 'Item' },
+            { key: 'reason', label: 'Reason' }, { key: 'status', label: 'Status' }, { key: 'action', label: 'Action', align: 'right' },
+          ]}>
+            {returns.map(r => (
+              <tr key={r.id}>
+                <td><span className="font-mono text-xs font-semibold" style={{ color: 'var(--accent-ink)' }}>{r.id}</span></td>
+                <td className="text-xs">{r.orderId}</td>
+                <td className="text-xs max-w-[160px] truncate">{r.items[0]?.name}</td>
+                <td className="text-xs max-w-[160px] truncate">{r.reason}</td>
+                <td><StatusBadge status="Processing" label={r.status} /></td>
+                <td>
+                  <div className="flex items-center justify-end gap-1.5">
+                    {r.status === 'Admin Review' && <button className="btn-ghost btn-sm" onClick={() => returnAction(r, 'status', { status: 'Seller Approved' })}>Approve Return</button>}
+                    {r.status === 'Under Inspection' && (
+                      <>
+                        <button className="btn-ghost btn-sm" onClick={() => returnAction(r, 'inspect', { result: 'Pass', note: 'Verified in good condition' })}>Pass</button>
+                        <button className="btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => returnAction(r, 'inspect', { result: 'Fail', note: 'Item damaged or used' })}>Fail</button>
+                      </>
+                    )}
+                    {!['Admin Review', 'Under Inspection'].includes(r.status) && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>No action needed</span>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
+        </section>
       )}
+
+      {/* Assign partner modal (Part B) */}
+      {assignFor && <AssignPartnerModal order={assignFor} onClose={() => setAssignFor(null)} onAssigned={loadOrders} />}
 
       {/* Order detail drawer */}
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setDetail(null)} />
-          <div className="relative glass p-6 w-full max-w-lg space-y-3" style={{ borderRadius: 20, background: 'var(--surface)', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="absolute inset-0" style={{ background: 'var(--overlay)' }} onClick={() => { setDetail(null); setJourney(null) }} />
+          <div className="relative card p-6 w-full max-w-lg space-y-3" style={{ maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--shadow-pop)' }}>
             <div className="flex items-center justify-between">
-              <h3 className="font-bold">{detail.id}</h3>
-              <button className="btn-ghost text-xs" onClick={() => { setDetail(null); setJourney(null) }}>Close</button>
+              <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{detail.id}</h3>
+              <button className="btn-icon w-8 h-8" onClick={() => { setDetail(null); setJourney(null) }}><FiX size={16} /></button>
             </div>
             <p className="text-sm"><b>{detail.customerName}</b> · {detail.customerPhone}</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{detail.customerAddress}</p>
             <div className="text-sm space-y-1">
               {detail.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between"><span>{item.name} × {item.qty}</span><span>₹{item.price * item.qty}</span></div>
+                <div key={idx} className="flex justify-between"><span>{item.name} × {item.qty}</span><span className="tnum">₹{(item.price * item.qty).toLocaleString('en-IN')}</span></div>
               ))}
-              <div className="flex justify-between font-bold pt-1" style={{ borderTop: '1px solid var(--border)' }}><span>Total ({detail.paymentMethod})</span><span>₹{detail.amount}</span></div>
+              <div className="flex justify-between font-bold pt-1.5 mt-1" style={{ borderTop: '1px solid var(--border)' }}><span>Total ({detail.paymentMethod})</span><span className="tnum">₹{detail.amount.toLocaleString('en-IN')}</span></div>
             </div>
-            {detail.trackingId && <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Tracking: {detail.trackingId} · {detail.deliveryPartnerName}</p>}
-            {detail.cancellation?.requested && (
-              <p className="text-xs font-semibold" style={{ color: '#d97706' }}>Cancellation {detail.cancellation.status}: {detail.cancellation.reason}</p>
-            )}
-
-            {/* End-to-end journey — the same timeline the customer sees */}
+            {detail.trackingId && <p className="text-xs font-semibold" style={{ color: 'var(--accent-ink)' }}>Tracking: {detail.trackingId} · {detail.deliveryPartnerName}</p>}
+            {detail.cancellation?.requested && <p className="text-xs font-semibold" style={{ color: 'var(--warning)' }}>Cancellation {detail.cancellation.status}: {detail.cancellation.reason}</p>}
             <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
-                Order journey
-              </p>
-              {journey
-                ? <OrderJourney journey={journey} />
-                : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading timeline…</p>}
+              <p className="eyebrow mb-3">Order journey</p>
+              {journey ? <OrderJourney journey={journey} /> : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading timeline…</p>}
             </div>
           </div>
         </div>

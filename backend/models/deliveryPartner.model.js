@@ -14,6 +14,10 @@ const deliveryPartnerSchema = new mongoose.Schema({
   avatar: { type: String, default: "" },
   vehicle: { type: String, default: "Bike" }, // Bike / Van / Truck
   zone: { type: String, default: "" }, // service city
+  // Base PIN the partner operates out of (Part B). Used to match a partner to
+  // a seller's warehouse PIN via the explicit nearby-PIN mapping. String so
+  // leading zeros survive; never compared numerically.
+  pincode: { type: String, default: "" },
   status: { type: String, default: "Active" }, // Active / On Delivery / Offline
   // Payroll inputs (Feature 5). Defaults give payroll generation something to
   // work with before an admin tunes them per partner.

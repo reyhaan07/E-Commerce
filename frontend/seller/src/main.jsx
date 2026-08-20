@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import App from './App'
 import store from './seller/redux/store'
 import { applyInitialTheme } from './seller/hooks/useTheme'
+import { ToastProvider } from './seller/components/ui/Toast'
 import './styles/index.css'
 
 // Stamp the saved/OS theme before first paint so there's no light-mode flash.
@@ -14,7 +15,9 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
       <BrowserRouter>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </BrowserRouter>
     </Provider>
   </React.StrictMode>

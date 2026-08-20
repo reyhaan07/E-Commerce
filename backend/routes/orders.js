@@ -11,6 +11,20 @@ const { emitToAll, emitToRole, emitToUser } = require("../realtime");
 const { notifyRole, notifyUser } = require("../utils/notify");
 const { sendMail, templates } = require("../utils/mailer");
 const razorpay = require("../utils/razorpay");
+const {
+  checkServiceability, eligiblePartners, isPartnerEligible,
+  areaLabel, isValidPincode,
+} = require("../utils/serviceability");
+const { normalizePincode } = require("../data/pincodes");
+
+// The customer PIN drives serviceability. Newer orders carry it explicitly;
+// for legacy orders fall back to the last 6-digit run in the address string.
+function resolveCustomerPincode(order) {
+  const explicit = normalizePincode(order.customerPincode);
+  if (isValidPincode(explicit)) return explicit;
+  const matches = String(order.customerAddress || "").match(/\b(\d{6})\b/g);
+  return matches ? matches[matches.length - 1] : "";
+}
 
 // 1 loyalty point per 100 rupees spent, same as a lot of real stores do it
 const LOYALTY_POINTS_PER_RUPEE = 1 / 100;
@@ -112,7 +126,7 @@ router.get("/:id", asyncHandler(async (req, res) => {
 // real time, and the customer gets a confirmation email.
 router.post("/", asyncHandler(async (req, res) => {
   const {
-    userId, customerName, customerEmail, customerPhone, customerAddress,
+    userId, customerName, customerEmail, customerPhone, customerAddress, customerPincode,
     items, amount, paymentMethod, sellerName, sellerAddress, sellerPhone,
     razorpayOrderId, razorpayPaymentId, razorpaySignature,
   } = req.body;
@@ -168,6 +182,20 @@ router.post("/", asyncHandler(async (req, res) => {
   const seller = sellerId ? await Account.findOne({ id: sellerId, role: "seller" }) : null;
   const sellerCity = seller && (seller.addresses.find((a) => a.isDefault) || seller.addresses[0]);
 
+  // Capture the customer delivery PIN (Part B). Prefer an explicit value, then
+  // the placing user's default address, then the last 6-digit run in the free-
+  // text address. Stored trimmed as a string so leading zeros survive.
+  let resolvedPincode = normalizePincode(customerPincode);
+  if (!isValidPincode(resolvedPincode) && userId) {
+    const buyer = await Account.findOne({ id: userId });
+    const addr = buyer && (buyer.addresses.find((a) => a.isDefault) || buyer.addresses[0]);
+    if (addr?.pincode) resolvedPincode = normalizePincode(addr.pincode);
+  }
+  if (!isValidPincode(resolvedPincode)) {
+    const m = String(customerAddress || "").match(/\b(\d{6})\b/g);
+    resolvedPincode = m ? m[m.length - 1] : "";
+  }
+
   const order = await Order.create({
     id: await nextOrderId(),
     userId: userId || null,
@@ -175,6 +203,7 @@ router.post("/", asyncHandler(async (req, res) => {
     customerEmail,
     customerPhone,
     customerAddress,
+    customerPincode: resolvedPincode,
     items: orderItems,
     amount,
     paymentMethod: method,
@@ -276,14 +305,90 @@ router.patch("/:id/request-pickup", requireAuth, requireRole("seller", "admin"),
   res.json({ success: true, order });
 }));
 
+// Human-readable copy for a failed serviceability check.
+const SERVICEABILITY_MESSAGE = {
+  "missing-customer-pincode": "This order has no delivery PIN code on file, so serviceability can't be checked.",
+  "invalid-customer-pincode": "The customer's delivery PIN code is invalid.",
+  "seller-has-no-service-area": "This store hasn't set up any serviceable PIN codes yet.",
+  "out-of-service-area": "Delivery is currently unavailable for this location.",
+};
+
+// Shared context for both the eligible-partners view and assignment validation.
+async function assignmentContext(order) {
+  const seller = order.sellerId ? await Account.findOne({ id: order.sellerId, role: "seller" }) : null;
+  const customerPincode = resolveCustomerPincode(order);
+  const serviceability = checkServiceability(seller || { serviceablePincodes: [] }, customerPincode);
+  const warehousePincode = normalizePincode(seller?.warehousePincode);
+  return { seller, customerPincode, warehousePincode, serviceability };
+}
+
+// GET /api/orders/:id/eligible-partners
+// Part B: the ONLY partner list the assignment UI should ever see. Filtering is
+// done here on the backend — never trust the client to hide ineligible
+// partners. Returns serviceability first, then (if serviceable) the active +
+// available + PIN-eligible partners, each tagged Same area / Nearby area.
+router.get("/:id/eligible-partners", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ id: req.params.id });
+  if (!order) {
+    return res.status(404).json({ success: false, message: "Order not found" });
+  }
+  if (!sellerOwnsOrder(req.auth, order)) {
+    return res.status(403).json({ success: false, message: "This order belongs to another seller" });
+  }
+
+  const { seller, customerPincode, warehousePincode, serviceability } = await assignmentContext(order);
+
+  if (!serviceability.serviceable) {
+    return res.json({
+      success: true,
+      serviceable: false,
+      reason: serviceability.reason,
+      message: SERVICEABILITY_MESSAGE[serviceability.reason] || "Delivery is currently unavailable for this location.",
+      customerPincode,
+      warehousePincode,
+      partners: [],
+    });
+  }
+
+  const all = await DeliveryPartner.find().lean();
+  const partners = eligiblePartners(all, warehousePincode).map((p) => ({
+    id: p.id,
+    name: p.name,
+    phone: p.phone,
+    vehicle: p.vehicle,
+    zone: p.zone,
+    pincode: p.pincode,
+    status: p.status,
+    area: p.area,
+  }));
+
+  res.json({
+    success: true,
+    serviceable: true,
+    customerPincode,
+    warehousePincode,
+    sellerName: seller?.name || order.sellerName,
+    partners,
+    message: partners.length
+      ? undefined
+      : "No delivery partners are currently available near this seller.",
+  });
+}));
+
 // PATCH /api/orders/:id/assign  { deliveryPartnerId }
-// Admin assigns/reassigns a partner; generates the tracking id on first
-// assignment and emails it to the customer (Feature 7 steps 10-12).
-router.patch("/:id/assign", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
+// Seller or admin assigns/reassigns a partner. The assignment is fully
+// REVALIDATED here (Part B security requirement) — the order must be
+// serviceable to the customer's PIN AND the partner must be active, available
+// and PIN-eligible. Generates the tracking id on first assignment and emails
+// it to the customer (Feature 7 steps 10-12).
+router.patch("/:id/assign", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const { deliveryPartnerId } = req.body;
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
+  }
+  if (!sellerOwnsOrder(req.auth, order)) {
+    return res.status(403).json({ success: false, message: "This order belongs to another seller" });
   }
 
   const partner = await DeliveryPartner.findOne({ id: deliveryPartnerId });
@@ -291,12 +396,33 @@ router.patch("/:id/assign", requireAuth, requireRole("admin"), asyncHandler(asyn
     return res.status(400).json({ success: false, message: "Delivery partner not found" });
   }
 
+  // Revalidate serviceability + partner eligibility on the server — the client
+  // filtering is a convenience only and must never be trusted.
+  const { warehousePincode, serviceability } = await assignmentContext(order);
+  if (!serviceability.serviceable) {
+    return res.status(400).json({
+      success: false,
+      reason: serviceability.reason,
+      message: SERVICEABILITY_MESSAGE[serviceability.reason] || "Delivery is currently unavailable for this location.",
+    });
+  }
+  if (!isPartnerEligible(partner, warehousePincode)) {
+    return res.status(400).json({
+      success: false,
+      message: "Cannot assign this delivery partner. The partner is outside the eligible delivery area, or is not currently available.",
+    });
+  }
+
   order.deliveryPartnerId = partner.id;
   order.deliveryPartnerName = partner.name;
   order.deliveryPartnerPhone = partner.phone;
   order.deliveryStatus = "Assigned";
+  order.pickupRequested = true;
   if (!order.trackingId) order.trackingId = newTrackingId(); // step 11
-  recordHop(order, { status: "Assigned", phase: "delivery", actor: "admin", note: `Assigned to ${partner.name}` });
+  recordHop(order, {
+    status: "Assigned", phase: "delivery", actor: req.auth.role,
+    note: `Assigned to ${partner.name} (${areaLabel(warehousePincode, partner.pincode)})`,
+  });
   await order.save();
 
   emitToAll("order-updated", { orderId: order.id, deliveryStatus: "Assigned", trackingId: order.trackingId });

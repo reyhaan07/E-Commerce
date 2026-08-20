@@ -2,6 +2,8 @@
 // canonical taxonomy so together they stock all 44 categories.
 // sellerForCategory() tells the catalog builder who owns which category.
 
+const { CITY_HUBS, CITY_SERVICE_AREAS } = require("./pincodes");
+
 const SELLERS = [
   { id: "seller-1", name: "TechNova Electronics", email: "seller@shopsphere.com", password: "seller1234", city: "Chennai", categories: ["Electronics", "Smart Home & IoT"], description: "Flagship consumer-electronics store with the latest gadgets, wearables and smart devices." },
   { id: "seller-2", name: "PixelPort Mobiles", email: "contact@pixelport.example.com", password: "pixel1234", city: "Bengaluru", categories: ["Mobile Phones & Accessories", "Tablets & Accessories"], description: "Everything mobile — phones, tablets and the accessories that go with them." },
@@ -51,6 +53,10 @@ const DEMO_DOCS = [
 function sellerAccounts() {
   return SELLERS.map((s, idx) => {
     const isPending = idx === 18; // one store awaiting verification
+    // Part B: warehouse dispatch PIN + the customer PINs this seller ships to,
+    // both driven off the city's delivery catchment in data/pincodes.js.
+    const warehousePincode = CITY_HUBS[s.city] || String(560001 + idx * 7);
+    const serviceablePincodes = CITY_SERVICE_AREAS[s.city] || [warehousePincode];
     return {
     id: s.id,
     name: s.name,
@@ -68,13 +74,15 @@ function sellerAccounts() {
     businessAddress: `${10 + idx} Market Road, ${s.city}, India`,
     documents: isPending ? DEMO_DOCS : [],
     verificationStatus: isPending ? "Pending" : "Verified",
+    warehousePincode,
+    serviceablePincodes,
     addresses: [{
       label: "Store",
       line1: `${10 + idx} Market Road`,
       line2: `${s.name}`,
       city: s.city,
       state: "India",
-      pincode: String(560001 + idx * 7),
+      pincode: warehousePincode,
       phone: `+91 98${String(20000000 + idx * 137).slice(0, 8)}`,
       isDefault: true,
     }],

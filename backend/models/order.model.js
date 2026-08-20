@@ -90,6 +90,11 @@ const orderSchema = new mongoose.Schema({
   customerEmail: String,
   customerPhone: String,
   customerAddress: String,
+  // Customer delivery PIN captured at order time (Part B). Drives the
+  // serviceability check when a partner is assigned. String so leading zeros
+  // survive; falls back to the 6-digit code parsed from customerAddress for
+  // legacy orders that predate this field.
+  customerPincode: { type: String, default: "" },
   items: [orderItemSchema],
   amount: { type: Number, required: true },
   paymentMethod: { type: String, enum: PAYMENT_METHODS, default: "Prepaid" },
