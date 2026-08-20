@@ -25,7 +25,9 @@ function isDelivered(order) {
 }
 
 function canCancel(order) {
-  return ['Processing', 'Ready For Dispatch'].includes(order.sellerStatus)
+  // Mirrors the backend's cancellation window: anything before the courier
+  // takes custody can still be pulled back.
+  return ['Processing', 'Accepted', 'Packed', 'Ready For Dispatch'].includes(order.sellerStatus)
     && !(order.cancellation?.requested && order.cancellation?.status === 'Requested')
     && order.sellerStatus !== 'Cancelled';
 }

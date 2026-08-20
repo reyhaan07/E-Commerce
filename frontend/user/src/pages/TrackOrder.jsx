@@ -17,6 +17,7 @@ const TrackOrder = () => {
   const { user } = useAuth();
   const [orderId, setOrderId] = useState(id || '');
   const [order, setOrder] = useState(null);
+  const [journey, setJourney] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [liveNote, setLiveNote] = useState('');
@@ -37,8 +38,9 @@ const TrackOrder = () => {
     socket.on('order-updated', (payload) => {
       const current = orderRef.current;
       if (current && payload.orderId === current.id) {
-        getOrder(current.id).then((fresh) => {
+        getOrder(current.id).then(({ order: fresh, journey: freshJourney }) => {
           setOrder(fresh);
+          setJourney(freshJourney);
           setLiveNote(`Updated live at ${new Date().toLocaleTimeString()}`);
         }).catch(() => {});
       }
@@ -53,10 +55,12 @@ const TrackOrder = () => {
     setLoading(true);
     setError('');
     setOrder(null);
+    setJourney(null);
 
     try {
-      const data = await getOrder(targetId);
-      setOrder(data);
+      const { order: found, journey: foundJourney } = await getOrder(targetId);
+      setOrder(found);
+      setJourney(foundJourney);
       navigate(`/track-order/${encodeURIComponent(targetId)}`, { replace: true });
     } catch (err) {
       setError('We could not find an order with that ID. Please check and try again.');
@@ -111,7 +115,11 @@ const TrackOrder = () => {
               </div>
 
               <div className="pt-6 border-t border-gray-100">
-                <StatusTimeline currentStatus={order.deliveryStatus} statusHistory={order.statusHistory} />
+                <StatusTimeline
+                  journey={journey}
+                  currentStatus={order.deliveryStatus}
+                  statusHistory={order.statusHistory}
+                />
               </div>
             </div>
 

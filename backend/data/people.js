@@ -136,6 +136,9 @@ function adminAccounts() {
     email,
     password,
     role: "admin",
+    // The founding admin is the SUPER_ADMIN; everyone else is a plain ADMIN
+    // and can be promoted from the Admin Management page.
+    adminRole: idx === 0 ? "SUPER_ADMIN" : "ADMIN",
     phone: `+91 9${String(900000000 + idx * 4159).slice(0, 9)}`,
     status: "active",
     jobTitle,

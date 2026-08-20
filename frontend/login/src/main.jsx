@@ -168,6 +168,9 @@ function LoginScreen({ role, initialMode, onBack }) {
       target.searchParams.set('authEmail', result.email || email)
       target.searchParams.set('authRole', result.role || role)
       if (result.token) target.searchParams.set('authToken', result.token)
+      // Admins carry their permission tier so the console can hide
+      // super-admin-only navigation without an extra round trip.
+      if (result.adminRole) target.searchParams.set('authAdminRole', result.adminRole)
       window.location.href = target.toString()
     } catch (err) {
       setError(err.message || 'Login failed')

@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 export default function AdminSidebar() {
+  const { isSuperAdmin } = useAuth();
+
   return (
     <div className="w-64 min-h-screen bg-slate-900 text-white p-5">
       <h1 className="text-2xl font-bold mb-8">
@@ -70,6 +73,19 @@ export default function AdminSidebar() {
         <Link to="/admin/payroll">
           Payroll
         </Link>
+
+        {/* Platform section — only a SUPER_ADMIN manages the admin roster */}
+        {isSuperAdmin && (
+          <>
+            <div className="mt-2 pt-2 border-t border-slate-700 text-xs uppercase tracking-wide text-slate-400">
+              Platform
+            </div>
+
+            <Link to="/admin/admins">
+              Admin Management
+            </Link>
+          </>
+        )}
 
         <div className="mt-2 pt-2 border-t border-slate-700 text-xs uppercase tracking-wide text-slate-400">
           Account

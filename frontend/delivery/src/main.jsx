@@ -162,7 +162,7 @@ function App() {
     try {
       const response = await fetch(`${API_BASE}/orders/${order.id}/delivery-status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ deliveryStatus: nextStatus }),
       })
       const result = await response.json()

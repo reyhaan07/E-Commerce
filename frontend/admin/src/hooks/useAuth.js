@@ -19,6 +19,7 @@ function consumeAuthHandoff() {
     name: params.get('authName') || '',
     email: params.get('authEmail') || '',
     token: params.get('authToken') || null,
+    adminRole: params.get('authAdminRole') || 'ADMIN',
   }))
 
   params.delete('authId')
@@ -26,6 +27,7 @@ function consumeAuthHandoff() {
   params.delete('authEmail')
   params.delete('authRole')
   params.delete('authToken')
+  params.delete('authAdminRole')
   const query = params.toString()
   window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash)
 }
@@ -43,7 +45,13 @@ export function useAuth() {
   }, [])
 
   const login = useCallback((payload) => {
-    const u = { id: payload.id, name: payload.name, email: payload.email, token: payload.token || null }
+    const u = {
+      id: payload.id,
+      name: payload.name,
+      email: payload.email,
+      token: payload.token || null,
+      adminRole: payload.adminRole || 'ADMIN',
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
     setUser(u)
     return u
@@ -54,7 +62,7 @@ export function useAuth() {
     setUser(null)
   }, [])
 
-  return { user, login, logout }
+  return { user, login, logout, isSuperAdmin: user?.adminRole === 'SUPER_ADMIN' }
 }
 
 export function getCurrentUser() {

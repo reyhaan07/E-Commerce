@@ -58,6 +58,14 @@ router.post("/login", asyncHandler(async (req, res) => {
   if (account) {
     const passwordMatches = await account.comparePassword(password);
     if (passwordMatches) {
+      // A suspended or deleted account keeps its password but loses access —
+      // this is what makes suspending an admin from the roster actually bite.
+      if (account.status !== "active") {
+        return res.status(403).json({
+          success: false,
+          message: "This account has been suspended. Contact a platform administrator.",
+        });
+      }
       account.lastLogin = new Date();
       await account.save();
       return res.json({
@@ -67,6 +75,7 @@ router.post("/login", asyncHandler(async (req, res) => {
         id: account.id,
         name: account.name,
         email: account.email,
+        ...(account.role === "admin" ? { adminRole: account.adminRole || "ADMIN" } : {}),
       });
     }
   } else {

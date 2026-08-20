@@ -118,6 +118,22 @@ async function seedDatabase() {
     console.log("Recomputed product & seller rating aggregates");
   }
 
+  // Backfill for databases seeded before adminRole existed. Mongoose defaults
+  // only apply to newly created documents, so without this every existing
+  // admin would be tier-less and nobody could reach the admin roster.
+  // Idempotent, so it's safe to run on every boot.
+  const tierless = await Account.updateMany(
+    { role: "admin", adminRole: { $in: [null, undefined] } },
+    { $set: { adminRole: "ADMIN" } }
+  );
+  const promoted = await Account.updateOne(
+    { role: "admin", email: "admin@shopsphere.com", adminRole: { $ne: "SUPER_ADMIN" } },
+    { $set: { adminRole: "SUPER_ADMIN" } }
+  );
+  if (tierless.modifiedCount || promoted.modifiedCount) {
+    console.log(`Backfilled admin tiers: ${tierless.modifiedCount} set to ADMIN, ${promoted.modifiedCount} promoted to SUPER_ADMIN`);
+  }
+
   console.log("Key demo credentials (full table in README.md):");
   for (const [role, email, password] of [
     ["admin", "admin@shopsphere.com", "admin1234"],

@@ -3,6 +3,9 @@ const bcrypt = require("bcryptjs");
 
 const ROLES = ["admin", "seller", "user", "delivery"];
 const ACCOUNT_STATUSES = ["active", "suspended", "deleted"];
+// Permission tiers within the admin role. Only a SUPER_ADMIN may manage the
+// admin roster itself; a plain ADMIN keeps every other console permission.
+const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN"];
 
 
 const addressSchema = new mongoose.Schema(
@@ -111,7 +114,8 @@ const accountSchema = new mongoose.Schema({
   documents: { type: [sellerDocumentSchema], default: [] }, // uploaded proofs
   verificationStatus: { type: String, enum: ["Pending", "Verified", "Suspended", null], default: null },
   verificationReason: { type: String, default: "" }, // admin note on reject/suspend
-  // admin-only: role within the operations org, for the admin roster
+  // admin-only: platform permission level and role within the operations org
+  adminRole: { type: String, enum: ADMIN_ROLES, default: "ADMIN" },
   jobTitle: { type: String, default: "" },
   notifyByEmail: { type: Boolean, default: true },
   notifyBySms: { type: Boolean, default: false },
@@ -142,4 +146,4 @@ accountSchema.set("toJSON", {
 
 const Account = mongoose.model("Account", accountSchema);
 
-module.exports = { Account, ROLES, ACCOUNT_STATUSES, SELLER_DOC_TYPES };
+module.exports = { Account, ROLES, ACCOUNT_STATUSES, ADMIN_ROLES, SELLER_DOC_TYPES };

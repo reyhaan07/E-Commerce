@@ -20,6 +20,7 @@ import DeliveryTracking from "../pages/admin/DeliveryTracking";
 import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
 import Payroll from "../pages/admin/Payroll";
 import AdminProfile from "../pages/admin/AdminProfile";
+import AdminManagement from "../pages/admin/AdminManagement";
 
 // The shared login page lives in its own app (frontend/login) on its own
 // dev-server origin, so unauthenticated visits need a hard redirect there —
@@ -36,6 +37,14 @@ function RedirectToLogin() {
 function RequireAuth({ children }) {
   const { user } = useAuth();
   if (!user) return <RedirectToLogin />;
+  return children;
+}
+
+// Client-side gate for the admin roster. It only hides the screen — the
+// /api/admin/admins endpoints enforce the tier server-side.
+function RequireSuperAdmin({ children }) {
+  const { isSuperAdmin } = useAuth();
+  if (!isSuperAdmin) return <Navigate to="/admin/dashboard" replace />;
   return children;
 }
 
@@ -69,6 +78,7 @@ export default function AppRoutes() {
         <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="profile" element={<AdminProfile />} />
+        <Route path="admins" element={<RequireSuperAdmin><AdminManagement /></RequireSuperAdmin>} />
       </Route>
     </Routes>
   );

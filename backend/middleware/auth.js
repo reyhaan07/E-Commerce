@@ -1,10 +1,18 @@
 const jwt = require("jsonwebtoken");
+const { Account } = require("../models/account.model");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRY = "7d";
+// The seeded founding admin. It can never be demoted, suspended or deleted,
+// so the console can't be locked out of its own roster.
+const SYSTEM_SUPER_ADMIN_EMAIL = "admin@shopsphere.com";
 
 function signToken(account) {
-  return jwt.sign({ id: account.id, role: account.role }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  const payload = { id: account.id, role: account.role };
+  // Only admins carry a tier; it lets the console hide super-admin-only nav
+  // without a round trip. The server still re-checks it against the database.
+  if (account.role === "admin") payload.adminRole = account.adminRole || "ADMIN";
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
 // Decodes the token on the request without failing the request if it's
@@ -54,4 +62,27 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin, requireRole };
+// Use after requireAuth + requireRole("admin") - gates the admin roster itself.
+// The tier is re-read from the database rather than trusted from the token, so
+// demoting or suspending an admin takes effect before their 7-day JWT expires.
+async function requireSuperAdmin(req, res, next) {
+  if (req.auth.role !== "admin") {
+    return res.status(403).json({ success: false, message: "Super admin access is required" });
+  }
+  try {
+    const account = await Account.findOne({
+      id: req.auth.id,
+      role: "admin",
+      adminRole: "SUPER_ADMIN",
+      status: "active",
+    });
+    if (!account) {
+      return res.status(403).json({ success: false, message: "Super admin access is required" });
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin, requireRole, requireSuperAdmin, SYSTEM_SUPER_ADMIN_EMAIL };

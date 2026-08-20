@@ -1,11 +1,11 @@
 const express = require("express");
 const crypto = require("crypto");
 const router = express.Router();
-const { Order, SELLER_STATUSES, DELIVERY_STATUSES, PAYMENT_METHODS } = require("../models/order.model");
+const { Order, SELLER_STATUSES, SELLER_TRANSITIONS, DELIVERY_STATUSES, PAYMENT_METHODS, buildJourney } = require("../models/order.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
 const { Account } = require("../models/account.model");
 const { Product } = require("../models/product.model");
-const { getAuthFromHeader, requireAuth } = require("../middleware/auth");
+const { getAuthFromHeader, requireAuth, requireRole } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { emitToAll, emitToRole, emitToUser } = require("../realtime");
 const { notifyRole, notifyUser } = require("../utils/notify");
@@ -26,6 +26,23 @@ async function nextOrderId() {
 
 function newTrackingId() {
   return `TRK-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+// Every lifecycle hop goes through here, so the timeline stays complete no
+// matter which console drove the change.
+function recordHop(order, { status, phase, actor, note }) {
+  order.statusHistory.push({
+    status,
+    phase,
+    actor,
+    note: note || "",
+    timestamp: new Date(),
+  });
+}
+
+// A seller may only touch their own orders; an admin may touch any.
+function sellerOwnsOrder(auth, order) {
+  return auth.role === "admin" || order.sellerId === auth.id;
 }
 
 // GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&sellerId=&pickupRequested=&history=true
@@ -78,12 +95,15 @@ router.get("/", asyncHandler(async (req, res) => {
 }));
 
 // GET /api/orders/:id
+// `journey` is the end-to-end timeline (seller phase + delivery phase) that
+// both the storefront and the seller console render, so neither has to
+// reimplement what the steps are or which one is current.
 router.get("/:id", asyncHandler(async (req, res) => {
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
   }
-  res.json({ success: true, order });
+  res.json({ success: true, order, journey: buildJourney(order) });
 }));
 
 // POST /api/orders — checkout (Feature 7 steps 4-7).
@@ -164,6 +184,8 @@ router.post("/", asyncHandler(async (req, res) => {
     sellerName: seller ? seller.name : sellerName,
     sellerAddress: sellerCity ? `${sellerCity.line1}, ${sellerCity.city}` : sellerAddress,
     sellerPhone: seller ? seller.phone : sellerPhone,
+    // first entry on the timeline — everything after it is a state change
+    statusHistory: [{ status: "Placed", phase: "order", actor: "user", note: "", timestamp: new Date() }],
   });
 
   // give the account some loyalty points and empty out their cart now that
@@ -188,31 +210,59 @@ router.post("/", asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, order });
 }));
 
-// PATCH /api/orders/:id/seller-status  { sellerStatus }
-router.patch("/:id/seller-status", asyncHandler(async (req, res) => {
-  const { sellerStatus } = req.body;
+// PATCH /api/orders/:id/seller-status  { sellerStatus, note? }
+// The seller's half of the journey: Processing → Accepted → Packed → Ready For
+// Dispatch. Transitions are validated against SELLER_TRANSITIONS so an order
+// can't skip steps, and every hop is written to the shared timeline.
+router.patch("/:id/seller-status", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+  const { sellerStatus, note } = req.body;
   if (!SELLER_STATUSES.includes(sellerStatus)) {
     return res.status(400).json({ success: false, message: "Invalid sellerStatus" });
   }
 
-  const order = await Order.findOneAndUpdate({ id: req.params.id }, { sellerStatus }, { new: true });
+  const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
   }
+  if (!sellerOwnsOrder(req.auth, order)) {
+    return res.status(403).json({ success: false, message: "This order belongs to another seller" });
+  }
+
+  const current = order.sellerStatus;
+  if (sellerStatus === current) {
+    return res.json({ success: true, order, journey: buildJourney(order) });
+  }
+
+  const allowed = SELLER_TRANSITIONS[current] || [];
+  if (!allowed.includes(sellerStatus)) {
+    return res.status(400).json({
+      success: false,
+      message: allowed.length
+        ? `An order that is "${current}" can only move to: ${allowed.join(", ")}`
+        : `An order that is "${current}" is final and cannot change`,
+    });
+  }
+
+  order.sellerStatus = sellerStatus;
+  recordHop(order, { status: sellerStatus, phase: "seller", actor: req.auth.role, note });
+  await order.save();
 
   emitToAll("order-updated", { orderId: order.id, sellerStatus });
   if (order.userId) {
-    await notifyUser(order.userId, "order-status", `Order ${order.id}: ${sellerStatus}`, "", { orderId: order.id, sellerStatus });
+    await notifyUser(order.userId, "order-status", `Order ${order.id}: ${sellerStatus}`, note || "", { orderId: order.id, sellerStatus });
   }
-  res.json({ success: true, order });
+  res.json({ success: true, order, journey: buildJourney(order) });
 }));
 
 // PATCH /api/orders/:id/request-pickup — seller flags the packed order for
 // delivery-partner assignment (Feature 7 step 9)
-router.patch("/:id/request-pickup", asyncHandler(async (req, res) => {
+router.patch("/:id/request-pickup", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
+  }
+  if (!sellerOwnsOrder(req.auth, order)) {
+    return res.status(403).json({ success: false, message: "This order belongs to another seller" });
   }
   if (order.sellerStatus !== "Ready For Dispatch") {
     return res.status(400).json({ success: false, message: "Order must be Ready For Dispatch before requesting pickup" });
@@ -229,7 +279,7 @@ router.patch("/:id/request-pickup", asyncHandler(async (req, res) => {
 // PATCH /api/orders/:id/assign  { deliveryPartnerId }
 // Admin assigns/reassigns a partner; generates the tracking id on first
 // assignment and emails it to the customer (Feature 7 steps 10-12).
-router.patch("/:id/assign", asyncHandler(async (req, res) => {
+router.patch("/:id/assign", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
   const { deliveryPartnerId } = req.body;
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
@@ -246,7 +296,7 @@ router.patch("/:id/assign", asyncHandler(async (req, res) => {
   order.deliveryPartnerPhone = partner.phone;
   order.deliveryStatus = "Assigned";
   if (!order.trackingId) order.trackingId = newTrackingId(); // step 11
-  order.statusHistory.push({ status: "Assigned", timestamp: new Date() });
+  recordHop(order, { status: "Assigned", phase: "delivery", actor: "admin", note: `Assigned to ${partner.name}` });
   await order.save();
 
   emitToAll("order-updated", { orderId: order.id, deliveryStatus: "Assigned", trackingId: order.trackingId });
@@ -264,8 +314,8 @@ router.patch("/:id/assign", asyncHandler(async (req, res) => {
 // PATCH /api/orders/:id/delivery-status  { deliveryStatus }
 // Driven by the delivery console; broadcasts each hop so seller/admin/user
 // views update live (Feature 8).
-router.patch("/:id/delivery-status", asyncHandler(async (req, res) => {
-  const { deliveryStatus } = req.body;
+router.patch("/:id/delivery-status", requireAuth, requireRole("delivery", "admin"), asyncHandler(async (req, res) => {
+  const { deliveryStatus, note } = req.body;
   if (!DELIVERY_STATUSES.includes(deliveryStatus)) {
     return res.status(400).json({ success: false, message: "Invalid deliveryStatus" });
   }
@@ -274,12 +324,17 @@ router.patch("/:id/delivery-status", asyncHandler(async (req, res) => {
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
   }
+  // a partner may only advance a job that's actually theirs
+  if (req.auth.role === "delivery" && order.deliveryPartnerId !== req.auth.id) {
+    return res.status(403).json({ success: false, message: "This delivery is assigned to another partner" });
+  }
 
   order.deliveryStatus = deliveryStatus;
   if (deliveryStatus === "Picked Up" && order.sellerStatus === "Ready For Dispatch") {
     order.sellerStatus = "Shipped";
+    recordHop(order, { status: "Shipped", phase: "seller", actor: "system", note: "Handed to the courier" });
   }
-  order.statusHistory.push({ status: deliveryStatus, timestamp: new Date() });
+  recordHop(order, { status: deliveryStatus, phase: "delivery", actor: req.auth.role, note });
   await order.save();
 
   emitToAll("order-updated", { orderId: order.id, deliveryStatus, sellerStatus: order.sellerStatus });
@@ -295,17 +350,23 @@ router.patch("/:id/delivery-status", asyncHandler(async (req, res) => {
 
 // PATCH /api/orders/:id/confirm-delivery — seller confirms the partner's
 // delivery (Feature 7 step 14a)
-router.patch("/:id/confirm-delivery", asyncHandler(async (req, res) => {
+router.patch("/:id/confirm-delivery", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
+  }
+  if (!sellerOwnsOrder(req.auth, order)) {
+    return res.status(403).json({ success: false, message: "This order belongs to another seller" });
   }
   if (order.deliveryStatus !== "Delivered") {
     return res.status(400).json({ success: false, message: "The delivery partner hasn't marked this order delivered yet" });
   }
 
   order.sellerConfirmedDelivery = true;
-  order.sellerStatus = "Delivered";
+  if (order.sellerStatus !== "Delivered") {
+    order.sellerStatus = "Delivered";
+    recordHop(order, { status: "Delivered", phase: "seller", actor: req.auth.role, note: "Seller confirmed delivery" });
+  }
   await order.save();
 
   emitToAll("order-updated", { orderId: order.id, sellerStatus: "Delivered" });
@@ -313,7 +374,7 @@ router.patch("/:id/confirm-delivery", asyncHandler(async (req, res) => {
 }));
 
 // PATCH /api/orders/:id/complete — admin closes out the order (step 14b)
-router.patch("/:id/complete", asyncHandler(async (req, res) => {
+router.patch("/:id/complete", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
@@ -383,7 +444,8 @@ router.patch("/:id/cancellation", asyncHandler(async (req, res) => {
   order.cancellation.resolutionNote = note;
 
   if (decision === "Approved") {
-    if (!["Processing", "Ready For Dispatch"].includes(order.sellerStatus)) {
+    // Anything before the courier takes custody can still be pulled back.
+    if (!["Processing", "Accepted", "Packed", "Ready For Dispatch"].includes(order.sellerStatus)) {
       return res.status(400).json({ success: false, message: "This order has already shipped" });
     }
 
@@ -393,6 +455,7 @@ router.patch("/:id/cancellation", asyncHandler(async (req, res) => {
       order.cancellation.refundAmount = order.amount;
     }
     order.sellerStatus = "Cancelled";
+    recordHop(order, { status: "Cancelled", phase: "seller", actor: "admin", note: note || order.cancellation.reason || "" });
     for (const item of order.items) {
       if (item.productId) {
         await Product.updateOne({ id: item.productId }, { $inc: { stock: item.qty } });

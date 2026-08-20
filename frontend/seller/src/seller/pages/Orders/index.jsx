@@ -2,18 +2,22 @@ import React, { useState, useEffect } from 'react'
 import { SkeletonTable } from '../../components/Skeleton'
 import EmptyState from '../../components/EmptyState'
 import StatusBadge from '../../components/StatusBadge'
-import { FiShoppingBag, FiSearch, FiEye, FiTruck, FiPackage, FiCheckCircle } from 'react-icons/fi'
-import { getOrders, updateSellerStatus, requestPickup, confirmDelivery } from '../../api/orders'
+import { FiShoppingBag, FiSearch, FiEye, FiTruck, FiPackage, FiCheckCircle, FiThumbsUp, FiXCircle } from 'react-icons/fi'
+import { getOrders, updateSellerStatus, requestPickup, confirmDelivery, getOrderJourney } from '../../api/orders'
 import { useAuth } from '../../hooks/useAuth'
+import OrderJourney from '../../components/OrderJourney'
 
-const STATUSES = ['All', 'Processing', 'Ready For Dispatch', 'Shipped', 'Delivered', 'Returned', 'Cancelled']
+const STATUSES = ['All', 'Processing', 'Accepted', 'Packed', 'Ready For Dispatch', 'Shipped', 'Delivered', 'Returned', 'Cancelled', 'Rejected']
 const statusClass = {
   Processing: 'badge-info',
+  Accepted: 'badge-accent',
+  Packed: 'badge-warning',
   'Ready For Dispatch': 'badge-warning',
   Shipped: 'badge-accent',
   Delivered: 'badge-success',
   Returned: 'badge-danger',
   Cancelled: 'badge-neutral',
+  Rejected: 'badge-danger',
 }
 
 export default function Orders() {
@@ -25,6 +29,7 @@ export default function Orders() {
   const [status,  setStatus]  = useState('All')
   const [updatingId, setUpdatingId] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [journey, setJourney] = useState(null)
 
   function loadOrders() {
     if (!user) return
@@ -56,9 +61,28 @@ export default function Orders() {
     }
   }
 
+  // The seller half of the journey, one step at a time. The backend rejects
+  // anything that skips ahead, so the buttons mirror the allowed transitions.
+  const handleAccept = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Accepted'))
+  const handlePacked = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Packed'))
   const handleMarkReady = (orderId) => runAction(orderId, () => updateSellerStatus(orderId, 'Ready For Dispatch'))
   const handleRequestPickup = (orderId) => runAction(orderId, () => requestPickup(orderId))
   const handleConfirmDelivery = (orderId) => runAction(orderId, () => confirmDelivery(orderId))
+
+  function handleReject(orderId) {
+    const note = window.prompt('Why are you rejecting this order? The customer will see this.')
+    if (note === null) return
+    runAction(orderId, () => updateSellerStatus(orderId, 'Rejected', note))
+  }
+
+  // Opening the drawer pulls the authoritative timeline for that order.
+  function openDetail(order) {
+    setDetail(order)
+    setJourney(null)
+    getOrderJourney(order.id)
+      .then(({ journey: j }) => setJourney(j))
+      .catch(() => {})
+  }
 
   async function returnAction(ret, path, body) {
     const { apiRequest } = await import('../../api/client')
@@ -160,6 +184,21 @@ export default function Orders() {
                   <td>
                     <div className="flex items-center gap-1.5">
                       {o.sellerStatus === 'Processing' && (
+                        <>
+                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleAccept(o.id)}>
+                            <FiThumbsUp size={12} /> {updatingId === o.id ? 'Updating…' : 'Accept'}
+                          </button>
+                          <button className="btn-ghost text-xs" style={{ padding: '6px 10px', color: '#e11d48' }} disabled={updatingId === o.id} onClick={() => handleReject(o.id)}>
+                            <FiXCircle size={12} /> Reject
+                          </button>
+                        </>
+                      )}
+                      {o.sellerStatus === 'Accepted' && (
+                        <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handlePacked(o.id)}>
+                          <FiPackage size={12} /> {updatingId === o.id ? 'Updating…' : 'Mark Packed'}
+                        </button>
+                      )}
+                      {o.sellerStatus === 'Packed' && (
                         <button className="btn-ghost text-xs" style={{ padding: '6px 10px' }} disabled={updatingId === o.id} onClick={() => handleMarkReady(o.id)}>
                           <FiTruck size={12} /> {updatingId === o.id ? 'Updating…' : 'Ready For Dispatch'}
                         </button>
@@ -177,7 +216,7 @@ export default function Orders() {
                           <FiCheckCircle size={12} /> {updatingId === o.id ? 'Updating…' : 'Confirm Delivery'}
                         </button>
                       )}
-                      <button className="btn-icon" title="Details" style={{ width: 30, height: 30 }} onClick={() => setDetail(o)}><FiEye size={13} /></button>
+                      <button className="btn-icon" title="Details" style={{ width: 30, height: 30 }} onClick={() => openDetail(o)}><FiEye size={13} /></button>
                     </div>
                   </td>
                 </tr>
@@ -237,7 +276,7 @@ export default function Orders() {
           <div className="relative glass p-6 w-full max-w-lg space-y-3" style={{ borderRadius: 20, background: 'var(--surface)', maxHeight: '85vh', overflowY: 'auto' }}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold">{detail.id}</h3>
-              <button className="btn-ghost text-xs" onClick={() => setDetail(null)}>Close</button>
+              <button className="btn-ghost text-xs" onClick={() => { setDetail(null); setJourney(null) }}>Close</button>
             </div>
             <p className="text-sm"><b>{detail.customerName}</b> · {detail.customerPhone}</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{detail.customerAddress}</p>
@@ -251,6 +290,16 @@ export default function Orders() {
             {detail.cancellation?.requested && (
               <p className="text-xs font-semibold" style={{ color: '#d97706' }}>Cancellation {detail.cancellation.status}: {detail.cancellation.reason}</p>
             )}
+
+            {/* End-to-end journey — the same timeline the customer sees */}
+            <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+                Order journey
+              </p>
+              {journey
+                ? <OrderJourney journey={journey} />
+                : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading timeline…</p>}
+            </div>
           </div>
         </div>
       )}
