@@ -32,7 +32,7 @@ function canCancel(order) {
     && order.sellerStatus !== 'Cancelled';
 }
 
-const Orders = () => {
+const Orders = ({ embedded = false }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [returns, setReturns] = useState([]);
@@ -125,13 +125,11 @@ const Orders = () => {
     return returns.find((r) => r.orderId === order.id && r.status !== 'Rejected');
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8">My Orders</h1>
+  const content = (
+    <>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">My Orders</h1>
 
-        <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6 max-w-4xl mx-auto">
           {orders.length === 0 && (
             <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
               <HiOutlineCube className="mx-auto text-6xl text-gray-200 mb-4" />
@@ -252,7 +250,19 @@ const Orders = () => {
               </div>
             );
           })}
-        </div>
+      </div>
+    </>
+  );
+
+  // Embedded inside the Profile layout (keeps the account sidebar visible).
+  if (embedded) return content;
+
+  // Standalone /orders route — full page with its own chrome.
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="container mx-auto px-4 py-12">
+        {content}
       </main>
       <Footer />
     </div>

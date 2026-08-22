@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Orders from './Orders';
 import {
   HiBars3,
   HiOutlineBell,
@@ -247,8 +248,7 @@ const Profile = () => {
 
   function go(target) {
     setDrawerOpen(false);
-    if (target === 'orders') navigate('/orders');
-    else setSection(target);
+    setSection(target); // 'profile' | 'orders' | 'addresses' | 'payments' — all render in-layout
   }
 
   const avatarSrc = profileForm.avatar || profile?.avatar || '';
@@ -256,7 +256,9 @@ const Profile = () => {
     ? 'Manage your saved delivery addresses'
     : section === 'payments'
       ? 'Manage your saved payment methods'
-      : 'Manage your personal information and account settings';
+      : section === 'orders'
+        ? 'Track and manage your orders'
+        : 'Manage your personal information and account settings';
 
   const inputBase = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-slate-50 disabled:text-slate-500';
   const labelBase = 'mb-2 block text-[11.5px] font-bold uppercase tracking-wider text-slate-400';
@@ -300,7 +302,7 @@ const Profile = () => {
             {/* Nav card */}
             <nav className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
               <NavItem icon={<HiOutlineUser />} label="My Profile" active={section === 'profile'} onClick={() => go('profile')} />
-              <NavItem icon={<HiOutlineTicket />} label="My Orders" onClick={() => go('orders')} />
+              <NavItem icon={<HiOutlineTicket />} label="My Orders" active={section === 'orders'} onClick={() => go('orders')} />
               <NavItem icon={<HiOutlineHome />} label="Address Book" active={section === 'addresses'} onClick={() => go('addresses')} />
               <NavItem icon={<HiOutlineCreditCard />} label="Payments" active={section === 'payments'} onClick={() => go('payments')} />
               <div className="my-2 h-px bg-slate-100" />
@@ -522,6 +524,9 @@ const Profile = () => {
                 </form>
               </section>
             )}
+
+            {/* ── My Orders view (reuses this same profile layout + sidebar) ── */}
+            {section === 'orders' && <Orders embedded />}
           </div>
         </div>
       </main>
