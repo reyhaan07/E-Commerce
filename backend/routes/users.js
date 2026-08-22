@@ -105,6 +105,30 @@ router.patch("/me", requireAuth, asyncHandler(async (req, res) => {
     if (b.businessName !== undefined) account.businessName = b.businessName;
     if (b.businessAddress !== undefined) account.businessAddress = b.businessAddress;
 
+    // Delivery serviceability (Part B) — the seller's dispatch PIN and the
+    // customer PINs they deliver to. Stored as 6-digit strings.
+    if (b.warehousePincode !== undefined) {
+      const w = String(b.warehousePincode).trim();
+      if (w && !PINCODE_RE.test(w)) {
+        return res.status(400).json({ success: false, message: "warehousePincode must be a 6-digit PIN code" });
+      }
+      account.warehousePincode = w;
+    }
+    if (b.serviceablePincodes !== undefined) {
+      if (!Array.isArray(b.serviceablePincodes)) {
+        return res.status(400).json({ success: false, message: "serviceablePincodes must be an array" });
+      }
+      const cleaned = [...new Set(b.serviceablePincodes.map((p) => String(p).trim()))].filter(Boolean);
+      const bad = cleaned.find((p) => !PINCODE_RE.test(p));
+      if (bad) {
+        return res.status(400).json({ success: false, message: `"${bad}" is not a valid 6-digit PIN code` });
+      }
+      if (cleaned.length > 200) {
+        return res.status(400).json({ success: false, message: "Too many PIN codes (max 200)" });
+      }
+      account.serviceablePincodes = cleaned;
+    }
+
     // GSTIN/PAN can only change while the store isn't Verified yet
     const locked = account.verificationStatus === "Verified";
     if (b.gstin !== undefined && !locked) {

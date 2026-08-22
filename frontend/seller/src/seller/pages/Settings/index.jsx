@@ -6,7 +6,7 @@ import StatusBadge from '../../components/StatusBadge'
 import { useToast } from '../../components/ui/Toast'
 import {
   FiBell, FiShield, FiUser, FiGlobe, FiInfo, FiChevronRight, FiMail, FiPhone,
-  FiExternalLink, FiCalendar, FiCreditCard, FiHash,
+  FiExternalLink, FiCalendar, FiCreditCard, FiHash, FiTruck, FiPlus, FiX, FiCheck, FiMapPin,
 } from 'react-icons/fi'
 import { apiRequest } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
@@ -42,11 +42,40 @@ export default function Settings() {
   const navigate = useNavigate()
   const [account, setAccount] = useState(null)
   const [saving, setSaving] = useState(false)
+  // Delivery serviceability (Part B)
+  const [warehousePin, setWarehousePin] = useState('')
+  const [pins, setPins] = useState([])
+  const [newPin, setNewPin] = useState('')
+  const [savingPins, setSavingPins] = useState(false)
 
   useEffect(() => {
     if (!user) return
     apiRequest('/users/me').then(d => setAccount(d.user)).catch(() => {})
   }, [user])
+
+  // sync the delivery-area editor whenever the account loads/changes
+  useEffect(() => {
+    if (account) {
+      setWarehousePin(account.warehousePincode || '')
+      setPins(account.serviceablePincodes || [])
+    }
+  }, [account])
+
+  function addPin() {
+    const p = newPin.trim()
+    if (!/^\d{6}$/.test(p)) { toast.error('Enter a valid 6-digit PIN code'); return }
+    if (pins.includes(p)) { setNewPin(''); return }
+    setPins(prev => [...prev, p]); setNewPin('')
+  }
+  function removePin(p) { setPins(prev => prev.filter(x => x !== p)) }
+  async function saveDeliveryAreas() {
+    if (warehousePin && !/^\d{6}$/.test(warehousePin)) { toast.error('Dispatch PIN must be 6 digits'); return }
+    setSavingPins(true)
+    try {
+      const res = await apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify({ warehousePincode: warehousePin, serviceablePincodes: pins }) })
+      setAccount(res.user); toast.success('Delivery areas saved')
+    } catch (err) { toast.error(err.message) } finally { setSavingPins(false) }
+  }
 
   async function toggle(key) {
     if (!account) return
@@ -110,6 +139,57 @@ export default function Settings() {
           </SectionCard>
         </div>
       </div>
+
+      {/* Delivery Areas (Part B) — the PIN codes this store delivers to */}
+      <SectionCard icon={<FiTruck size={17} />} iconTint="green" title="Delivery Areas"
+        description="Set your dispatch PIN and the customer PIN codes you deliver to. Orders to a PIN not listed here show as “delivery unavailable”.">
+        <div className="grid grid-cols-1 sm:grid-cols-[240px_1fr] gap-6">
+          {/* Dispatch PIN */}
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Dispatch / Warehouse PIN</label>
+            <div className="relative mt-2">
+              <FiMapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-faint)' }} />
+              <input className="input pl-9" inputMode="numeric" maxLength={6} placeholder="e.g. 600100"
+                value={warehousePin} onChange={e => setWarehousePin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+            </div>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>Used to match nearby delivery partners.</p>
+          </div>
+
+          {/* Serviceable PINs */}
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Serviceable customer PINs ({pins.length})
+            </label>
+            <div className="flex flex-wrap gap-2 mt-2 mb-3 min-h-[34px]">
+              {pins.length === 0 && <span className="text-xs" style={{ color: 'var(--text-faint)' }}>No PIN codes yet — add the ones you deliver to.</span>}
+              {pins.map(p => (
+                <span key={p} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 h-8 rounded-lg text-sm font-semibold tnum"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)', border: '1px solid var(--border-hover)' }}>
+                  {p}
+                  <button onClick={() => removePin(p)} aria-label={`Remove ${p}`}
+                    className="w-5 h-5 rounded-md inline-flex items-center justify-center" style={{ color: 'var(--accent-ink)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                    <FiX size={13} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input className="input" inputMode="numeric" maxLength={6} placeholder="Add a 6-digit PIN and press Enter"
+                value={newPin}
+                onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPin() } }} />
+              <button className="btn-secondary shrink-0" onClick={addPin}><FiPlus size={16} /> Add</button>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <button className="btn-primary" onClick={saveDeliveryAreas} disabled={savingPins}>
+            {savingPins ? 'Saving…' : <><FiCheck size={16} /> Save delivery areas</>}
+          </button>
+        </div>
+      </SectionCard>
 
       <p className="text-center text-xs pt-2" style={{ color: 'var(--text-faint)' }}>
         <FiShield size={12} className="inline mr-1" style={{ verticalAlign: '-1px' }} />
