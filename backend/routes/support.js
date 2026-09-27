@@ -18,12 +18,11 @@ async function nextRequestId() {
   return nextId("supportRequest", SupportRequest, "sup-");
 }
 
-// POST /api/support  { subject, message, category? }  (seller)
-// Deliberately NOT behind requireActiveAccount: a suspended seller is exactly
+// POST /api/support  { subject, message, category? }  (seller or user)
+// Deliberately NOT behind requireActiveAccount: a suspended user/seller is exactly
 // the person who needs to reach support, and the 403 that middleware returns
 // tells them to "contact a platform administrator" — which is this endpoint.
-// Same carve-out as the delivery partner's unsuspension request.
-router.post("/", requireAuth, requireRole("seller"), asyncHandler(async (req, res) => {
+router.post("/", requireAuth, requireRole("seller", "user"), asyncHandler(async (req, res) => {
   const { subject, message, category } = req.body;
 
   if (typeof subject !== "string" || !subject.trim()) {
@@ -46,7 +45,7 @@ router.post("/", requireAuth, requireRole("seller"), asyncHandler(async (req, re
   const request = await SupportRequest.create({
     id: await nextRequestId(),
     requesterId: req.auth.id,
-    requesterRole: "seller",
+    requesterRole: req.auth.role,
     requesterName: account?.name || "",
     requesterEmail: account?.email || "",
     category: category || "Other",
@@ -55,12 +54,12 @@ router.post("/", requireAuth, requireRole("seller"), asyncHandler(async (req, re
   });
 
   // Land it in the admin bell (persisted + pushed over Socket.io in one call).
-  await notifyRole("admin", "seller-support-request", `Support request: ${request.subject}`,
+  const notificationType = req.auth.role === "seller" ? "seller-support-request" : "user-support-request";
+  await notifyRole("admin", notificationType, `Support request: ${request.subject}`,
     `${request.requesterName || request.requesterId} (${request.category}) — ${request.message.slice(0, 140)}`,
-    { requestId: request.id, sellerId: request.requesterId, category: request.category });
+    { requestId: request.id, requesterId: request.requesterId, role: req.auth.role, category: request.category });
 
-  // Best-effort email to the support inbox. The mailer is a no-op when SMTP
-  // isn't configured, so a dev machine still gets a 201 rather than a 500.
+  // Best-effort email to the support inbox.
   try {
     await sendMail({ to: SUPPORT_INBOX, ...templates.supportRequest(request) });
   } catch (err) {

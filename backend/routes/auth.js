@@ -28,6 +28,10 @@ async function nextSellerId() {
   return nextId("sellerAccount", Account, "seller-");
 }
 
+async function nextPartnerId() {
+  return nextId("deliveryPartner", DeliveryPartner, "partner-");
+}
+
 function isEmailShaped(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -48,7 +52,9 @@ router.post("/login", asyncHandler(async (req, res) => {
     });
   }
 
-  const account = await Account.findOne({ email, role });
+  const cleanEmail = email.trim();
+  const account = await Account.findOne({ email: cleanEmail, role }) ||
+    await Account.findOne({ email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, role });
   if (account) {
     const passwordMatches = await account.comparePassword(password);
     if (passwordMatches) {
@@ -85,7 +91,8 @@ router.post("/login", asyncHandler(async (req, res) => {
 
   // Real delivery partners created by Admin can also login to the delivery app.
   if (role === "delivery") {
-    const partner = await DeliveryPartner.findOne({ email });
+    const partner = await DeliveryPartner.findOne({ email: cleanEmail }) ||
+      await DeliveryPartner.findOne({ email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
     if (partner && (await partner.comparePassword(password))) {
       // Same rule as Accounts above: a suspended or deactivated partner keeps
       // their password but loses access. Suspended partners are told they can
@@ -134,6 +141,9 @@ router.post("/register", asyncHandler(async (req, res) => {
   if (typeof password !== "string" || password.length < 8) {
     return res.status(400).json({ success: false, message: "password must be at least 8 characters" });
   }
+  if (!phone || !/^\d{10}$/.test(String(phone).trim())) {
+    return res.status(400).json({ success: false, message: "Phone number must be exactly 10 digits" });
+  }
 
   if (await Account.findOne({ email })) {
     return res.status(400).json({ success: false, message: "An account with this email already exists" });
@@ -146,7 +156,7 @@ router.post("/register", asyncHandler(async (req, res) => {
       name: name.trim(),
       email,
       password,
-      phone,
+      phone: String(phone).trim(),
       role: "user",
       lastLogin: new Date(),
     });
@@ -192,6 +202,7 @@ router.post("/register/seller", asyncHandler(async (req, res) => {
 
   // collect everything that's missing/invalid so the seller sees it all at once
   const problems = [];
+  if (!phone || !/^\d{10}$/.test(String(phone).trim())) problems.push("a 10-digit phone number");
   if (typeof businessName !== "string" || !businessName.trim()) problems.push("a business name");
   if (typeof businessAddress !== "string" || !businessAddress.trim()) problems.push("a business address");
 
@@ -272,6 +283,88 @@ router.post("/register/seller", asyncHandler(async (req, res) => {
     name: account.name,
     email: account.email,
     verificationStatus: account.verificationStatus,
+  });
+}));
+
+// POST /api/register/delivery
+// Self-serve delivery partner onboarding. Validates identity, phone, vehicle & zone,
+// and activates the partner account so they can immediately sign in or start duty.
+router.post("/register/delivery", asyncHandler(async (req, res) => {
+  const { name, email, password, phone, vehicle, vehicleModel, vehicleNumber, zone, pincode, documents } = req.body;
+
+  if (typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ success: false, message: "Full name is required" });
+  }
+  if (!isEmailShaped(email)) {
+    return res.status(400).json({ success: false, message: "A valid email address is required" });
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+  }
+  if (!phone || !/^\d{10}$/.test(String(phone).trim())) {
+    return res.status(400).json({ success: false, message: "A valid 10-digit phone number is required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const existingPartner = await DeliveryPartner.findOne({ email: cleanEmail });
+  const existingAccount = await Account.findOne({ email: cleanEmail });
+  if (existingPartner || existingAccount) {
+    return res.status(400).json({ success: false, message: "An account with this email already exists" });
+  }
+
+  const cleanDocs = (Array.isArray(documents) ? documents : [])
+    .filter((d) => d && typeof d.dataUrl === "string" && d.dataUrl)
+    .map((d) => ({
+      type: d.type || "license",
+      label: d.label || (d.type === "rc" ? "Vehicle RC Book" : d.type === "id" ? "Government ID" : "Driving License"),
+      fileName: d.fileName || "",
+      dataUrl: d.dataUrl,
+      uploadedAt: new Date(),
+    }));
+
+  let partner;
+  try {
+    partner = await DeliveryPartner.create({
+      id: await nextPartnerId(),
+      name: name.trim(),
+      email: cleanEmail,
+      password,
+      phone: String(phone).trim(),
+      vehicle: vehicle || "Bike",
+      vehicleModel: vehicleModel ? String(vehicleModel).trim() : "",
+      vehicleNumber: vehicleNumber ? String(vehicleNumber).trim().toUpperCase() : "",
+      documents: cleanDocs,
+      zone: zone ? String(zone).trim() : "Main City Zone",
+      pincode: pincode ? String(pincode).trim() : "",
+      status: "Active",
+      accountStatus: "active",
+      baseSalary: 15000,
+      incentivePerDelivery: 30,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ success: false, message: "An account with this email already exists" });
+    }
+    throw err;
+  }
+
+  await notifyRole(
+    "admin",
+    "partner-registered",
+    "New delivery partner registered",
+    `${partner.name} (${partner.email}) registered as delivery partner`,
+    { partnerId: partner.id }
+  );
+
+  const token = signToken({ id: partner.id, role: "delivery" });
+  res.status(201).json({
+    success: true,
+    message: "Delivery partner registered successfully",
+    token,
+    role: "delivery",
+    id: partner.id,
+    name: partner.name,
+    email: partner.email,
   });
 }));
 

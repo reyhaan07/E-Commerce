@@ -65,7 +65,7 @@ router.patch("/me", requireAuth, requireActivePartner, asyncHandler(async (req, 
     return res.status(404).json({ success: false, message: "Delivery partner not found" });
   }
 
-  const { name, phone, vehicle, zone, status, avatar } = req.body;
+  const { name, phone, vehicle, vehicleModel, vehicleNumber, zone, status, avatar } = req.body;
   if (name !== undefined) {
     if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ success: false, message: "name cannot be blank" });
@@ -74,6 +74,8 @@ router.patch("/me", requireAuth, requireActivePartner, asyncHandler(async (req, 
   }
   if (phone !== undefined) partner.phone = phone;
   if (vehicle !== undefined) partner.vehicle = vehicle;
+  if (vehicleModel !== undefined) partner.vehicleModel = String(vehicleModel).trim();
+  if (vehicleNumber !== undefined) partner.vehicleNumber = String(vehicleNumber).trim().toUpperCase();
   if (zone !== undefined) partner.zone = zone;
   if (status !== undefined) partner.status = status;
   if (avatar !== undefined) partner.avatar = avatar;
@@ -91,7 +93,7 @@ router.patch("/me", requireAuth, requireActivePartner, asyncHandler(async (req, 
 
 // POST /api/delivery-partners  { name, email, password, phone, vehicle }  (admin)
 router.post("/", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
-  const { name, email, password, phone, vehicle, zone, pincode } = req.body;
+  const { name, email, password, phone, vehicle, vehicleModel, vehicleNumber, zone, pincode } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: "name, email and password are required" });
@@ -110,6 +112,8 @@ router.post("/", requireAuth, requireRole("admin"), asyncHandler(async (req, res
     password,
     phone,
     vehicle: vehicle || "Bike",
+    vehicleModel: vehicleModel ? String(vehicleModel).trim() : "",
+    vehicleNumber: vehicleNumber ? String(vehicleNumber).trim().toUpperCase() : "",
     zone: zone || "",
     pincode: String(pincode || "").trim(),
   });
@@ -124,10 +128,12 @@ router.put("/:id", requireAuth, requireRole("admin"), asyncHandler(async (req, r
     return res.status(404).json({ success: false, message: "Delivery partner not found" });
   }
 
-  const { name, phone, vehicle, status, zone, pincode } = req.body;
+  const { name, phone, vehicle, vehicleModel, vehicleNumber, status, zone, pincode } = req.body;
   if (name !== undefined) partner.name = name;
   if (phone !== undefined) partner.phone = phone;
   if (vehicle !== undefined) partner.vehicle = vehicle;
+  if (vehicleModel !== undefined) partner.vehicleModel = String(vehicleModel).trim();
+  if (vehicleNumber !== undefined) partner.vehicleNumber = String(vehicleNumber).trim().toUpperCase();
   if (status !== undefined) partner.status = status;
   if (zone !== undefined) partner.zone = zone;
   // Base PIN (gate 2). It decides which seller warehouses this partner can be

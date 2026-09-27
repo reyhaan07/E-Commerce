@@ -21,10 +21,12 @@ const NOTIFICATION_TYPES = [
   "seller-approved",
   "seller-rejected",
   "payroll-paid",
-  // delivery partner account standing + appeals, and seller support requests
+  // delivery partner account standing + appeals, and seller/user support requests
+  "partner-registered",
   "partner-account-status",
   "partner-unsuspension-request",
   "seller-support-request",
+  "user-support-request",
 ];
 
 const notificationSchema = new mongoose.Schema({

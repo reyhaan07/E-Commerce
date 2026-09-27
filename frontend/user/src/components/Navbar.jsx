@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlineLifebuoy } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryMenu from './CategoryMenu';
+import ContactSupportModal from './ContactSupportModal';
 import { useAccountStatus } from '../hooks/useAccountStatus';
 
 const Navbar = () => {
   const { suspended } = useAccountStatus();
+  const [supportOpen, setSupportOpen] = useState(false);
   const { itemCount } = useCart();
   const { items: wishlistItems } = useWishlist();
   const navigate = useNavigate();
@@ -69,6 +72,10 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-4 sm:gap-6">
+          <button type="button" onClick={() => setSupportOpen(true)} className="flex flex-col items-center group" title="Help & Support">
+            <HiOutlineLifebuoy className="text-2xl group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-bold text-gray-500 group-hover:text-primary">HELP</span>
+          </button>
           <Link to="/profile" className="flex flex-col items-center group">
             <HiOutlineUser className="text-2xl group-hover:text-primary transition-colors" />
             <span className="text-[10px] uppercase font-bold text-gray-500 group-hover:text-primary transition-colors hidden sm:block">Profile</span>
@@ -110,6 +117,7 @@ const Navbar = () => {
           <HiOutlineSearch className="text-xl" />
         </button>
       </form>
+      <ContactSupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </nav>
   );
 };

@@ -17,6 +17,17 @@ const deliveryPartnerSchema = new mongoose.Schema({
   phone: String,
   avatar: { type: String, default: "" },
   vehicle: { type: String, default: "Bike" }, // Bike / Van / Truck
+  vehicleModel: { type: String, default: "" }, // e.g. "Hero Splendor Plus", "Honda Activa"
+  vehicleNumber: { type: String, default: "" }, // e.g. "TN 09 BX 1234"
+  documents: [
+    {
+      type: { type: String, default: "license" }, // license / rc / id
+      label: { type: String, default: "" },
+      fileName: { type: String, default: "" },
+      dataUrl: { type: String, default: "" },
+      uploadedAt: { type: Date, default: Date.now },
+    },
+  ],
   zone: { type: String, default: "" }, // service city
   // Base PIN the partner operates out of (Part B). Used to match a partner to
   // a seller's warehouse PIN via the explicit nearby-PIN mapping. String so

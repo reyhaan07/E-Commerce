@@ -17,6 +17,7 @@ import DeliveryAssignment from "../pages/admin/DeliveryAssignment";
 import DeliveryTracking from "../pages/admin/DeliveryTracking";
 import DeliveryAnalytics from "../pages/admin/DeliveryAnalytics";
 import DeliveryCoverage from "../pages/admin/DeliveryCoverage";
+import SupportInquiries from "../pages/admin/SupportInquiries";
 import Payroll from "../pages/admin/Payroll";
 import AdminProfile from "../pages/admin/AdminProfile";
 import AdminManagement from "../pages/admin/AdminManagement";
@@ -75,6 +76,7 @@ export default function AppRoutes() {
         <Route path="delivery-tracking" element={<DeliveryTracking />} />
         <Route path="delivery-analytics" element={<DeliveryAnalytics />} />
         <Route path="delivery-coverage" element={<DeliveryCoverage />} />
+        <Route path="support" element={<SupportInquiries />} />
         <Route path="payroll" element={<RequireSuperAdmin><Payroll /></RequireSuperAdmin>} />
         <Route path="profile" element={<AdminProfile />} />
         <Route path="admins" element={<RequireSuperAdmin><AdminManagement /></RequireSuperAdmin>} />
