@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   FiShoppingBag, FiCheckCircle, FiClock, FiAlertTriangle,
   FiLogOut, FiExternalLink, FiLifeBuoy, FiArrowRight,
 } from 'react-icons/fi'
 import { NAV_ITEMS, STOREFRONT_URL } from '../../config/appNav'
+import ContactSupportModal from './ContactSupportModal'
 
 const VERIFICATION = {
   Verified:  { cls: 'badge-success', icon: FiCheckCircle,  label: 'Verified Seller' },
@@ -51,6 +52,7 @@ function NavRow({ item, counts, onNavigate }) {
 
 export default function SellerSidebar({ user, verification, counts, onNavigate, onLogout }) {
   const vb = verification && VERIFICATION[verification]
+  const [supportOpen, setSupportOpen] = useState(false)
 
   return (
     <div className="flex flex-col h-full">
@@ -106,15 +108,17 @@ export default function SellerSidebar({ user, verification, counts, onNavigate, 
 
       {/* Footer: support + logout */}
       <div className="px-1 pt-2 mt-2 space-y-1" style={{ borderTop: '1px solid var(--border)' }}>
-        <a href="mailto:support@shopsphere.com" className="nav-link" onClick={onNavigate}>
+        <button type="button" className="nav-link w-full text-left" onClick={() => setSupportOpen(true)}>
           <FiLifeBuoy size={18} className="nav-ico shrink-0" />
           <span>Contact Support</span>
-        </a>
+        </button>
         <button className="nav-link w-full text-left" style={{ color: 'var(--danger)' }} onClick={onLogout}>
           <FiLogOut size={18} className="nav-ico shrink-0" style={{ color: 'var(--danger)' }} />
           <span>Log Out</span>
         </button>
       </div>
+
+      <ContactSupportModal open={supportOpen} onClose={() => { setSupportOpen(false); onNavigate?.() }} />
     </div>
   )
 }

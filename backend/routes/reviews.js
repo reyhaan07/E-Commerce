@@ -1,25 +1,21 @@
-// Feature 9 — Rating & Review. Users review products from delivered orders;
-// reviews sit in admin moderation as Pending, and only Approved ones publish
-// on the product page and count toward product/seller rating aggregates.
+// Feature 9 — Rating & Review. Users review products they had delivered, and
+// the review publishes straight away: it appears on the product page and counts
+// toward the product/seller rating aggregates the moment it is written. There
+// is no approval queue — nobody signs off a customer's review.
 
 const express = require("express");
 const router = express.Router();
-const { Review, MODERATION_STATUSES } = require("../models/review.model");
+const { Review } = require("../models/review.model");
 const { Product } = require("../models/product.model");
 const { Order } = require("../models/order.model");
 const { Account } = require("../models/account.model");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requireRole, requireActiveAccount } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
-const { notifyRole, notifyUser } = require("../utils/notify");
+const { nextId } = require("../utils/sequence");
 const { emitToAll } = require("../realtime");
 
 async function nextReviewId() {
-  const reviews = await Review.find({}, "id").lean();
-  const maxNum = reviews.reduce((max, r) => {
-    const num = parseInt(String(r.id).replace("rev-", ""), 10);
-    return Number.isFinite(num) && num > max ? num : max;
-  }, 0);
-  return `rev-${maxNum + 1}`;
+  return nextId("review", Review, "rev-");
 }
 
 function averageOf(ratings) {
@@ -52,26 +48,21 @@ async function recalculateRatings(productId) {
   );
 }
 
-// GET /api/reviews?productId=&moderationStatus=&userId=
-// Public callers only ever see Approved reviews; the moderation queue
-// (any status) is admin-only, and users can list their own reviews.
+// GET /api/reviews?productId=&userId=
+// Reviews are public as soon as they're written, so there's nothing to gate
+// here beyond a user listing their own.
 router.get("/", asyncHandler(async (req, res) => {
-  const { productId, moderationStatus, userId } = req.query;
+  const { productId, userId } = req.query;
   const filter = {};
 
-  const wantsNonPublic = moderationStatus !== undefined && moderationStatus !== "Approved";
-  if (wantsNonPublic || userId) {
+  if (userId) {
     const { getAuthFromHeader } = require("../middleware/auth");
     const auth = getAuthFromHeader(req);
-    const isSelf = userId && auth && auth.id === userId;
-    if (!auth || (auth.role !== "admin" && !isSelf)) {
+    const isSelf = auth && auth.id === userId;
+    if (!auth || (!isSelf && auth.role !== "admin")) {
       return res.status(403).json({ success: false, message: "You don't have access to these reviews" });
     }
-    if (moderationStatus) filter.moderationStatus = moderationStatus;
-    if (userId) filter.userId = userId;
-  } else {
-    filter.moderationStatus = "Approved";
-    if (moderationStatus) filter.moderationStatus = moderationStatus;
+    filter.userId = userId;
   }
   if (productId) filter.productId = productId;
 
@@ -81,7 +72,7 @@ router.get("/", asyncHandler(async (req, res) => {
 
 // POST /api/reviews  { productId, orderId, rating, comment }
 // Only for products in one of the caller's *delivered* orders.
-router.post("/", requireAuth, requireRole("user"), asyncHandler(async (req, res) => {
+router.post("/", requireAuth, requireActiveAccount, requireRole("user"), asyncHandler(async (req, res) => {
   const { productId, orderId, rating, comment } = req.body;
   const numericRating = Number(rating);
 
@@ -123,34 +114,13 @@ router.post("/", requireAuth, requireRole("user"), asyncHandler(async (req, res)
     comment: comment || "",
   });
 
-  await notifyRole("admin", "review-submitted", `New review pending moderation`, `${review.userName} rated ${review.productName} ${review.rating}★`, { reviewId: review.id, productId: review.productId });
+  // Live immediately: fold it into the product/seller rating aggregates and
+  // push it to anyone on the product page, the same way approval used to.
+  await recalculateRatings(review.productId);
+  emitToAll("review-published", { productId: review.productId, reviewId: review.id });
 
   res.status(201).json({ success: true, review });
 }));
 
-// PATCH /api/reviews/:id/moderate  { moderationStatus } — admin approve/reject
-router.patch("/:id/moderate", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
-  const { moderationStatus } = req.body;
-  if (!MODERATION_STATUSES.includes(moderationStatus) || moderationStatus === "Pending") {
-    return res.status(400).json({ success: false, message: "moderationStatus must be Approved or Rejected" });
-  }
-
-  const review = await Review.findOne({ id: req.params.id });
-  if (!review) {
-    return res.status(404).json({ success: false, message: "Review not found" });
-  }
-
-  review.moderationStatus = moderationStatus;
-  await review.save();
-  await recalculateRatings(review.productId);
-
-  if (moderationStatus === "Approved") {
-    // product pages listen for this to show the new review without a refresh
-    emitToAll("review-published", { productId: review.productId, reviewId: review.id });
-  }
-  await notifyUser(review.userId, "review-submitted", `Your review was ${moderationStatus.toLowerCase()}`, `Review of ${review.productName}`, { reviewId: review.id, moderationStatus });
-
-  res.json({ success: true, review });
-}));
 
 module.exports = router;

@@ -38,14 +38,6 @@ export default function AdminSidebar() {
           Order Monitoring
         </Link>
 
-        <Link to="/admin/reviews">
-          Review Moderation
-        </Link>
-
-        <Link to="/admin/refunds">
-          Refund Tracking
-        </Link>
-
         <Link to="/admin/analytics">
           Analytics Dashboard
         </Link>
@@ -70,9 +62,16 @@ export default function AdminSidebar() {
           Delivery Analytics
         </Link>
 
-        <Link to="/admin/payroll">
-          Payroll
+        <Link to="/admin/delivery-coverage">
+          Delivery Coverage
         </Link>
+
+        {/* Payroll management is SUPER_ADMIN-only; staff still see their own payslips */}
+        {isSuperAdmin && (
+          <Link to="/admin/payroll">
+            Payroll
+          </Link>
+        )}
 
         {/* Platform section — only a SUPER_ADMIN manages the admin roster */}
         {isSuperAdmin && (

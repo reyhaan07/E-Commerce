@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { FaCheck, FaTimes, FaFileAlt, FaStore, FaExternalLinkAlt } from "react-icons/fa";
+import { FaCheck, FaTimes, FaStore } from "react-icons/fa";
 import { apiRequest } from "../../api/client";
+import { DocThumb, DocumentPreview } from "../../components/SellerDocuments";
 
 const BADGE = {
   Verified: "bg-green-50 text-green-700",
   Pending: "bg-amber-50 text-amber-700",
   Suspended: "bg-red-50 text-red-700",
 };
-
-const DOC_LABELS = { gst: "GST Certificate", pan: "PAN Card", cheque: "Cancelled Cheque", id: "Government ID" };
 
 export default function SellerVerification() {
   const [sellers, setSellers] = useState([]);
@@ -58,24 +57,6 @@ export default function SellerVerification() {
     </div>
   );
 
-  function DocThumb({ doc }) {
-    const isPdf = typeof doc.dataUrl === "string" && doc.dataUrl.startsWith("data:application/pdf");
-    return (
-      <button
-        onClick={() => setPreview({ label: doc.label || DOC_LABELS[doc.type] || doc.type, dataUrl: doc.dataUrl, isPdf })}
-        className="flex flex-col items-center gap-1.5 p-2 rounded-lg border border-slate-200 hover:border-brand-400 hover:shadow-soft transition-all bg-slate-50 w-[104px]"
-        title={`Preview ${doc.label || doc.type}`}
-      >
-        {isPdf ? (
-          <div className="w-full h-16 rounded-md bg-white flex items-center justify-center text-brand-500"><FaFileAlt size={22} /></div>
-        ) : (
-          <img src={doc.dataUrl} alt={doc.type} className="w-full h-16 rounded-md object-cover bg-white" />
-        )}
-        <span className="text-[11px] font-medium text-slate-600 text-center leading-tight">{DOC_LABELS[doc.type] || doc.label || doc.type}</span>
-      </button>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Seller Verification</h1>
@@ -118,7 +99,7 @@ export default function SellerVerification() {
                   </div>
                   {seller.documents?.length ? (
                     <div className="flex flex-wrap gap-2">
-                      {seller.documents.map((doc, i) => <DocThumb key={i} doc={doc} />)}
+                      {seller.documents.map((doc, i) => <DocThumb key={i} doc={doc} onOpen={setPreview} />)}
                     </div>
                   ) : (
                     <p className="text-sm text-slate-400">No documents were submitted with this application.</p>
@@ -194,25 +175,7 @@ export default function SellerVerification() {
         </div>
       </div>
 
-      {/* Document preview modal */}
-      {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setPreview(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-              <h3 className="font-bold">{preview.label}</h3>
-              <div className="flex items-center gap-3">
-                <a href={preview.dataUrl} download className="text-brand-600 hover:text-brand-800 text-sm flex items-center gap-1.5"><FaExternalLinkAlt size={12} /> Download</a>
-                <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600"><FaTimes /></button>
-              </div>
-            </div>
-            <div className="p-4">
-              {preview.isPdf
-                ? <iframe title="doc" src={preview.dataUrl} className="w-full h-[65vh] rounded-lg border border-slate-200" />
-                : <img src={preview.dataUrl} alt={preview.label} className="w-full rounded-lg" />}
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentPreview preview={preview} onClose={() => setPreview(null)} />
 
       {/* Reject-with-reason modal */}
       {rejectTarget && (

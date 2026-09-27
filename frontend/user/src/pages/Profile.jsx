@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Orders from './Orders';
@@ -100,8 +100,14 @@ const Profile = () => {
   const [paymentForm, setPaymentForm] = useState(emptyPayment);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  // UI-only state for the re-skin: which section is shown, edit mode, mobile drawer.
-  const [section, setSection] = useState('profile'); // 'profile' | 'addresses' | 'payments'
+  // Which section is shown. Held in the URL (?tab=orders) rather than plain
+  // state so Orders can be linked to directly, survives a refresh, and works
+  // with browser back/forward — every Orders link in the app lands here.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const SECTIONS = ['profile', 'orders', 'addresses', 'payments'];
+  const tabParam = searchParams.get('tab');
+  const section = SECTIONS.includes(tabParam) ? tabParam : 'profile';
+  // UI-only state for the re-skin: edit mode, mobile drawer.
   const [editing, setEditing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -248,7 +254,10 @@ const Profile = () => {
 
   function go(target) {
     setDrawerOpen(false);
-    setSection(target); // 'profile' | 'orders' | 'addresses' | 'payments' — all render in-layout
+    // Swaps the section in place (no reload, sidebar stays put) while keeping
+    // the URL in step. `replace` so flicking between sections doesn't bury the
+    // page the customer arrived from under history entries.
+    setSearchParams(target === 'profile' ? {} : { tab: target }, { replace: true });
   }
 
   const avatarSrc = profileForm.avatar || profile?.avatar || '';

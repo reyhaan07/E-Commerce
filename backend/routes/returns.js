@@ -10,7 +10,7 @@ const { ReturnRequest, RETURN_STATUSES } = require("../models/returnRequest.mode
 const { Order } = require("../models/order.model");
 const { Product } = require("../models/product.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requireRole, requireActivePartner } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { notifyRole, notifyUser } = require("../utils/notify");
 const { emitToAll } = require("../realtime");
@@ -124,7 +124,7 @@ router.get("/:id", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // PATCH /api/returns/:id/status  { status, note }
-router.patch("/:id/status", requireAuth, asyncHandler(async (req, res) => {
+router.patch("/:id/status", requireAuth, requireActivePartner, asyncHandler(async (req, res) => {
   const { status, note } = req.body;
   const rule = TRANSITIONS[status];
   if (!RETURN_STATUSES.includes(status) || !rule) {

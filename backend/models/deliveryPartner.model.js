@@ -5,6 +5,10 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+// Account standing (access), as opposed to the operational duty `status`.
+const ACCOUNT_STATUSES = ["active", "suspended", "deactivated"];
+const REQUEST_STATUSES = ["pending", "approved", "rejected"];
+
 const deliveryPartnerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -19,6 +23,22 @@ const deliveryPartnerSchema = new mongoose.Schema({
   // leading zeros survive; never compared numerically.
   pincode: { type: String, default: "" },
   status: { type: String, default: "Active" }, // Active / On Delivery / Offline
+  // Account standing, kept deliberately separate from the operational `status`
+  // above (which is duty state, not access). Defaults to "active" so every
+  // partner seeded before this field existed keeps working unchanged.
+  // "deactivated" is what an admin "remove" now does - a soft delete, so the
+  // partner's app can tell them instead of silently looking live.
+  accountStatus: { type: String, enum: ACCOUNT_STATUSES, default: "active" },
+  // Set when a suspended partner appeals. Lives on the partner rather than in a
+  // new collection - there is only ever one open request per partner.
+  unsuspensionRequest: {
+    status: { type: String, enum: REQUEST_STATUSES, default: null },
+    message: { type: String, default: "" },
+    requestedAt: { type: Date, default: null },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: String, default: null }, // admin account id
+    reason: { type: String, default: "" },       // admin's note on approve/reject
+  },
   // Payroll inputs (Feature 5). Defaults give payroll generation something to
   // work with before an admin tunes them per partner.
   baseSalary: { type: Number, default: 15000 },
@@ -48,4 +68,4 @@ deliveryPartnerSchema.set("toJSON", {
 
 const DeliveryPartner = mongoose.model("DeliveryPartner", deliveryPartnerSchema);
 
-module.exports = { DeliveryPartner };
+module.exports = { DeliveryPartner, ACCOUNT_STATUSES, REQUEST_STATUSES };

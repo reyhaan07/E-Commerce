@@ -57,6 +57,18 @@ const templates = {
     subject: `Refund processed for ${orderId}`,
     text: `Hi ${name},\n\nYour refund of ₹${amount} for order ${orderId} has been processed. It should reflect in 5-7 business days (instantly in test mode).\n\n— ShopSphere`,
   }),
+  supportRequest: (request) => ({
+    subject: `[Support] ${request.category} — ${request.subject}`,
+    text: `A seller has raised a support request.
+
+From: ${request.requesterName || request.requesterId} <${request.requesterEmail}>
+Category: ${request.category}
+Subject: ${request.subject}
+
+${request.message}
+
+— ShopSphere`,
+  }),
   cancellationRejected: (name, orderId, reason) => ({
     subject: `Cancellation request for ${orderId}`,
     text: `Hi ${name},\n\nYour cancellation request for ${orderId} was declined.\nReason: ${reason || "not provided"}\n\n— ShopSphere`,

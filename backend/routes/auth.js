@@ -6,6 +6,7 @@ const { Account, ROLES } = require("../models/account.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
 const { signToken } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const { nextId } = require("../utils/sequence");
 const { sendMail, templates } = require("../utils/mailer");
 const { notifyRole } = require("../utils/notify");
 
@@ -17,21 +18,14 @@ const LOGIN_APP_URL = process.env.LOGIN_APP_URL || "http://localhost:5177";
 const DUMMY_HASH = bcrypt.hashSync("timing-normalization", 10);
 
 async function nextUserId() {
-  const accounts = await Account.find({ role: "user" }, "id").lean();
-  const maxNum = accounts.reduce((max, a) => {
-    const num = parseInt(String(a.id).replace("user-", ""), 10);
-    return Number.isFinite(num) && num > max ? num : max;
-  }, 0);
-  return `user-${maxNum + 1}`;
+  // Atomic counter rather than a max+1 scan (see utils/sequence). Seller ids
+  // in the same collection don't parse against the "user-" prefix, so each
+  // role keeps its own independent run of numbers.
+  return nextId("userAccount", Account, "user-");
 }
 
 async function nextSellerId() {
-  const accounts = await Account.find({ role: "seller" }, "id").lean();
-  const maxNum = accounts.reduce((max, a) => {
-    const num = parseInt(String(a.id).replace("seller-", ""), 10);
-    return Number.isFinite(num) && num > max ? num : max;
-  }, 0);
-  return `seller-${maxNum + 1}`;
+  return nextId("sellerAccount", Account, "seller-");
 }
 
 function isEmailShaped(value) {
@@ -61,9 +55,14 @@ router.post("/login", asyncHandler(async (req, res) => {
       // A suspended or deleted account keeps its password but loses access —
       // this is what makes suspending an admin from the roster actually bite.
       if (account.status !== "active") {
+        // accountStatus lets the login screen render a proper "account
+        // suspended" panel instead of treating it as a bad-credentials error.
         return res.status(403).json({
           success: false,
-          message: "This account has been suspended. Contact a platform administrator.",
+          accountStatus: account.status,
+          message: account.status === "suspended"
+            ? "This account has been suspended by a platform administrator. You can sign in again once it is reinstated."
+            : "This account is no longer active. Contact a platform administrator.",
         });
       }
       account.lastLogin = new Date();
@@ -88,6 +87,20 @@ router.post("/login", asyncHandler(async (req, res) => {
   if (role === "delivery") {
     const partner = await DeliveryPartner.findOne({ email });
     if (partner && (await partner.comparePassword(password))) {
+      // Same rule as Accounts above: a suspended or deactivated partner keeps
+      // their password but loses access. Suspended partners are told they can
+      // appeal from the app, which they reach with the token issued below only
+      // if they were already signed in - so the message matters here.
+      const accountStatus = partner.accountStatus || "active";
+      if (accountStatus !== "active") {
+        return res.status(403).json({
+          success: false,
+          accountStatus,
+          message: accountStatus === "suspended"
+            ? "This account has been suspended. You can request a review from a platform administrator."
+            : "This account has been deactivated by a platform administrator.",
+        });
+      }
       return res.json({
         success: true,
         token: signToken({ id: partner.id, role: "delivery" }),

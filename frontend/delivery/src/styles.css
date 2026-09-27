@@ -81,3 +81,17 @@ h1 { font-size: clamp(28px, 4vw, 44px); }
 
 @media (max-width: 1050px) { .grid { grid-template-columns: 1fr; } .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 620px) { .app { padding: 14px; } .info-grid, .actions, .timeline, .form-grid { grid-template-columns: 1fr; } .tiles { grid-template-columns: 1fr; } .htable { display: block; overflow-x: auto; } }
+
+/* Blocked-account screen: shown instead of the console when an admin has
+   suspended or deactivated the partner (Account Deactivated / Suspended). */
+.account-block { background: rgba(255,255,255,.9); border: 1px solid #dbeafe; border-radius: 24px; box-shadow: 0 14px 38px rgba(37,99,235,.12); padding: 32px; display: grid; gap: 16px; max-width: 680px; margin: 40px auto; }
+.account-block-badge { justify-self: start; display: inline-flex; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.account-block-badge.warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.account-block-badge.danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.account-block-reason { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 12px 14px; }
+.account-block-panel { border: 1px solid #dbeafe; background: white; border-radius: 18px; padding: 16px; display: grid; gap: 10px; }
+.account-block-panel label { color: #64748b; font-size: 11px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.account-block-panel textarea { width: 100%; border: 1px solid #dbeafe; border-radius: 14px; padding: 12px 13px; outline: none; resize: vertical; }
+.account-block-panel textarea:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,.12); }
+.account-block-panel button { justify-self: start; }
+.account-block .stack { grid-auto-flow: column; justify-content: start; gap: 10px; }

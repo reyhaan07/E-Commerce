@@ -65,7 +65,6 @@ function App() {
   const [user, setUser] = useState(getStoredUser)
   const [tab, setTab] = useState('console') // console | history | profile
   const [orders, setOrders] = useState([])
-  const [returnPickups, setReturnPickups] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -98,13 +97,6 @@ function App() {
       setOrders(assignedOrders)
       setSelectedId((current) => current && assignedOrders.some((order) => order.id === current) ? current : assignedOrders[0]?.id || '')
 
-      // reverse pickups for returns assigned to this partner (Feature 11)
-      const returnsResponse = await fetch(`${API_BASE}/returns`, { headers: authHeaders() })
-      const returnsResult = await returnsResponse.json()
-      if (returnsResponse.ok && returnsResult.success) {
-        setReturnPickups(returnsResult.returns.filter((ret) => ['Pickup Scheduled', 'Picked Up'].includes(ret.status)))
-      }
-
       setLastSynced(new Date())
     } catch (err) {
       setError(err.message || 'Unable to load delivery orders')
@@ -124,22 +116,6 @@ function App() {
     socket.on('return-updated', loadOrders)
     return () => socket.disconnect()
   }, [user, loadOrders])
-
-  const advanceReturn = async (ret, nextStatus) => {
-    setError('')
-    try {
-      const response = await fetch(`${API_BASE}/returns/${ret.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ status: nextStatus }),
-      })
-      const result = await response.json()
-      if (!response.ok || !result.success) throw new Error(result.message || 'Failed to update return')
-      loadOrders()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
 
   const selectedOrder = orders.find((order) => order.id === selectedId) || orders[0]
 
@@ -289,27 +265,6 @@ function App() {
 
           <aside className="stack">
             <section className="panel">
-              <div className="row"><h2>Return Pickups</h2><span>↩️</span></div>
-              <div className="stack" style={{ marginTop: 14 }}>
-                {returnPickups.length === 0 ? <p className="muted">No reverse pickups in your queue.</p> : returnPickups.map((ret) => (
-                  <div className="note" key={ret.id}>
-                    <div className="row"><strong>{ret.id}</strong><span className="status active">{ret.status}</span></div>
-                    <p style={{ marginTop: 6 }}>{ret.items[0]?.name}</p>
-                    <p className="muted">{ret.customerName} · order {ret.orderId}</p>
-                    <p className="muted">Reason: {ret.reason}</p>
-                    <div className="action-list" style={{ marginTop: 8 }}>
-                      {ret.status === 'Pickup Scheduled' && (
-                        <button className="primary" onClick={() => advanceReturn(ret, 'Picked Up')}><span>Mark Picked Up</span> <span>📦</span></button>
-                      )}
-                      {ret.status === 'Picked Up' && (
-                        <button className="primary" onClick={() => advanceReturn(ret, 'Under Inspection')}><span>Delivered to Seller</span> <span>🏬</span></button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="panel">
               <h2>Route Contacts</h2>
               {selectedOrder ? <div className="stack" style={{ marginTop: 14 }}>
                 <Info label="Seller" value={`${selectedOrder.sellerName || '-'} - ${selectedOrder.sellerAddress || '-'}`} />
@@ -400,7 +355,6 @@ function computeStats(orders, id) {
 // ── History tab ──────────────────────────────────────────────────────
 function HistoryView({ user }) {
   const [orders, setOrders] = useState([])
-  const [returns, setReturns] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('all')
@@ -416,18 +370,7 @@ function HistoryView({ user }) {
         const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`)
         const data = await res.json()
         if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load history')
-        let rets = []
-        try {
-          const rres = await fetch(`${API_BASE}/returns`, { headers: authHeaders() })
-          const rdata = await rres.json()
-          if (rres.ok && rdata.success) {
-            rets = (rdata.returns || []).filter((r) => {
-              const mine = user.id === 'delivery-demo' ? Boolean(r.pickupPartnerId) : r.pickupPartnerId === user.id
-              return mine && ['Picked Up', 'Under Inspection', 'Refund Approved', 'Refunded'].includes(r.status)
-            })
-          }
-        } catch { /* returns are best-effort */ }
-        if (!cancelled) { setOrders(data.orders || []); setReturns(rets) }
+        if (!cancelled) setOrders(data.orders || [])
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
@@ -448,12 +391,8 @@ function HistoryView({ user }) {
         list.push({ key: `o-${o.id}`, kind: 'cancelled', id: o.id, customer: o.customerName, address: o.customerAddress, amount: o.amount, status: o.sellerStatus === 'Returned' ? 'Returned' : 'Cancelled', date: new Date(o.cancellation?.resolvedAt || o.createdAt) })
       }
     }
-    for (const r of returns) {
-      const hist = r.statusHistory || []
-      list.push({ key: `r-${r.id}`, kind: 'return', id: r.id, customer: r.customerName, address: `Order ${r.orderId}`, amount: r.refund?.amount || 0, status: `Return · ${r.status}`, date: new Date(hist.length ? hist[hist.length - 1].timestamp : r.createdAt) })
-    }
     return list.sort((a, b) => b.date - a.date)
-  }, [orders, returns])
+  }, [orders])
 
   const filtered = rows.filter((r) => {
     if (status !== 'all' && r.kind !== status) return false

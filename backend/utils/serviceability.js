@@ -15,7 +15,11 @@
 // on every assignment — the frontend filtering is a convenience only.
 // ─────────────────────────────────────────────────────────────────────────
 
-const { normalizePincode, getNearbyPincodes } = require("../data/pincodes");
+const { normalizePincode } = require("../data/pincodes");
+// Catchments are admin-editable and cached in memory by utils/coverage; it
+// falls back to the static map in data/pincodes when nothing is loaded, so
+// this module stays pure and unit-testable without a database.
+const { getNearbyPincodes } = require("./coverage");
 
 const PINCODE_RE = /^\d{6}$/;
 
@@ -71,9 +75,17 @@ function areaLabel(warehousePincode, partnerPincode) {
   return "Nearby area";
 }
 
+// A suspended / deactivated account can never take work, whatever its duty
+// status says. accountStatus is absent on partners seeded before the field
+// existed, which reads as active - the same default the schema applies.
+function isPartnerAccountActive(partner) {
+  return (partner?.accountStatus || "active") === "active";
+}
+
 // Is one partner eligible for a seller whose warehouse is `warehousePincode`?
-// Eligible ⇔ active AND available AND PIN ∈ nearby(warehouse).
+// Eligible ⇔ account in good standing AND active AND available AND PIN ∈ nearby(warehouse).
 function isPartnerEligible(partner, warehousePincode) {
+  if (!isPartnerAccountActive(partner)) return false;
   if (!isPartnerActive(partner)) return false;
   if (!isPartnerAvailable(partner)) return false;
   const nearby = getNearbyPincodes(warehousePincode);
@@ -103,6 +115,7 @@ module.exports = {
   isValidPincode,
   isPartnerActive,
   isPartnerAvailable,
+  isPartnerAccountActive,
   checkServiceability,
   areaLabel,
   isPartnerEligible,

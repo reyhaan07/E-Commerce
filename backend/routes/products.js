@@ -3,8 +3,9 @@ const router = express.Router();
 const { Product, APPROVAL_STATUSES } = require("../models/product.model");
 const { Review } = require("../models/review.model");
 const { Account } = require("../models/account.model");
-const { requireAuth, requireRole, getAuthFromHeader } = require("../middleware/auth");
+const { requireAuth, requireRole, requireActiveAccount, getAuthFromHeader } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const { nextId } = require("../utils/sequence");
 const { CATEGORY_TREE, isValidPlacement } = require("../data/categories");
 const { notifyRole } = require("../utils/notify");
 const { emitToRole } = require("../realtime");
@@ -25,12 +26,7 @@ function slugify(name) {
 }
 
 async function nextProductId() {
-  const products = await Product.find({}, "id").lean();
-  const maxNum = products.reduce((max, p) => {
-    const num = parseInt(String(p.id).replace("prod-", ""), 10);
-    return Number.isFinite(num) && num > max ? num : max;
-  }, 0);
-  return `prod-${maxNum + 1}`;
+  return nextId("product", Product, "prod-");
 }
 
 // GET /api/products?q=&category=&minPrice=&maxPrice=&minRating=&sort=&page=&limit=
@@ -42,7 +38,9 @@ router.get("/", asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(48, Math.max(1, parseInt(req.query.limit, 10) || 12));
 
-  const filter = {};
+  // Archived (delisted) products are invisible everywhere, including to admins
+  // and to the owning seller — the same as when DELETE removed the row.
+  const filter = { isArchived: { $ne: true } };
   const auth = getAuthFromHeader(req);
 
   if (sellerId) {
@@ -99,7 +97,7 @@ router.get("/", asyncHandler(async (req, res) => {
 // live product counts per category.
 router.get("/categories", asyncHandler(async (req, res) => {
   const counted = await Product.aggregate([
-    { $match: { approvalStatus: "Approved" } },
+    { $match: { approvalStatus: "Approved", isArchived: { $ne: true } } },
     { $group: { _id: "$category", count: { $sum: 1 } } },
   ]);
   const countByName = Object.fromEntries(counted.map((c) => [c._id, c.count]));
@@ -120,9 +118,20 @@ router.get("/categories", asyncHandler(async (req, res) => {
 // GET /api/products/:id — product details + seller info + related products
 // + review summary, everything the product page needs in one call (Feature 4)
 router.get("/:id", asyncHandler(async (req, res) => {
-  const product = await Product.findOne({ id: req.params.id });
+  // an archived product is gone as far as the storefront is concerned
+  const product = await Product.findOne({ id: req.params.id, isArchived: { $ne: true } });
   if (!product) {
     return res.status(404).json({ success: false, message: "Product not found" });
+  }
+  // The listing has always hidden unapproved products, but this route didn't —
+  // so a Pending listing was still reachable by its direct link. That matters
+  // now that editing an approved product sends it back to Pending.
+  if (product.approvalStatus !== "Approved") {
+    const auth = getAuthFromHeader(req);
+    const isOwnerOrAdmin = auth && (auth.role === "admin" || auth.id === product.sellerId);
+    if (!isOwnerOrAdmin) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
   }
 
   const seller = await Account.findOne({ id: product.sellerId, role: "seller" });
@@ -139,6 +148,7 @@ router.get("/:id", asyncHandler(async (req, res) => {
   const related = await Product.find({
     category: product.category,
     approvalStatus: "Approved",
+    isArchived: { $ne: true },
     id: { $ne: product.id },
   })
     .sort({ rating: -1 })
@@ -189,7 +199,7 @@ function validateProductBody(body, { partial = false } = {}) {
 }
 
 // POST /api/products — seller creates a product (lands in admin approval queue)
-router.post("/", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+router.post("/", requireAuth, requireActiveAccount, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   // Feature 6: a seller can only publish once their store is Verified.
   if (req.auth.role === "seller") {
     const seller = await Account.findOne({ id: req.auth.id, role: "seller" });
@@ -240,7 +250,7 @@ router.post("/", requireAuth, requireRole("seller", "admin"), asyncHandler(async
 }));
 
 async function findOwnedProduct(req, res) {
-  const product = await Product.findOne({ id: req.params.id });
+  const product = await Product.findOne({ id: req.params.id, isArchived: { $ne: true } });
   if (!product) {
     res.status(404).json({ success: false, message: "Product not found" });
     return null;
@@ -253,7 +263,7 @@ async function findOwnedProduct(req, res) {
 }
 
 // PUT /api/products/:id — seller updates their own product (or admin any)
-router.put("/:id", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+router.put("/:id", requireAuth, requireActiveAccount, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const product = await findOwnedProduct(req, res);
   if (!product) return;
 
@@ -261,8 +271,20 @@ router.put("/:id", requireAuth, requireRole("seller", "admin"), asyncHandler(asy
   if (error) return res.status(400).json({ success: false, message: error });
 
   const editable = ["name", "description", "brand", "category", "subcategory", "productType", "price", "oldPrice", "images", "specs", "sku", "stock", "isNewArrival"];
+  // Changing what the product *is* sends it back to the approval queue: an
+  // approved listing could previously be rewritten into anything and stay live,
+  // because approval was only ever checked on first submission. Price, stock
+  // and sku are day-to-day trading changes and don't trigger a re-review.
+  const MATERIAL = ["name", "description", "brand", "category", "subcategory", "productType", "images", "specs"];
+  const changed = (field) => JSON.stringify(product[field]) !== JSON.stringify(req.body[field]);
+  const materiallyEdited = MATERIAL.some((field) => req.body[field] !== undefined && changed(field));
+
   for (const field of editable) {
     if (req.body[field] !== undefined) product[field] = req.body[field];
+  }
+  // An admin editing is already the reviewer, so their edit stays approved.
+  if (materiallyEdited && req.auth.role !== "admin" && product.approvalStatus === "Approved") {
+    product.approvalStatus = "Pending";
   }
   if (product.oldPrice && product.oldPrice > product.price) {
     product.discount = Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
@@ -274,16 +296,21 @@ router.put("/:id", requireAuth, requireRole("seller", "admin"), asyncHandler(asy
   res.json({ success: true, product });
 }));
 
-// DELETE /api/products/:id
-router.delete("/:id", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+// DELETE /api/products/:id — delist the product.
+// Kept as a soft delete so past orders, reviews and return requests that
+// reference this productId still resolve. The response is unchanged and the
+// product disappears from every listing, so callers can't tell the difference.
+router.delete("/:id", requireAuth, requireActiveAccount, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const product = await findOwnedProduct(req, res);
   if (!product) return;
-  await product.deleteOne();
+  product.isArchived = true;
+  product.archivedAt = new Date();
+  await product.save();
   res.json({ success: true, message: "Product deleted" });
 }));
 
 // PATCH /api/products/:id/stock  { stock } — inventory sync from the seller console
-router.patch("/:id/stock", requireAuth, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
+router.patch("/:id/stock", requireAuth, requireActiveAccount, requireRole("seller", "admin"), asyncHandler(async (req, res) => {
   const product = await findOwnedProduct(req, res);
   if (!product) return;
 
@@ -298,7 +325,7 @@ router.patch("/:id/stock", requireAuth, requireRole("seller", "admin"), asyncHan
 }));
 
 // PATCH /api/products/:id/approval  { approvalStatus } — admin approve/reject
-router.patch("/:id/approval", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
+router.patch("/:id/approval", requireAuth, requireActiveAccount, requireRole("admin"), asyncHandler(async (req, res) => {
   const { approvalStatus } = req.body;
   if (!APPROVAL_STATUSES.includes(approvalStatus)) {
     return res.status(400).json({ success: false, message: "Invalid approvalStatus" });

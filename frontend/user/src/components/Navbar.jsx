@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4 } from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4, HiOutlineExclamationCircle } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryMenu from './CategoryMenu';
+import { useAccountStatus } from '../hooks/useAccountStatus';
 
 const Navbar = () => {
+  const { suspended } = useAccountStatus();
   const { itemCount } = useCart();
   const { items: wishlistItems } = useWishlist();
   const navigate = useNavigate();
@@ -19,6 +21,22 @@ const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-sm border-b">
+      {/* An admin can suspend an account mid-session, and the existing token
+          stays valid until it expires — so say so here rather than letting the
+          storefront look normal until checkout fails. Shown on every page
+          because every page renders the Navbar. */}
+      {suspended && (
+        <div className="bg-red-600 text-white">
+          <div className="container mx-auto px-4 py-2.5 flex items-start gap-2.5 text-sm">
+            <HiOutlineExclamationCircle className="text-lg shrink-0 mt-0.5" />
+            <p>
+              <span className="font-bold">Your account has been suspended.</span>{' '}
+              You can still browse, but placing orders and writing reviews are disabled
+              until a platform administrator reinstates your account.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">

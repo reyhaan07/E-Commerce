@@ -8,6 +8,16 @@ import SellerSidebar from '../components/shell/SellerSidebar'
 import SellerHeader from '../components/shell/SellerHeader'
 import { NAV_ITEMS, MOBILE_NAV, SHARED_LOGIN_URL } from '../config/appNav'
 
+// Account.status === "suspended" (set from admin > Seller Management) is a
+// different thing from verificationStatus === "Suspended": it suspends the whole
+// account, and the API now rejects every seller write with 403 while it holds.
+// It outranks the verification banner below.
+const ACCOUNT_SUSPENDED_BANNER = {
+  color: 'var(--danger)', soft: 'var(--danger-soft)', bd: 'var(--danger-bd)', Icon: FiAlertTriangle,
+  head: 'Account suspended',
+  text: 'A platform administrator has suspended this account. You can still view your store, but adding or editing products, updating your store profile and acting on orders are disabled until it is reinstated.',
+}
+
 const BANNERS = {
   Pending: {
     color: 'var(--warning)', soft: 'var(--warning-soft)', bd: 'var(--warning-bd)', Icon: FiClock,
@@ -54,7 +64,8 @@ export default function SellerLayout() {
 
   const shellUser = { ...(user || {}), ...(account || {}) }
   const verification = account?.verificationStatus || null
-  const banner = verification && BANNERS[verification]
+  const suspended = Boolean(account) && account.status !== 'active'
+  const banner = suspended ? ACCOUNT_SUSPENDED_BANNER : (verification && BANNERS[verification])
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-app)' }}>
@@ -102,7 +113,7 @@ export default function SellerLayout() {
               </motion.div>
             )}
           </AnimatePresence>
-          <Outlet context={{ account, counts }} />
+          <Outlet context={{ account, counts, suspended }} />
         </main>
       </div>
 
