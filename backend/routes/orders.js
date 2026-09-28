@@ -451,10 +451,21 @@ router.patch("/:id/seller-status", requireAuth, requireActiveAccount, requireRol
   }
 
   order.sellerStatus = sellerStatus;
+  // "Ready For Dispatch" already means the parcel is packed and waiting for a
+  // courier, so it flags itself for assignment. This used to need a second,
+  // separately-labelled "Pickup" click that was easy to miss entirely — and
+  // until it happened the order never appeared on the admin's Assign
+  // Deliveries page, which just looked broken.
+  const nowAwaitingPickup = sellerStatus === "Ready For Dispatch" && !order.pickupRequested;
+  if (nowAwaitingPickup) order.pickupRequested = true;
   recordHop(order, { status: sellerStatus, phase: "seller", actor: req.auth.role, note });
   await order.save();
 
   emitToAll("order-updated", { orderId: order.id, sellerStatus });
+  if (nowAwaitingPickup) {
+    emitToRole("admin", "pickup-requested", { orderId: order.id });
+    await notifyRole("admin", "pickup-requested", `Ready for pickup: ${order.id}`, order.sellerName || "", { orderId: order.id });
+  }
   if (order.userId) {
     await notifyUser(order.userId, "order-status", `Order ${order.id}: ${sellerStatus}`, note || "", { orderId: order.id, sellerStatus });
   }

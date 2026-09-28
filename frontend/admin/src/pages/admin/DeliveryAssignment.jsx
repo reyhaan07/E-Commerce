@@ -124,7 +124,13 @@ export default function DeliveryAssignment() {
           </tbody>
         </table>
         {!loading && orders.length === 0 && (
-          <p className="text-center text-slate-500 py-10 text-sm">No orders awaiting assignment.</p>
+          <p className="text-center text-slate-500 py-10 text-sm">
+            No orders awaiting assignment.
+            <br />
+            <span className="text-slate-400">
+              Orders appear here once the seller marks them <strong>Ready For Dispatch</strong>.
+            </span>
+          </p>
         )}
       </div>
     </div>
