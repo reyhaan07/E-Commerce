@@ -40,12 +40,33 @@ const DELIVERY_STATUSES = [
   "Delivered",
 ];
 
+// Per-item refund standing. Deliberately small: there was no refund state
+// machine on orders before this (only cancellation.refundId/refundAmount), and
+// "Refunded" is only ever written once the gateway actually returned a refund.
+const ITEM_REFUND_STATUSES = ["Refund Pending", "Refund Processing", "Refunded", "Refund Failed"];
+
 const orderItemSchema = new mongoose.Schema(
   {
+    // Stable per-line handle, e.g. "ORD-1124-1". The subdocument has no _id
+    // (see below), so item-level routes need an explicit key to address a line.
+    // Backfilled for pre-existing orders on boot by data/seed.js.
+    itemId: { type: String, default: null },
     productId: String, // Product.id — optional so old seed orders still validate
     name: { type: String, required: true },
     qty: { type: Number, required: true },
     price: { type: Number, default: 0 }, // unit price at purchase time
+    image: { type: String, default: "" }, // snapshot, so order history survives a delisting
+    // Per-item cancellation (the order-level `cancellation` subdoc below is a
+    // different thing — a whole-order request the seller/admin resolves). Field
+    // names mirror it so both read the same way.
+    cancelled: { type: Boolean, default: false },
+    cancelledAt: { type: Date, default: null },
+    cancelledBy: { type: String, default: null }, // Account.id
+    cancellationReason: { type: String, default: "" },
+    cancellationNote: { type: String, default: "" }, // free text when reason is "Other"
+    refundAmount: { type: Number, default: 0 },
+    refundStatus: { type: String, enum: [...ITEM_REFUND_STATUSES, null], default: null },
+    refundId: { type: String, default: null },
   },
   { _id: false }
 );
@@ -82,6 +103,12 @@ const statusHistoryEntrySchema = new mongoose.Schema(
 
 const PAYMENT_METHODS = ["Prepaid", "Cash on Delivery"];
 
+// Where the money actually is. Prepaid orders only exist once a payment has
+// been verified, so they start Paid; a COD order is Pending until it is
+// collected. "Refunded" is set by the cancellation/refund paths and is kept in
+// step with the per-item refundStatus above rather than being a rival system.
+const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
+
 const orderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   trackingId: { type: String, default: null }, // "TRK-xxxx", generated on partner assignment
@@ -90,12 +117,29 @@ const orderSchema = new mongoose.Schema({
   customerEmail: String,
   customerPhone: String,
   customerAddress: String,
+  // Customer delivery PIN captured at order time (Part B). Drives the
+  // serviceability check when a partner is assigned. String so leading zeros
+  // survive; falls back to the 6-digit code parsed from customerAddress for
+  // legacy orders that predate this field.
+  customerPincode: { type: String, default: "" },
   items: [orderItemSchema],
   amount: { type: Number, required: true },
+  // Server-priced breakdown behind `amount`. Optional, so every order written
+  // before this existed still validates; new catalog-backed orders always
+  // carry it, which is what an invoice would be built from.
+  pricing: {
+    subtotal: { type: Number, default: null },
+    shipping: { type: Number, default: null },
+    tax: { type: Number, default: null },
+    total: { type: Number, default: null },
+  },
   paymentMethod: { type: String, enum: PAYMENT_METHODS, default: "Prepaid" },
   // Razorpay test-mode ids (null for Cash on Delivery)
   razorpayOrderId: { type: String, default: null },
   razorpayPaymentId: { type: String, default: null },
+  // Kept for audit: it is what was verified at order time.
+  razorpaySignature: { type: String, default: null },
+  paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: "Pending" },
   createdAt: { type: Date, default: Date.now },
   // Seller-facing lifecycle (set by the Seller app)
   sellerId: { type: String, default: null }, // Account.id of the seller
@@ -215,6 +259,8 @@ function buildJourney(order) {
 }
 
 module.exports = {
+  ITEM_REFUND_STATUSES,
+  PAYMENT_STATUSES,
   Order,
   SELLER_STATUSES,
   SELLER_TRANSITIONS,

@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4 } from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiOutlineSearch, HiOutlineMenuAlt4, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlineLifebuoy } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import CategoryMenu from './CategoryMenu';
+import ContactSupportModal from './ContactSupportModal';
+import { useAccountStatus } from '../hooks/useAccountStatus';
 
 const Navbar = () => {
+  const { suspended } = useAccountStatus();
+  const [supportOpen, setSupportOpen] = useState(false);
   const { itemCount } = useCart();
   const { items: wishlistItems } = useWishlist();
   const navigate = useNavigate();
@@ -19,6 +24,22 @@ const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-sm border-b">
+      {/* An admin can suspend an account mid-session, and the existing token
+          stays valid until it expires — so say so here rather than letting the
+          storefront look normal until checkout fails. Shown on every page
+          because every page renders the Navbar. */}
+      {suspended && (
+        <div className="bg-red-600 text-white">
+          <div className="container mx-auto px-4 py-2.5 flex items-start gap-2.5 text-sm">
+            <HiOutlineExclamationCircle className="text-lg shrink-0 mt-0.5" />
+            <p>
+              <span className="font-bold">Your account has been suspended.</span>{' '}
+              You can still browse, but placing orders and writing reviews are disabled
+              until a platform administrator reinstates your account.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
@@ -51,6 +72,10 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-4 sm:gap-6">
+          <button type="button" onClick={() => setSupportOpen(true)} className="flex flex-col items-center group" title="Help & Support">
+            <HiOutlineLifebuoy className="text-2xl group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-bold text-gray-500 group-hover:text-primary">HELP</span>
+          </button>
           <Link to="/profile" className="flex flex-col items-center group">
             <HiOutlineUser className="text-2xl group-hover:text-primary transition-colors" />
             <span className="text-[10px] uppercase font-bold text-gray-500 group-hover:text-primary transition-colors hidden sm:block">Profile</span>
@@ -92,6 +117,7 @@ const Navbar = () => {
           <HiOutlineSearch className="text-xl" />
         </button>
       </form>
+      <ContactSupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </nav>
   );
 };

@@ -15,7 +15,11 @@ const reviewSchema = new mongoose.Schema({
   orderId: { type: String, required: true },
   rating: { type: Number, required: true, min: 1, max: 5 },
   comment: { type: String, default: "" },
-  moderationStatus: { type: String, enum: MODERATION_STATUSES, default: "Pending" },
+  // Reviews publish immediately — there is no approval queue. The field is
+  // kept (always "Approved" for anything written now) so existing reviews and
+  // every `moderationStatus: "Approved"` filter keep working unchanged, and so
+  // a future report/takedown flow has somewhere to mark a review hidden.
+  moderationStatus: { type: String, enum: MODERATION_STATUSES, default: "Approved" },
   createdAt: { type: Date, default: Date.now },
 });
 

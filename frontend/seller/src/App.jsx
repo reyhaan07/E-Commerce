@@ -6,6 +6,9 @@ import DashboardPage from './seller/pages/Dashboard/index'
 import ProductsPage  from './seller/pages/Products/index'
 import InventoryPage from './seller/pages/Inventory/index'
 import OrdersPage    from './seller/pages/Orders/index'
+import AnalyticsPage from './seller/pages/Analytics/index'
+import DiscountsPage from './seller/pages/Discounts/index'
+import PayoutsPage   from './seller/pages/Payouts/index'
 import ProfilePage   from './seller/pages/Profile/index'
 import SettingsPage  from './seller/pages/Settings/index'
 import RegisterPage  from './seller/pages/Auth/Register'
@@ -63,6 +66,9 @@ export default function App() {
         <Route path="products"  element={<PageWrapper><ProductsPage /></PageWrapper>} />
         <Route path="inventory" element={<PageWrapper><InventoryPage /></PageWrapper>} />
         <Route path="orders"    element={<PageWrapper><OrdersPage /></PageWrapper>} />
+        <Route path="analytics" element={<PageWrapper><AnalyticsPage /></PageWrapper>} />
+        <Route path="discounts" element={<PageWrapper><DiscountsPage /></PageWrapper>} />
+        <Route path="payouts"   element={<PageWrapper><PayoutsPage /></PageWrapper>} />
         <Route path="profile"   element={<PageWrapper><ProfilePage /></PageWrapper>} />
         <Route path="settings"  element={<PageWrapper><SettingsPage /></PageWrapper>} />
       </Route>

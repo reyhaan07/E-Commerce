@@ -11,6 +11,16 @@ const MOCK_SECRET = "shopsphere-mock-secret";
 
 const isConfigured = Boolean(KEY_ID && KEY_SECRET);
 
+// Card / UPI / net banking all go through Razorpay, so without credentials the
+// only honest payment method is Cash on Delivery — the storefront hides the
+// online options and the API refuses a Prepaid order. Adding real test keys
+// turns them on with no code change.
+//
+// ENABLE_MOCK_PAYMENTS=true re-opens the built-in mock checkout without keys.
+// It exists for the automated payment tests; leave it unset for demos.
+const allowMock = String(process.env.ENABLE_MOCK_PAYMENTS || "").toLowerCase() === "true";
+const onlinePaymentEnabled = isConfigured || allowMock;
+
 let client = null;
 if (isConfigured) {
   const Razorpay = require("razorpay");
@@ -65,4 +75,4 @@ async function refundPayment(paymentId, amount) {
   return { id, status: "processed", mock: true };
 }
 
-module.exports = { isConfigured, createPaymentOrder, verifyPaymentSignature, mockSignature, refundPayment };
+module.exports = { isConfigured, onlinePaymentEnabled, allowMock, createPaymentOrder, verifyPaymentSignature, mockSignature, refundPayment };

@@ -257,7 +257,7 @@ const ProductDetails = () => {
           </div>
 
           <p className="text-sm text-gray-400 mt-6">
-            Bought this product? You can write a review from <Link to="/orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
+            Bought this product? You can write a review from <Link to="/profile?tab=orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
           </p>
         </section>
 

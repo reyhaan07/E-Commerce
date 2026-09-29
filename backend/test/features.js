@@ -123,9 +123,20 @@ async function testOrderJourney() {
   const orderId = placed.body.order.id;
   ok(`placed a fresh order ${orderId}`);
 
-  placed.body.order.sellerStatus === "Processing"
-    ? ok("a new order starts in Processing")
-    : bad("initial status", `got ${placed.body.order.sellerStatus}`);
+  // Stock-based auto-acceptance: every line resolved to a catalog product with
+  // enough stock, so the order is accepted on creation rather than waiting on
+  // the seller. The hop is attributed to "system" to distinguish it from a
+  // seller clicking Accept.
+  placed.body.order.sellerStatus === "Accepted"
+    ? ok("an in-stock order is auto-accepted on creation")
+    : bad("initial status", `expected Accepted, got ${placed.body.order.sellerStatus}`);
+
+  const autoHop = (placed.body.order.statusHistory || []).find(
+    (h) => h.status === "Accepted" && h.phase === "seller"
+  );
+  autoHop && autoHop.actor === "system"
+    ? ok("the auto-acceptance is recorded with actor \"system\"")
+    : bad("auto-accept hop", `got ${JSON.stringify(autoHop)}`);
 
   // route-level authorization
   const unauthenticated = await fetch(`${BASE}/api/orders/${orderId}/seller-status`, {
@@ -142,10 +153,10 @@ async function testOrderJourney() {
     method: "PATCH", token: sellerToken, body: { sellerStatus: "Delivered" },
   });
   skip.status === 400
-    ? ok("skipping Processing → Delivered is rejected by the state machine")
+    ? ok("skipping straight to Delivered is rejected by the state machine")
     : bad("state machine", `expected 400, got ${skip.status}`);
 
-  for (const step of ["Accepted", "Packed", "Ready For Dispatch"]) {
+  for (const step of ["Packed", "Ready For Dispatch"]) {
     const r = await api(`/api/orders/${orderId}/seller-status`, {
       method: "PATCH", token: sellerToken, body: { sellerStatus: step },
     });

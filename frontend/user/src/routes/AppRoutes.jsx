@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from '../pages/Home';
 import Register from '../pages/Register';
+import Login from '../pages/Login';
 import ProductListing from '../pages/ProductListing';
 import ProductDetails from '../pages/ProductDetails';
 import Cart from '../pages/Cart';
 import Checkout from '../pages/Checkout';
-import Orders from '../pages/Orders';
 import Wishlist from '../pages/Wishlist';
 import Profile from '../pages/Profile';
 import TrackOrder from '../pages/TrackOrder';
@@ -36,11 +36,15 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/products" element={<ProductListing />} />
       <Route path="/product/:id" element={<ProductDetails />} />
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
-      <Route path="/orders" element={<RequireAuth><Orders /></RequireAuth>} />
+      {/* The standalone Orders page is retired — My Orders lives inside the
+          Profile layout so the account sidebar stays visible. Redirected rather
+          than removed so old links and bookmarks still land somewhere sensible. */}
+      <Route path="/orders" element={<Navigate to="/profile?tab=orders" replace />} />
       <Route path="/wishlist" element={<RequireAuth><Wishlist /></RequireAuth>} />
       <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
       <Route path="/track-order" element={<RequireAuth><TrackOrder /></RequireAuth>} />

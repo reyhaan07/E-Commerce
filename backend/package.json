@@ -9,7 +9,10 @@
     "reseed": "node data/reseed.js",
     "hash-passwords": "node data/hashPasswords.js",
     "test": "node test/smoke.js",
-    "test:features": "node test/features.js"
+    "test:features": "node test/features.js",
+    "test:serviceability": "node test/serviceability.test.js",
+    "test:cancellation": "node test/cancellation.js",
+    "test:payments": "node test/payments.js"
   },
   "keywords": [],
   "author": "",

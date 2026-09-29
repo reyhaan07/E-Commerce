@@ -118,6 +118,8 @@ function buildWorld(products, users) {
       customerEmail: user.email,
       customerPhone: user.phone,
       customerAddress: `${address.line1}, ${address.line2}, ${address.city} ${address.pincode}`,
+      customerPincode: address.pincode, // Part B: drives serviceability checks
+
       items,
       amount,
       paymentMethod: prepaid ? "Prepaid" : "Cash on Delivery",
@@ -154,6 +156,59 @@ function buildWorld(products, users) {
     orders.push(order);
   });
 
+  // --- Part B demo guarantees ----------------------------------------------
+  // Give the flagship seller (seller-1 TechNova, Chennai, warehouse 600100) two
+  // Ready-For-Dispatch, unassigned orders so the PIN-based assignment UI can be
+  // exercised end to end from the seed world regardless of the RNG above:
+  //   • one to a serviceable Chennai PIN  → eligible partners appear
+  //   • one to a same-city-but-out-of-area PIN → "delivery unavailable"
+  const flagshipCatalog = approved.filter((p) => p.sellerId === "seller-1");
+  if (flagshipCatalog.length >= 2) {
+    const mkFlagship = (offset, buyer, pincode, addressCity) => {
+      orderNumber += 1;
+      const product = flagshipCatalog[offset % flagshipCatalog.length];
+      const qty = 1;
+      const createdAt = new Date(Date.UTC(2026, 6, 14 - offset, 10, 30, 0));
+      return {
+        id: `ORD-${orderNumber}`,
+        trackingId: null,
+        userId: buyer.id,
+        customerName: buyer.name,
+        customerEmail: buyer.email,
+        customerPhone: buyer.phone,
+        customerAddress: `${12 + offset} Marina Avenue, ${addressCity} ${pincode}`,
+        customerPincode: pincode,
+        items: [{ productId: product.id, name: product.name, qty, price: product.price }],
+        amount: product.price * qty,
+        paymentMethod: "Prepaid",
+        razorpayOrderId: `order_seed_${orderNumber}`,
+        razorpayPaymentId: `pay_seed_${orderNumber}`,
+        createdAt,
+        sellerId: "seller-1",
+        sellerName: null,
+        sellerStatus: "Ready For Dispatch",
+        pickupRequested: true,
+        sellerConfirmedDelivery: false,
+        completed: false,
+        deliveryStatus: null,
+        deliveryPartnerId: null,
+        deliveryPartnerName: null,
+        deliveryPartnerPhone: null,
+        statusHistory: [
+          { status: "Placed", phase: "order", actor: "user", note: "", timestamp: createdAt },
+          { status: "Accepted", phase: "seller", actor: "seller", note: "", timestamp: new Date(createdAt.getTime() + 3600e3) },
+          { status: "Packed", phase: "seller", actor: "seller", note: "", timestamp: new Date(createdAt.getTime() + 7200e3) },
+          { status: "Ready For Dispatch", phase: "seller", actor: "seller", note: "", timestamp: new Date(createdAt.getTime() + 10800e3) },
+        ],
+        cancellation: {},
+      };
+    };
+    const chennaiBuyer = users.find((u) => u.addresses[0]?.city === "Chennai") || users[3];
+    const farBuyer = users.find((u) => u.addresses[0]?.city === "Mumbai") || users[0];
+    orders.push(mkFlagship(0, chennaiBuyer, "600096", "Chennai")); // serviceable
+    orders.push(mkFlagship(1, farBuyer, "600042", "Chennai"));     // same city, out of catchment
+  }
+
   // cancellation requests still awaiting a decision on two Processing orders,
   // plus one that was rejected — Feature 10 in every state
   const processing = orders.filter((o) => o.sellerStatus === "Processing");
@@ -179,7 +234,7 @@ function buildWorld(products, users) {
         orderId: order.id,
         rating,
         comment,
-        moderationStatus: reviewNumber % 13 === 0 ? "Pending" : "Approved", // ~9 pending
+        moderationStatus: "Approved", // reviews publish on submission
         createdAt: new Date(order.createdAt.getTime() + 4 * DAY),
       });
     }

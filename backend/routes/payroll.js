@@ -10,7 +10,7 @@ const { Payroll } = require("../models/payroll.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
 const { Account } = require("../models/account.model");
 const { Order } = require("../models/order.model");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requireSuperAdmin, isSuperAdmin } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { notifyUser } = require("../utils/notify");
 const { PERIOD_RE, currentPeriod, countDeliveries, computeNetPay } = require("../utils/payrollMath");
@@ -28,15 +28,17 @@ async function deliveriesByPartner(period) {
 
 router.use(requireAuth);
 
-// GET /api/payroll?period=YYYY-MM        (admin) — a period's rows
+// GET /api/payroll?period=YYYY-MM        (super admin) — a period's rows
 // GET /api/payroll?staffId=me            (any staff) — that staff's payslips
 router.get("/", asyncHandler(async (req, res) => {
   const { staffId } = req.query;
 
-  // self-service: a delivery partner / admin reading their own payslips
+  // self-service: a delivery partner / admin reading their own payslips. This
+  // branch stays open to every authenticated staff member — the delivery app
+  // calls it as ?staffId=me — only the roster below is super-admin-only.
   if (staffId) {
     const resolved = staffId === "me" ? req.auth.id : staffId;
-    if (req.auth.role !== "admin" && resolved !== req.auth.id) {
+    if (resolved !== req.auth.id && !(await isSuperAdmin(req.auth))) {
       return res.status(403).json({ success: false, message: "You can only view your own payslips" });
     }
     const filter = { staffId: resolved };
@@ -45,9 +47,9 @@ router.get("/", asyncHandler(async (req, res) => {
     return res.json({ success: true, payroll: payslips });
   }
 
-  // otherwise it's the admin payroll table for a period
-  if (req.auth.role !== "admin") {
-    return res.status(403).json({ success: false, message: "You don't have access to this resource" });
+  // otherwise it's the payroll roster for a period — super admin only
+  if (!(await isSuperAdmin(req.auth))) {
+    return res.status(403).json({ success: false, message: "Super admin access is required" });
   }
   const period = req.query.period || currentPeriod();
   if (!PERIOD_RE.test(period)) {
@@ -57,10 +59,10 @@ router.get("/", asyncHandler(async (req, res) => {
   res.json({ success: true, period, payroll: rows });
 }));
 
-// POST /api/payroll/generate  { period }  (admin) — build/refresh rows for
+// POST /api/payroll/generate  { period }  (super admin) — build/refresh rows for
 // every staff member. Recomputes delivery counts + net pay while preserving
 // any admin-tuned base/incentive/deductions and never un-paying a Paid row.
-router.post("/generate", requireRole("admin"), asyncHandler(async (req, res) => {
+router.post("/generate", requireSuperAdmin, asyncHandler(async (req, res) => {
   const period = req.body.period || currentPeriod();
   if (!PERIOD_RE.test(period)) {
     return res.status(400).json({ success: false, message: "period must be in YYYY-MM format" });
@@ -134,7 +136,7 @@ router.post("/generate", requireRole("admin"), asyncHandler(async (req, res) => 
 
 // PATCH /api/payroll/:id  { baseSalary?, incentivePerDelivery?, deductions?, status? }
 // Edit a row / mark it Paid. Marking Paid notifies the staff member.
-router.patch("/:id", requireRole("admin"), asyncHandler(async (req, res) => {
+router.patch("/:id", requireSuperAdmin, asyncHandler(async (req, res) => {
   const row = await Payroll.findOne({ id: req.params.id });
   if (!row) {
     return res.status(404).json({ success: false, message: "Payroll record not found" });

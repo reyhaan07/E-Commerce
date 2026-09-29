@@ -30,3 +30,20 @@ export async function confirmDelivery(orderId) {
   const data = await apiRequest(`/orders/${encodeURIComponent(orderId)}/confirm-delivery`, { method: 'PATCH' })
   return data.order
 }
+
+// Part B — PIN-based delivery filtering. The backend returns serviceability
+// first and, when serviceable, only the eligible (active + available +
+// PIN-near) partners, each tagged Same area / Nearby area.
+export async function getEligiblePartners(orderId) {
+  return apiRequest(`/orders/${encodeURIComponent(orderId)}/eligible-partners`)
+}
+
+// Assign a partner. The backend re-validates serviceability + eligibility and
+// rejects anything out of area, so a stale/forged partnerId can't slip through.
+export async function assignPartner(orderId, deliveryPartnerId) {
+  const data = await apiRequest(`/orders/${encodeURIComponent(orderId)}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify({ deliveryPartnerId }),
+  })
+  return data.order
+}

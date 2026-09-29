@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { Account } = require("../models/account.model");
-const { requireAuth, requireSelfOrAdmin } = require("../middleware/auth");
+const { requireAuth, requireSelfOrAdmin, requireActiveAccount } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { emitToRole } = require("../realtime");
 
@@ -52,8 +52,40 @@ router.get("/me", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true, user: account });
 }));
 
+// POST /api/users/me/serviceable-pincodes  { pincode }  (seller)
+// Adds one customer PIN to the store's delivery area. Exists alongside the
+// bulk PATCH above so the Orders screen can unblock a single order in one
+// click without re-sending the whole list (and without a read-modify-write
+// race against someone editing Settings at the same time) — $addToSet is
+// atomic and idempotent.
+router.post("/me/serviceable-pincodes", requireAuth, requireActiveAccount, asyncHandler(async (req, res) => {
+  const pincode = String(req.body.pincode || "").trim();
+  if (!PINCODE_RE.test(pincode)) {
+    return res.status(400).json({ success: false, message: "pincode must be a 6-digit PIN code" });
+  }
+
+  const account = await Account.findOne({ id: req.auth.id }, "role serviceablePincodes");
+  if (!account) {
+    return res.status(404).json({ success: false, message: "Account not found" });
+  }
+  if (account.role !== "seller") {
+    return res.status(403).json({ success: false, message: "Only a seller has delivery areas" });
+  }
+  if ((account.serviceablePincodes || []).length >= 200 && !account.serviceablePincodes.includes(pincode)) {
+    return res.status(400).json({ success: false, message: "Too many PIN codes (max 200)" });
+  }
+
+  const updated = await Account.findOneAndUpdate(
+    { id: req.auth.id, role: "seller" },
+    { $addToSet: { serviceablePincodes: pincode } },
+    { new: true }
+  );
+
+  res.json({ success: true, serviceablePincodes: updated.serviceablePincodes, user: updated });
+}));
+
 // PATCH /api/users/me — update the fields the account's role is allowed to edit
-router.patch("/me", requireAuth, asyncHandler(async (req, res) => {
+router.patch("/me", requireAuth, requireActiveAccount, asyncHandler(async (req, res) => {
   const account = await Account.findOne({ id: req.auth.id });
   if (!account) {
     return res.status(404).json({ success: false, message: "Account not found" });
@@ -105,6 +137,30 @@ router.patch("/me", requireAuth, asyncHandler(async (req, res) => {
     if (b.businessName !== undefined) account.businessName = b.businessName;
     if (b.businessAddress !== undefined) account.businessAddress = b.businessAddress;
 
+    // Delivery serviceability (Part B) — the seller's dispatch PIN and the
+    // customer PINs they deliver to. Stored as 6-digit strings.
+    if (b.warehousePincode !== undefined) {
+      const w = String(b.warehousePincode).trim();
+      if (w && !PINCODE_RE.test(w)) {
+        return res.status(400).json({ success: false, message: "warehousePincode must be a 6-digit PIN code" });
+      }
+      account.warehousePincode = w;
+    }
+    if (b.serviceablePincodes !== undefined) {
+      if (!Array.isArray(b.serviceablePincodes)) {
+        return res.status(400).json({ success: false, message: "serviceablePincodes must be an array" });
+      }
+      const cleaned = [...new Set(b.serviceablePincodes.map((p) => String(p).trim()))].filter(Boolean);
+      const bad = cleaned.find((p) => !PINCODE_RE.test(p));
+      if (bad) {
+        return res.status(400).json({ success: false, message: `"${bad}" is not a valid 6-digit PIN code` });
+      }
+      if (cleaned.length > 200) {
+        return res.status(400).json({ success: false, message: "Too many PIN codes (max 200)" });
+      }
+      account.serviceablePincodes = cleaned;
+    }
+
     // GSTIN/PAN can only change while the store isn't Verified yet
     const locked = account.verificationStatus === "Verified";
     if (b.gstin !== undefined && !locked) {
@@ -139,7 +195,7 @@ router.get("/:id", ...protect, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/users/:id  { name, phone, avatar, deliveryInstructions, notifyByEmail, notifyBySms }
-router.put("/:id", ...protect, asyncHandler(async (req, res) => {
+router.put("/:id", ...protect, requireActiveAccount, asyncHandler(async (req, res) => {
   const account = await findUser(req, res);
   if (!account) return;
 

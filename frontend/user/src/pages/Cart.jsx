@@ -9,9 +9,11 @@ const Cart = () => {
   const { items: cartItems, updateQuantity, removeItem } = useCart();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = cartItems.length ? 20 : 0;
-  const tax = subtotal * 0.05;
-  const total = subtotal + shipping + tax;
+  // Must match what checkout actually charges (and what the server prices):
+  // a flat delivery fee, no tax component. This screen used to show ₹20 plus
+  // 5% tax, so the customer saw one total here and paid a different one.
+  const shipping = cartItems.length ? 200 : 0;
+  const total = subtotal + shipping;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -70,10 +72,6 @@ const Cart = () => {
                 <div className="flex justify-between text-gray-500 font-medium">
                   <span>Shipping Fee</span>
                   <span className="text-gray-900">₹{shipping.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500 font-medium">
-                  <span>Estimated Tax</span>
-                  <span className="text-gray-900">₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-4 flex justify-between">
                   <span className="text-lg font-bold text-gray-900">Total</span>
