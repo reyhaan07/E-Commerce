@@ -1,4 +1,3 @@
-import React from 'react';
 import { HiOutlineCheck, HiOutlineClock, HiOutlineXMark } from 'react-icons/hi2';
 
 // The end-to-end order journey, from checkout through to the doorstep. Steps

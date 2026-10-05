@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { HiXMark, HiLifebuoy, HiPaperAirplane } from 'react-icons/hi2';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../hooks/useAuth';

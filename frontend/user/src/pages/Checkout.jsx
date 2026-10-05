@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAccountStatus } from '../hooks/useAccountStatus';
 import Footer from '../components/Footer';
-import { HiCreditCard, HiCheckCircle, HiHome, HiPhone, HiUser } from 'react-icons/hi2';
+import { HiCreditCard, HiCheckCircle, HiHome } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../api/client';
@@ -80,19 +80,24 @@ const Checkout = () => {
 
   useEffect(() => {
     if (!user) return;
-    apiRequest('/payments/config')
-      .then((data) => setOnlinePaymentEnabled(Boolean(data.onlinePaymentEnabled)))
-      .catch(() => setOnlinePaymentEnabled(false));
+    // The saved-card default depends on whether online payment is on, so wait
+    // for the payment config before applying it — reading the state here
+    // would only ever see its initial `false`.
+    const config = apiRequest('/payments/config')
+      .then((data) => Boolean(data.onlinePaymentEnabled))
+      .catch(() => false);
+    config.then(setOnlinePaymentEnabled);
 
-    apiRequest(`/users/${user.id}`)
-      .then((data) => {
+    Promise.all([apiRequest(`/users/${user.id}`), config])
+      .then(([data, online]) => {
         setProfile(data.user);
         const defaultAddress = data.user.addresses?.find((item) => item.isDefault) || data.user.addresses?.[0];
         const defaultPayment = data.user.paymentMethods?.find((item) => item.isDefault) || data.user.paymentMethods?.[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress._id);
-        if (defaultPayment) {
+        // saved cards are only offered (and only payable) when online payment is on
+        if (defaultPayment && online) {
           setSelectedPaymentId(defaultPayment._id);
-          if (onlinePaymentEnabled) setPaymentMethod(defaultPayment.type);
+          setPaymentMethod(defaultPayment.type);
         }
       })
       .catch(() => {});

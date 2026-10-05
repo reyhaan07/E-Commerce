@@ -1,4 +1,3 @@
-import React from 'react';
 
 // Renders a pill for one of the 6 delivery statuses (or "Not Assigned" when null).
 const STYLES = {

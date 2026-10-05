@@ -1,4 +1,3 @@
-import React from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { HiPlus, HiMinus, HiOutlineTrash, HiArrowRight, HiOutlineShoppingBag } from 'react-icons/hi2';

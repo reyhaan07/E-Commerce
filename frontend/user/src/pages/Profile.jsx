@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Orders from './Orders';
 import {
   HiBars3,
-  HiOutlineBell,
   HiOutlineCheck,
   HiOutlineCheckCircle,
   HiOutlineCreditCard,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HiOutlineMail, HiOutlineLockClosed } from 'react-icons/hi';
 import { HiEye, HiEyeSlash } from 'react-icons/hi2';
@@ -11,7 +11,7 @@ const FALLBACK_API_BASE = 'http://127.0.0.1:5000/api';
 async function apiFetch(endpoint, options) {
   try {
     return await fetch(`${API_BASE}${endpoint}`, options);
-  } catch (e) {
+  } catch {
     return await fetch(`${FALLBACK_API_BASE}${endpoint}`, options);
   }
 }

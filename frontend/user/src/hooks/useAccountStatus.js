@@ -12,10 +12,17 @@ import { useAuth } from './useAuth'
 export function useAccountStatus() {
   const { user } = useAuth()
   const [status, setStatus] = useState('active')
-  const [checked, setChecked] = useState(false)
+  const [checked, setChecked] = useState(!user)
+
+  // a signed-out visitor has nothing to check — reset during render
+  const [prevUser, setPrevUser] = useState(user)
+  if (prevUser !== user) {
+    setPrevUser(user)
+    if (!user) { setStatus('active'); setChecked(true) }
+  }
 
   useEffect(() => {
-    if (!user) { setStatus('active'); setChecked(true); return }
+    if (!user) return
     let cancelled = false
     apiRequest('/users/me')
       .then((d) => { if (!cancelled) setStatus(d.user?.status || 'active') })

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { apiRequest } from '../api/client'
 
@@ -9,7 +9,7 @@ function loadCart() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
     return Array.isArray(raw) ? raw : []
-  } catch (e) {
+  } catch {
     return []
   }
 }
@@ -94,6 +94,7 @@ export function CartProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook lives beside its provider
 export function useCart() {
   const ctx = useContext(CartContext)
   if (!ctx) throw new Error('useCart must be used within a CartProvider')

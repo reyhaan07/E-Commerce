@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -69,10 +69,17 @@ const Orders = ({ embedded = false }) => {
     try {
       const data = await apiRequest(`/orders?userId=${encodeURIComponent(user.id)}`);
       setOrders(data.orders);
-    } catch (e) { /* not fatal for the page */ }
+    } catch { /* not fatal for the page */ }
   }
 
-  useEffect(() => { refresh(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!user) return;
+    let stale = false;
+    apiRequest(`/orders?userId=${encodeURIComponent(user.id)}`)
+      .then((data) => { if (!stale) setOrders(data.orders); })
+      .catch(() => { /* not fatal for the page */ });
+    return () => { stale = true; };
+  }, [user]);
 
   function updateReviewDraft(orderId, changes) {
     setReviewDrafts((current) => ({
