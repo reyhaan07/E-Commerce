@@ -111,6 +111,12 @@ const accountSchema = new mongoose.Schema({
   panNumber: { type: String, default: "" }, // seller PAN (Feature 6)
   businessName: { type: String, default: "" }, // legal/business name
   businessAddress: { type: String, default: "" },
+  // seller-only: PIN-code delivery serviceability (Part B). warehousePincode is
+  // the shop/dispatch PIN used to find nearby delivery partners; the
+  // serviceablePincodes list is the set of customer PINs this seller ships to.
+  // Stored as strings so leading zeros survive; never compared numerically.
+  warehousePincode: { type: String, default: "" },
+  serviceablePincodes: { type: [String], default: [] },
   documents: { type: [sellerDocumentSchema], default: [] }, // uploaded proofs
   verificationStatus: { type: String, enum: ["Pending", "Verified", "Suspended", null], default: null },
   verificationReason: { type: String, default: "" }, // admin note on reject/suspend

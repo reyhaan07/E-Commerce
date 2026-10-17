@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -25,17 +25,27 @@ const ProductDetails = () => {
   const [data, setData] = useState(null); // { product, seller, related, reviews }
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  // moving to another product resets the page during render, so the old
+  // product never flashes up under the new URL
+  const [loadedId, setLoadedId] = useState(id);
+  if (loadedId !== id) {
+    setLoadedId(id);
     setData(null);
     setError('');
     setQuantity(1);
+  }
+
+  useEffect(() => {
+    let stale = false;
     getProduct(id)
       .then((payload) => {
+        if (stale) return;
         setData(payload);
         setMainImage(payload.product.images?.[0] || '');
         window.scrollTo(0, 0);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => { if (!stale) setError(err.message); });
+    return () => { stale = true; };
   }, [id]);
 
   if (error) {
@@ -257,7 +267,7 @@ const ProductDetails = () => {
           </div>
 
           <p className="text-sm text-gray-400 mt-6">
-            Bought this product? You can write a review from <Link to="/orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
+            Bought this product? You can write a review from <Link to="/profile?tab=orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
           </p>
         </section>
 

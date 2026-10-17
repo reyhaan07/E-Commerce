@@ -66,6 +66,7 @@ async function main() {
       name: "Smoke Test",
       email: "smoke.register@example.test",
       password: "smoke-pass-123",
+      phone: "9876543210",
     });
     if (status === 201 && body && body.success && body.token) {
       ok("POST /api/register (created + token)");

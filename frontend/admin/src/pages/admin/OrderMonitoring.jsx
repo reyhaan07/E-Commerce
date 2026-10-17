@@ -128,7 +128,19 @@ export default function OrderMonitoring() {
             <p className="text-sm text-slate-500">Store: {detail.sellerName}</p>
             <div className="text-sm space-y-1 border-t pt-2">
               {detail.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between"><span>{item.name} × {item.qty}</span><span>₹{item.price * item.qty}</span></div>
+                <div key={idx}>
+                  <div className="flex justify-between">
+                    <span className={item.cancelled ? 'line-through text-slate-400' : ''}>{item.name} × {item.qty}</span>
+                    <span className={item.cancelled ? 'text-slate-400' : ''}>₹{item.price * item.qty}</span>
+                  </div>
+                  {item.cancelled && (
+                    <div className="text-xs text-slate-500 mt-0.5 space-y-0.5">
+                      <div className="font-semibold text-rose-600">Cancelled by customer</div>
+                      {item.cancellationReason && <div>Reason: {item.cancellationReason}{item.cancellationNote ? ` — ${item.cancellationNote}` : ''}</div>}
+                      {item.cancelledAt && <div>Cancelled at: {new Date(item.cancelledAt).toLocaleString('en-IN')}</div>}
+                    </div>
+                  )}
+                </div>
               ))}
               <div className="flex justify-between font-bold border-t pt-1"><span>Total ({detail.paymentMethod})</span><span>₹{detail.amount}</span></div>
             </div>

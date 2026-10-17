@@ -99,6 +99,7 @@ export default function Register() {
       if (!form.name.trim()) e.name = 'Full name is required'
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email'
       if (form.password.length < 8) e.password = 'Password must be at least 8 characters'
+      if (!/^\d{10}$/.test(form.phone.trim())) e.phone = 'Enter a 10-digit mobile number (digits only, no +91)'
     }
     if (s === 1) {
       if (!form.businessName.trim()) e.businessName = 'Business / legal name is required'
@@ -239,8 +240,8 @@ export default function Register() {
                   {showPassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
                 </button>
               </Field>
-              <Field label="Phone (optional)" icon={FiPhone}>
-                <input className="input pl-10" placeholder="+91 98765 43210" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+              <Field label="Mobile number" icon={FiPhone} error={errors.phone}>
+                <input className="input pl-10" placeholder="9876543210" inputMode="numeric" maxLength={10} value={form.phone} onChange={(e) => set('phone', e.target.value)} />
               </Field>
             </div>
           )}

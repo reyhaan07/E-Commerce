@@ -1,35 +1,39 @@
-import React, { useState, useEffect } from 'react'
-import { SkeletonTable, SkeletonCard } from '../../components/Skeleton'
+import React, { useState, useEffect, useMemo } from 'react'
+import PageHeader from '../../components/ui/PageHeader'
+import FilterBar from '../../components/ui/FilterBar'
+import SearchBar from '../../components/ui/SearchBar'
+import Pagination from '../../components/ui/Pagination'
+import DataTable from '../../components/ui/DataTable'
+import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
-import { FiLayers, FiAlertTriangle, FiSearch, FiCheck } from 'react-icons/fi'
-import StatCard from '../../components/cards/StatCard'
+import { useToast } from '../../components/ui/Toast'
+import { SkeletonTable, SkeletonCard } from '../../components/Skeleton'
+import {
+  FiLayers, FiCheck, FiChevronRight, FiAlertTriangle, FiXCircle, FiCheckCircle, FiX,
+} from 'react-icons/fi'
 import { apiRequest } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
 
-const LOW_THRESHOLD = 5
-
-const statusOf = (stock) => (stock === 0 ? 'out' : stock <= LOW_THRESHOLD ? 'low' : 'healthy')
-const statusLabel = { healthy: 'In Stock', low: 'Low Stock', out: 'Out of Stock' }
-const statusClass = { healthy: 'badge-success', low: 'badge-warning', out: 'badge-danger' }
+const LOW = 5
+const statusKey = (stock) => (stock === 0 ? 'Out of Stock' : stock <= LOW ? 'Low Stock' : 'In Stock')
 
 export default function Inventory() {
   const { user } = useAuth()
+  const toast = useToast()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [query,   setQuery]   = useState('')
-  const [filter,  setFilter]  = useState('all')
-  const [drafts, setDrafts] = useState({}) // productId -> stock being typed
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('All')
+  const [filter, setFilter] = useState('All')
+  const [drafts, setDrafts] = useState({})
   const [savingId, setSavingId] = useState(null)
-  const [feedback, setFeedback] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   function refresh() {
     if (!user) return
-    apiRequest('/products?sellerId=me&limit=48')
-      .then((d) => setItems(d.products))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    apiRequest('/products?sellerId=me&limit=48').then(d => setItems(d.products)).catch(() => {}).finally(() => setLoading(false))
   }
-
   useEffect(refresh, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveStock(product) {
@@ -38,120 +42,135 @@ export default function Inventory() {
     setSavingId(product.id)
     try {
       await apiRequest(`/products/${product.id}/stock`, { method: 'PATCH', body: JSON.stringify({ stock: value }) })
-      setFeedback(`${product.name} stock updated to ${value}`)
-      setDrafts((d) => ({ ...d, [product.id]: undefined }))
+      toast.success(`${product.name} stock updated to ${value}`)
+      setDrafts(d => ({ ...d, [product.id]: undefined }))
       refresh()
-    } catch (err) {
-      setFeedback(err.message)
-    } finally {
-      setSavingId(null)
-    }
+    } catch (err) { toast.error(err.message) }
+    finally { setSavingId(null) }
   }
 
-  const totalStock = items.reduce((a, b) => a + b.stock, 0)
-  const lowStock   = items.filter(i => statusOf(i.stock) === 'low').length
-  const outStock   = items.filter(i => statusOf(i.stock) === 'out').length
+  const categories = useMemo(() => ['All', ...new Set(items.map(i => i.category))], [items])
+  const stats = useMemo(() => {
+    const totalStock = items.reduce((a, b) => a + b.stock, 0)
+    const inStockUnits = items.filter(i => i.stock > LOW).reduce((a, b) => a + b.stock, 0)
+    const counts = { All: items.length, 'In Stock': 0, 'Low Stock': 0, 'Out of Stock': 0 }
+    items.forEach(i => { counts[statusKey(i.stock)]++ })
+    return { totalStock, inStockUnits, counts, pctIn: totalStock ? ((inStockUnits / totalStock) * 100).toFixed(1) : 0 }
+  }, [items])
 
-  const filtered = items.filter(i => {
-    const matchQ = i.name.toLowerCase().includes(query.toLowerCase()) || (i.sku || '').toLowerCase().includes(query.toLowerCase())
-    const matchF = filter === 'all' || statusOf(i.stock) === filter
-    return matchQ && matchF
-  })
+  const filtered = useMemo(() => items.filter(i => {
+    const q = query.toLowerCase()
+    const matchQ = !q || i.name.toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)
+    const matchC = category === 'All' || i.category === category
+    const matchF = filter === 'All' || statusKey(i.stock) === filter
+    return matchQ && matchC && matchF
+  }), [items, query, category, filter])
+
+  useEffect(() => { setPage(1) }, [query, filter, category, pageSize])
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const filtersActive = query || filter !== 'All' || category !== 'All'
+
+  const summary = [
+    { label: 'Total Stock Units', value: stats.totalStock.toLocaleString(), sub: 'Across all products', icon: FiLayers, tint: ['var(--accent-soft)', 'var(--accent)'] },
+    { label: 'In Stock', value: stats.inStockUnits.toLocaleString(), sub: `${stats.pctIn}% of total stock`, icon: FiCheckCircle, tint: ['var(--success-soft)', 'var(--success)'] },
+    { label: 'Low Stock Items', value: stats.counts['Low Stock'], sub: 'Need restocking', icon: FiAlertTriangle, tint: ['var(--warning-soft)', 'var(--warning)'] },
+    { label: 'Out of Stock', value: stats.counts['Out of Stock'], sub: 'Currently unavailable', icon: FiXCircle, tint: ['var(--danger-soft)', 'var(--danger)'] },
+  ]
+  const tabs = ['All', 'In Stock', 'Low Stock', 'Out of Stock']
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Inventory</h2>
-          <p className="page-subtitle">Stock levels for your {items.length} products</p>
-        </div>
+      <PageHeader title="Inventory" subtitle="Track and manage stock levels for all your products." />
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
+        {loading ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />) : summary.map(s => (
+          <div key={s.label} className="stat-card">
+            <div className="flex items-center gap-2.5">
+              <div className="stat-icon" style={{ background: s.tint[0], color: s.tint[1] }}><s.icon size={18} /></div>
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+            </div>
+            <div>
+              <p className="text-[26px] leading-none font-bold tnum" style={{ color: 'var(--text-primary)' }}>{s.value}</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>{s.sub}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger">
-        {loading ? (
-          Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-        ) : (
-          <>
-            <StatCard title="Total Stock Units" value={totalStock.toLocaleString()}
-              icon={<FiLayers />} iconBg="rgba(99,102,241,0.1)" subtitle="Across all products" />
-            <StatCard title="Low Stock Items" value={lowStock}
-              icon={<FiAlertTriangle />} iconBg="rgba(217,119,6,0.1)"
-              subtitle="Needs restocking" delta={`${lowStock} items`} deltaType="down" />
-            <StatCard title="Out of Stock" value={outStock}
-              icon={<FiAlertTriangle />} iconBg="rgba(225,29,72,0.1)"
-              subtitle="Urgent attention" delta={`${outStock} items`} deltaType="down" />
-          </>
-        )}
-      </div>
+      {/* Filters */}
+      <FilterBar>
+        <SearchBar value={query} onChange={setQuery} placeholder="Search by name, SKU or placement…" />
+        <select className="input h-10 w-full sm:w-48 shrink-0" value={category} onChange={e => setCategory(e.target.value)}>
+          {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Placement' : c}</option>)}
+        </select>
+        {filtersActive && <button className="btn-ghost shrink-0" onClick={() => { setQuery(''); setFilter('All'); setCategory('All') }}><FiX size={15} /> Clear</button>}
+      </FilterBar>
 
-      {feedback && <div className="glass p-3 text-sm font-medium" style={{ borderRadius: 12 }}>{feedback}</div>}
-
-      {/* Filter tabs + search */}
-      <div className="glass p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3" style={{ borderRadius: 16 }}>
-        <div className="relative flex-1">
-          <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-          <input type="text" placeholder="Search by name or SKU…" className="input pl-9 h-9 text-sm"
-            value={query} onChange={e => setQuery(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--surface-3)', border: '1px solid var(--border)' }}>
-          {['all','healthy','low','out'].map(f => (
-            <button key={f}
-              className="px-3 h-7 rounded-lg text-xs font-medium transition-all duration-200 capitalize"
-              style={{
-                background: filter === f ? 'var(--surface)' : 'transparent',
-                color: filter === f ? 'var(--accent)' : 'var(--text-muted)',
-                boxShadow: filter === f ? 'var(--shadow-sm)' : 'none',
-                fontWeight: filter === f ? 600 : 500,
-              }}
-              onClick={() => setFilter(f)}>
-              {f === 'all' ? 'All' : statusLabel[f]}
-            </button>
-          ))}
-        </div>
+      {/* Status tabs */}
+      <div className="seg flex-wrap">
+        {tabs.map(t => (
+          <button key={t} className={`seg-item${filter === t ? ' active' : ''}`} onClick={() => setFilter(t)}>
+            {t} <span className="seg-count">{stats.counts[t]}</span>
+          </button>
+        ))}
       </div>
 
       {/* Table */}
-      {loading ? <SkeletonTable rows={6} /> : filtered.length === 0 ? (
-        <EmptyState
-          icon={<FiLayers />}
-          title="No items match your filter"
-          description="Try changing the status filter or searching by a different keyword."
-          action={<button className="btn-ghost" onClick={() => { setQuery(''); setFilter('all') }}>Reset Filters</button>}
-        />
+      {loading ? <SkeletonTable rows={8} /> : filtered.length === 0 ? (
+        <EmptyState icon={<FiLayers />} title="No items match your filter"
+          description="Try a different status filter or search keyword."
+          action={filtersActive ? <button className="btn-ghost" onClick={() => { setQuery(''); setFilter('All'); setCategory('All') }}>Reset Filters</button> : null} />
       ) : (
-        <div className="table-wrapper">
-          <table className="data-table">
-            <thead><tr><th>Product</th><th>SKU</th><th>Placement</th><th>Qty</th><th>Status</th><th>Update Stock</th></tr></thead>
-            <tbody>
-              {filtered.map((item) => {
-                const status = statusOf(item.stock)
-                const draft = drafts[item.id]
-                return (
-                  <tr key={item.id}>
-                    <td className="font-medium max-w-[200px] truncate">{item.name}</td>
-                    <td><code className="text-xs px-2 py-0.5 rounded-md" style={{ background: 'var(--surface-3)', color: 'var(--text-soft)' }}>{item.sku}</code></td>
-                    <td className="text-xs">{item.category}{item.productType ? ` → ${item.productType}` : ''}</td>
-                    <td className="font-semibold" style={{ color: 'var(--text-primary)' }}>{item.stock}</td>
-                    <td><span className={`badge ${statusClass[status]}`}>{statusLabel[status]}</span></td>
-                    <td style={{ minWidth: 150 }}>
-                      <div className="flex items-center gap-1.5">
-                        <input type="number" min="0" className="input h-8 text-xs" style={{ width: 72 }}
-                          value={draft !== undefined ? draft : item.stock}
-                          onChange={e => setDrafts(d => ({ ...d, [item.id]: e.target.value }))} />
-                        <button className="btn-icon" title="Save" style={{ width: 28, height: 28 }}
-                          disabled={savingId === item.id || draft === undefined || Number(draft) === item.stock}
-                          onClick={() => saveStock(item)}>
-                          <FiCheck size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <DataTable minWidth={760} columns={[
+            { key: 'product', label: 'Product' },
+            { key: 'sku', label: 'SKU' },
+            { key: 'placement', label: 'Placement' },
+            { key: 'qty', label: 'Qty' },
+            { key: 'status', label: 'Status' },
+            { key: 'update', label: 'Update Stock' },
+          ]}>
+            {pageRows.map(item => {
+              const key = statusKey(item.stock)
+              const draft = drafts[item.id]
+              const parts = [item.category, item.subcategory || item.productType].filter(Boolean)
+              return (
+                <tr key={item.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <img src={item.images?.[0]} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" style={{ border: '1px solid var(--border)', background: 'var(--surface-2)' }}
+                        onError={e => { e.currentTarget.style.visibility = 'hidden' }} />
+                      <span className="font-semibold text-[13px] truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{item.name}</span>
+                    </div>
+                  </td>
+                  <td><code className="text-[11px] px-2 py-1 rounded-md" style={{ background: 'var(--surface-3)', color: 'var(--text-soft)' }}>{item.sku || '—'}</code></td>
+                  <td>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {parts.map((p, i) => (<React.Fragment key={i}>{i > 0 && <FiChevronRight size={11} style={{ color: 'var(--text-faint)' }} />}<span>{p}</span></React.Fragment>))}
+                    </div>
+                  </td>
+                  <td className="font-bold tnum" style={{ color: 'var(--text-primary)' }}>{item.stock}</td>
+                  <td><StatusBadge status={key} /></td>
+                  <td>
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min="0" className="input h-9 w-24 text-sm"
+                        value={draft !== undefined ? draft : item.stock}
+                        onChange={e => setDrafts(d => ({ ...d, [item.id]: e.target.value }))} />
+                      <button className="btn-icon w-9 h-9" title="Save"
+                        style={draft !== undefined && Number(draft) !== item.stock ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : undefined}
+                        disabled={savingId === item.id || draft === undefined || Number(draft) === item.stock}
+                        onClick={() => saveStock(item)}>
+                        <FiCheck size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </DataTable>
+          <Pagination page={page} pageSize={pageSize} total={filtered.length} noun="products" onPage={setPage} onPageSize={setPageSize} />
+        </>
       )}
     </div>
   )

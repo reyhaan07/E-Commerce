@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -49,20 +49,30 @@ const ProductListing = () => {
     getCategoryTree().then(setTree).catch(() => {});
   }, []);
 
-  useEffect(() => {
+  // a new filter combination flips back to the loading state during render
+  const queryKey = searchParams.toString();
+  const [loadedKey, setLoadedKey] = useState(queryKey);
+  if (loadedKey !== queryKey) {
+    setLoadedKey(queryKey);
     setLoading(true);
     setError('');
+  }
+
+  useEffect(() => {
+    // ignore a slow response that lands after the filters have moved on
+    let stale = false;
     listProducts({ q, category, subcategory, productType, maxPrice, minRating, sort, page, limit: 12 })
       .then(({ products, pagination }) => {
+        if (stale) return;
         setProducts(products.map(toCardProduct));
         setPagination(pagination);
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => { if (!stale) setError(err.message); })
+      .finally(() => { if (!stale) setLoading(false); });
+    return () => { stale = true; };
   }, [q, category, subcategory, productType, maxPrice, minRating, sort, page]);
 
   const activeCategory = tree.find((c) => c.name === category);
-  const activeSubcategory = activeCategory?.subcategories.find((s) => s.name === subcategory);
   const heading = q ? `Results for “${q}”`
     : productType || subcategory || (category ? `${category}` : 'All Products');
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;

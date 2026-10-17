@@ -33,7 +33,7 @@ function consumeAuthHandoff() {
 export function useAuth() {
   const [user, setUser] = useState(() => {
     consumeAuthHandoff()
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch (e) { return null }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null }
   })
 
   useEffect(() => {
@@ -58,5 +58,5 @@ export function useAuth() {
 }
 
 export function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch (e) { return null }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null }
 }

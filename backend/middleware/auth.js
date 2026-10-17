@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { Account } = require("../models/account.model");
+const { DeliveryPartner } = require("../models/deliveryPartner.model");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRY = "7d";
@@ -62,21 +63,27 @@ function requireRole(...roles) {
   };
 }
 
-// Use after requireAuth + requireRole("admin") - gates the admin roster itself.
-// The tier is re-read from the database rather than trusted from the token, so
-// demoting or suspending an admin takes effect before their 7-day JWT expires.
+// True when req.auth belongs to an active SUPER_ADMIN. The tier is re-read from
+// the database rather than trusted from the token, so demoting or suspending an
+// admin takes effect before their 7-day JWT expires. Exported for the handful of
+// routes that branch on the tier inline instead of gating the whole route
+// (e.g. GET /api/payroll, which also serves self-service payslips).
+async function isSuperAdmin(auth) {
+  if (!auth || auth.role !== "admin") return false;
+  const account = await Account.findOne({
+    id: auth.id,
+    role: "admin",
+    adminRole: "SUPER_ADMIN",
+    status: "active",
+  });
+  return Boolean(account);
+}
+
+// Use after requireAuth + requireRole("admin") - gates the admin roster itself,
+// review moderation and payroll management.
 async function requireSuperAdmin(req, res, next) {
-  if (req.auth.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Super admin access is required" });
-  }
   try {
-    const account = await Account.findOne({
-      id: req.auth.id,
-      role: "admin",
-      adminRole: "SUPER_ADMIN",
-      status: "active",
-    });
-    if (!account) {
+    if (!(await isSuperAdmin(req.auth))) {
       return res.status(403).json({ success: false, message: "Super admin access is required" });
     }
     return next();
@@ -85,4 +92,55 @@ async function requireSuperAdmin(req, res, next) {
   }
 }
 
-module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin, requireRole, requireSuperAdmin, SYSTEM_SUPER_ADMIN_EMAIL };
+// Use after requireAuth on state-changing routes. Suspending an account only
+// blocks the next *login* - an already-issued JWT stays valid for 7 days - so
+// without this a suspended seller/customer keeps working until it expires. The
+// status is re-read from the database on every request, same as the tier above.
+// Delivery partners live in their own collection and are covered by
+// requireActivePartner in routes/deliveryPartners.js instead.
+async function requireActiveAccount(req, res, next) {
+  try {
+    const account = await Account.findOne({ id: req.auth.id }, "status role");
+    // Not an Account at all (e.g. a delivery partner token) - nothing to check
+    // here, so leave it to the route's own role guard.
+    if (!account) return next();
+    if (account.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: account.status === "suspended"
+          ? "This account is suspended. Contact a platform administrator to restore access."
+          : "This account is no longer active.",
+      });
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+const PARTNER_STATUS_MESSAGE = {
+  suspended: "This delivery partner account is suspended. You can request a review from the app.",
+  deactivated: "This delivery partner account has been deactivated by an administrator.",
+};
+
+// The delivery-partner counterpart to requireActiveAccount. Partners live in
+// their own collection, so requireActiveAccount never sees them. Use after
+// requireAuth on anything a suspended/deactivated partner must not be able to
+// do - their JWT stays valid for 7 days after an admin acts on the account.
+async function requireActivePartner(req, res, next) {
+  try {
+    const partner = await DeliveryPartner.findOne({ id: req.auth.id }, "accountStatus");
+    // Not a partner (an admin acting on a delivery route) - leave it to the
+    // route's own role guard.
+    if (!partner) return next();
+    const status = partner.accountStatus || "active";
+    if (status !== "active") {
+      return res.status(403).json({ success: false, accountStatus: status, message: PARTNER_STATUS_MESSAGE[status] });
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { signToken, getAuthFromHeader, requireAuth, requireSelfOrAdmin, requireRole, isSuperAdmin, requireSuperAdmin, requireActiveAccount, requireActivePartner, SYSTEM_SUPER_ADMIN_EMAIL };
