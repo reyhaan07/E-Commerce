@@ -66,6 +66,8 @@ const ProductDetails = () => {
   const wishlisted = isWishlisted(product.id);
   const inStock = product.stock > 0;
   const lowStock = inStock && product.stock <= 5;
+  const isHighValue = (product.price || 0) >= 25000;
+  const maxAllowedQty = isHighValue ? 1 : Math.min(5, product.stock || 1);
   const cartShape = { id: product.id, name: product.name, price: product.price, image: product.images?.[0] };
 
   function requireLogin() {
@@ -148,9 +150,16 @@ const ProductDetails = () => {
               {product.discount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">SAVE {product.discount}%</span>}
             </div>
 
-            <p className={`font-bold text-sm mb-6 ${inStock ? (lowStock ? 'text-amber-600' : 'text-green-600') : 'text-red-500'}`}>
+            <p className={`font-bold text-sm mb-4 ${inStock ? (lowStock ? 'text-amber-600' : 'text-green-600') : 'text-red-500'}`}>
               {inStock ? (lowStock ? `Only ${product.stock} left in stock — order soon` : 'In Stock') : 'Out of Stock'}
             </p>
+
+            {isHighValue && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mb-6">
+                <span className="text-base">🛡️</span>
+                <span><strong>High-Value Item:</strong> In accordance with safety policies, this product is limited to <strong>1 unit per order</strong>.</span>
+              </div>
+            )}
 
             <p className="text-gray-600 mb-8 leading-relaxed text-lg">{product.description}</p>
 
@@ -181,9 +190,23 @@ const ProductDetails = () => {
             <div className="space-y-6 mt-auto">
               <div className="flex items-center gap-6">
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
-                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="p-4 hover:bg-gray-200 transition-colors"><HiMinus /></button>
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="p-4 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Decrease quantity"
+                  >
+                    <HiMinus />
+                  </button>
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
-                  <button onClick={() => setQuantity((q) => Math.min(product.stock || 1, q + 1))} className="p-4 hover:bg-gray-200 transition-colors"><HiPlus /></button>
+                  <button
+                    onClick={() => setQuantity((q) => Math.min(maxAllowedQty, q + 1))}
+                    disabled={quantity >= maxAllowedQty}
+                    className="p-4 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={quantity >= maxAllowedQty ? (isHighValue ? "High-value limit: max 1 unit" : `Max quantity reached (${maxAllowedQty})`) : "Increase quantity"}
+                  >
+                    <HiPlus />
+                  </button>
                 </div>
                 <button onClick={handleAddToCart} disabled={!inStock} className="flex-1 btn-primary py-4 flex items-center justify-center gap-2 shadow-xl shadow-primary/20 disabled:opacity-50">
                   <HiOutlineShoppingBag className="text-xl" /> {inStock ? 'Add to Cart' : 'Out of Stock'}
@@ -257,7 +280,7 @@ const ProductDetails = () => {
           </div>
 
           <p className="text-sm text-gray-400 mt-6">
-            Bought this product? You can write a review from <Link to="/orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
+            Bought this product? You can write a review from <Link to="/profile?tab=orders" className="text-primary font-bold hover:underline">My Orders</Link> once it's delivered.
           </p>
         </section>
 

@@ -1,10 +1,12 @@
-require("dotenv").config({ quiet: true });
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env"), quiet: true });
 
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const seedDatabase = require("./data/seed");
+const { loadCoverage } = require("./utils/coverage");
 const { initRealtime } = require("./realtime");
 
 const app = express();
@@ -23,6 +25,8 @@ const notificationsRoutes = require("./routes/notifications");
 const returnsRoutes = require("./routes/returns");
 const adminRoutes = require("./routes/admin");
 const payrollRoutes = require("./routes/payroll");
+const supportRoutes = require("./routes/support");
+const coverageRoutes = require("./routes/coverage");
 
 app.use("/api", authRoutes);
 app.use("/api/orders", ordersRoutes);
@@ -35,6 +39,8 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/returns", returnsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/payroll", payrollRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/coverage", coverageRoutes);
 
 // Catches errors passed to next(err) (e.g. by asyncHandler) so a Mongoose
 // validation/duplicate-key error comes back as normal JSON instead of
@@ -57,7 +63,11 @@ initRealtime(server);
 
 connectDB()
     .then(seedDatabase)
-    .then(() => {
+    // Delivery catchments are admin-editable and cached in memory; seed them
+    // from data/pincodes.js on first boot, then warm the cache.
+    .then(loadCoverage)
+    .then((zones) => {
+        console.log(`Delivery coverage loaded: ${zones.length} zones`);
         server.listen(PORT, () => {
             console.log(`Server running on port ${PORT} (HTTP + Socket.io)`);
         });

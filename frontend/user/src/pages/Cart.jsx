@@ -9,9 +9,11 @@ const Cart = () => {
   const { items: cartItems, updateQuantity, removeItem } = useCart();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shipping = cartItems.length ? 20 : 0;
-  const tax = subtotal * 0.05;
-  const total = subtotal + shipping + tax;
+  // Must match what checkout actually charges (and what the server prices):
+  // a flat delivery fee, no tax component. This screen used to show ₹20 plus
+  // 5% tax, so the customer saw one total here and paid a different one.
+  const shipping = cartItems.length ? 200 : 0;
+  const total = subtotal + shipping;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -24,7 +26,12 @@ const Cart = () => {
           
           {/* Cart Items List */}
           <div className="lg:col-span-2 space-y-4">
-            {cartItems.map(item => (
+            {cartItems.map(item => {
+              const isHighVal = Number(item.price || 0) >= 25000;
+              const maxAllowed = isHighVal ? 1 : 5;
+              const atMax = item.quantity >= maxAllowed;
+
+              return (
               <div key={item.id} className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex gap-6 items-center">
                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -32,10 +39,28 @@ const Cart = () => {
                 <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">{item.name}</h3>
+                    {isHighVal && (
+                      <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 mt-1">
+                        High-value product (Limit 1 per order)
+                      </span>
+                    )}
                     <div className="flex items-center border border-gray-200 rounded-lg w-fit overflow-hidden mt-4">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-2 hover:bg-gray-100"><HiMinus className="text-sm" /></button>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="p-2 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <HiMinus className="text-sm" />
+                        </button>
                         <span className="px-4 font-bold text-gray-900">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-2 hover:bg-gray-100"><HiPlus className="text-sm" /></button>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          disabled={atMax}
+                          className="p-2 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={atMax ? (isHighVal ? "High-value product: limited to 1 unit" : "Maximum order limit reached (5 units)") : "Increase"}
+                        >
+                          <HiPlus className="text-sm" />
+                        </button>
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end">
@@ -46,7 +71,8 @@ const Cart = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
 
             {cartItems.length === 0 && (
                 <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
@@ -70,10 +96,6 @@ const Cart = () => {
                 <div className="flex justify-between text-gray-500 font-medium">
                   <span>Shipping Fee</span>
                   <span className="text-gray-900">₹{shipping.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500 font-medium">
-                  <span>Estimated Tax</span>
-                  <span className="text-gray-900">₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-4 flex justify-between">
                   <span className="text-lg font-bold text-gray-900">Total</span>

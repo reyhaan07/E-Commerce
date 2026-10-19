@@ -2,6 +2,8 @@
 // Passwords follow "<firstname>123" so the README credentials table stays
 // predictable.
 
+const { CITY_SERVICE_AREAS } = require("./pincodes");
+
 const CITIES = [
   ["Mumbai", "Maharashtra", "400001"],
   ["Delhi", "Delhi", "110001"],
@@ -63,31 +65,43 @@ const ADMINS = [
   ["Arvind Swamy", "arvind.escalations@shopsphere.com", "arvind123", "Escalations Manager"],
 ];
 
+// [name, email, password, vehicle, zone, status, pincode]
+// PINs come from the delivery catchments in data/pincodes.js. Chennai is
+// intentionally rich so the flagship seller (TechNova, warehouse 600100) has a
+// realistic mix for the Part B assignment UI:
+//   • Ravi 600100 (same) + Sunita 600096 + Kiran 600073 → eligible
+//   • Prakash 600096 but Offline → excluded (unavailable)
+//   • Bhavesh 600042 same-city-but-not-nearby → excluded (out of catchment)
 const PARTNERS = [
-  ["Ravi Kumar", "ravi.delivery@shopsphere.com", "ravi123", "Bike", "Chennai", "Active"],
-  ["Sunita Sharma", "sunita.delivery@shopsphere.com", "sunita123", "Van", "Chennai", "Active"],
-  ["Mohammed Irfan", "irfan.delivery@shopsphere.com", "irfan123", "Bike", "Mumbai", "On Delivery"],
-  ["Ganesh Yadav", "ganesh.delivery@shopsphere.com", "ganesh123", "Bike", "Mumbai", "Active"],
-  ["Lakhan Singh", "lakhan.delivery@shopsphere.com", "lakhan123", "Truck", "Delhi", "Active"],
-  ["Prakash Jha", "prakash.delivery@shopsphere.com", "prakash123", "Bike", "Delhi", "Offline"],
-  ["Suresh Babu", "suresh.delivery@shopsphere.com", "suresh123", "Van", "Bengaluru", "Active"],
-  ["Anil Kumble", "anil.delivery@shopsphere.com", "anil1234", "Bike", "Bengaluru", "On Delivery"],
-  ["Ramesh Iyer", "ramesh.delivery@shopsphere.com", "ramesh123", "Bike", "Hyderabad", "Active"],
-  ["Vijay Antony", "vijay.delivery@shopsphere.com", "vijay123", "Van", "Hyderabad", "Active"],
-  ["Santosh Pawar", "santosh.delivery@shopsphere.com", "santosh123", "Bike", "Pune", "Active"],
-  ["Kiran Rathod", "kiran.delivery@shopsphere.com", "kiran123", "Bike", "Pune", "Offline"],
-  ["Bhavesh Solanki", "bhavesh.delivery@shopsphere.com", "bhavesh123", "Van", "Ahmedabad", "Active"],
-  ["Dinesh Meena", "dinesh.delivery@shopsphere.com", "dinesh123", "Bike", "Jaipur", "Active"],
-  ["Sourav Ganguly", "sourav.delivery@shopsphere.com", "sourav123", "Bike", "Kolkata", "On Delivery"],
-  ["Alok Verma", "alok.delivery@shopsphere.com", "alok1234", "Truck", "Lucknow", "Active"],
-  ["Joseph Thomas", "joseph.delivery@shopsphere.com", "joseph123", "Bike", "Kochi", "Active"],
-  ["Narendra Rawat", "narendra.delivery@shopsphere.com", "narendra123", "Van", "Indore", "Active"],
-  ["Salim Sheikh", "salim.delivery@shopsphere.com", "salim123", "Bike", "Mumbai", "Active"],
-  ["Tara Chand", "tara.delivery@shopsphere.com", "tara1234", "Bike", "Delhi", "Active"],
+  ["Ravi Kumar", "ravi.delivery@shopsphere.com", "ravi123", "Bike", "Chennai", "Active", "600100"],
+  ["Sunita Sharma", "sunita.delivery@shopsphere.com", "sunita123", "Van", "Chennai", "Active", "600096"],
+  ["Mohammed Irfan", "irfan.delivery@shopsphere.com", "irfan123", "Bike", "Mumbai", "On Delivery", "400001"],
+  ["Ganesh Yadav", "ganesh.delivery@shopsphere.com", "ganesh123", "Bike", "Mumbai", "Active", "400050"],
+  ["Lakhan Singh", "lakhan.delivery@shopsphere.com", "lakhan123", "Truck", "Delhi", "Active", "110001"],
+  ["Prakash Jha", "prakash.delivery@shopsphere.com", "prakash123", "Bike", "Chennai", "Offline", "600096"],
+  ["Suresh Babu", "suresh.delivery@shopsphere.com", "suresh123", "Van", "Bengaluru", "Active", "560001"],
+  ["Anil Kumble", "anil.delivery@shopsphere.com", "anil1234", "Bike", "Bengaluru", "On Delivery", "560034"],
+  ["Ramesh Iyer", "ramesh.delivery@shopsphere.com", "ramesh123", "Bike", "Hyderabad", "Active", "500001"],
+  ["Vijay Antony", "vijay.delivery@shopsphere.com", "vijay123", "Van", "Hyderabad", "Active", "500032"],
+  ["Santosh Pawar", "santosh.delivery@shopsphere.com", "santosh123", "Bike", "Pune", "Active", "411001"],
+  ["Kiran Rathod", "kiran.delivery@shopsphere.com", "kiran123", "Bike", "Chennai", "Active", "600073"],
+  ["Bhavesh Solanki", "bhavesh.delivery@shopsphere.com", "bhavesh123", "Van", "Chennai", "Active", "600042"],
+  ["Dinesh Meena", "dinesh.delivery@shopsphere.com", "dinesh123", "Bike", "Jaipur", "Active", "302001"],
+  ["Sourav Ganguly", "sourav.delivery@shopsphere.com", "sourav123", "Bike", "Kolkata", "On Delivery", "700001"],
+  ["Alok Verma", "alok.delivery@shopsphere.com", "alok1234", "Truck", "Lucknow", "Active", "226001"],
+  ["Joseph Thomas", "joseph.delivery@shopsphere.com", "joseph123", "Bike", "Kochi", "Active", "682001"],
+  ["Narendra Rawat", "narendra.delivery@shopsphere.com", "narendra123", "Van", "Indore", "Active", "452001"],
+  ["Salim Sheikh", "salim.delivery@shopsphere.com", "salim123", "Bike", "Mumbai", "Active", "400058"],
+  ["Tara Chand", "tara.delivery@shopsphere.com", "tara1234", "Bike", "Delhi", "Active", "110017"],
 ];
 
 function addressFor(index, name) {
-  const [city, state, pincode] = CITIES[index % CITIES.length];
+  const [city, state, basePincode] = CITIES[index % CITIES.length];
+  // Place the customer inside the city's delivery catchment (Part B) so their
+  // PIN is serviceable by a same-city seller; spread across the cluster's PINs
+  // for variety. Falls back to the base city PIN if the city isn't mapped.
+  const nearPins = CITY_SERVICE_AREAS[city] || [basePincode];
+  const pincode = nearPins[Math.floor(index / CITIES.length) % nearPins.length];
   return {
     label: "Home",
     line1: `${5 + index * 3} ${["Lake View Road", "MG Road", "Nehru Street", "Gandhi Marg", "Station Road"][index % 5]}`,
@@ -147,7 +161,7 @@ function adminAccounts() {
 }
 
 function deliveryPartners() {
-  return PARTNERS.map(([name, email, password, vehicle, zone, status], idx) => ({
+  return PARTNERS.map(([name, email, password, vehicle, zone, status, pincode], idx) => ({
     id: `partner-${idx + 1}`,
     name,
     email,
@@ -155,6 +169,7 @@ function deliveryPartners() {
     phone: `9${String(870000000 + idx * 6733).slice(0, 9)}`,
     vehicle,
     zone,
+    pincode,
     status,
   }));
 }

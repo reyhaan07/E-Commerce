@@ -266,14 +266,13 @@ router.patch("/accounts/:id/verification", asyncHandler(async (req, res) => {
 
 // GET /api/admin/stats — dashboard tiles + analytics aggregates
 router.get("/stats", asyncHandler(async (req, res) => {
-  const [users, sellers, products, orders, activeCarts, pendingReviews, openReturns, revenueAgg, ordersByStatus] =
+  const [users, sellers, products, orders, activeCarts, openReturns, revenueAgg, ordersByStatus] =
     await Promise.all([
       Account.countDocuments({ role: "user" }),
       Account.countDocuments({ role: "seller" }),
-      Product.countDocuments(),
+      Product.countDocuments({ isArchived: { $ne: true } }),
       Order.countDocuments(),
       Account.countDocuments({ role: "user", "cart.0": { $exists: true } }),
-      Review.countDocuments({ moderationStatus: "Pending" }),
       ReturnRequest.countDocuments({ status: { $nin: ["Refunded", "Rejected"] } }),
       Order.aggregate([
         { $match: { sellerStatus: { $nin: ["Cancelled", "Returned"] } } },
@@ -290,7 +289,6 @@ router.get("/stats", asyncHandler(async (req, res) => {
       products,
       orders,
       activeCarts,
-      pendingReviews,
       openReturns,
       revenue: revenueAgg.length ? revenueAgg[0].total : 0,
       ordersByStatus: Object.fromEntries(ordersByStatus.map((s) => [s._id, s.count])),

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAccountStatus } from '../hooks/useAccountStatus';
 import Footer from '../components/Footer';
 import { HiCreditCard, HiCheckCircle, HiHome, HiPhone, HiUser } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';
@@ -59,6 +60,7 @@ async function collectPayment(paymentOrder, user) {
 const Checkout = () => {
   const { items: cartItems, clearCart } = useCart();
   const { user } = useAuth();
+  const { suspended } = useAccountStatus();
   const navigate = useNavigate();
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const shipping = cartItems.length ? 200 : 0;
@@ -68,12 +70,20 @@ const Checkout = () => {
   const [profile, setProfile] = useState(null);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [selectedPaymentId, setSelectedPaymentId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('cod');
+  // Card / UPI / net banking all run through Razorpay. Until credentials are
+  // configured the API refuses a Prepaid order, so the page offers Cash on
+  // Delivery only rather than letting someone pick a card and fail at the end.
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
+    apiRequest('/payments/config')
+      .then((data) => setOnlinePaymentEnabled(Boolean(data.onlinePaymentEnabled)))
+      .catch(() => setOnlinePaymentEnabled(false));
+
     apiRequest(`/users/${user.id}`)
       .then((data) => {
         setProfile(data.user);
@@ -82,7 +92,7 @@ const Checkout = () => {
         if (defaultAddress) setSelectedAddressId(defaultAddress._id);
         if (defaultPayment) {
           setSelectedPaymentId(defaultPayment._id);
-          setPaymentMethod(defaultPayment.type);
+          if (onlinePaymentEnabled) setPaymentMethod(defaultPayment.type);
         }
       })
       .catch(() => {});
@@ -102,6 +112,10 @@ const Checkout = () => {
       setError('Please log in to place an order');
       return;
     }
+    if (suspended) {
+      setError("Your account is suspended, so orders cannot be placed. Contact a platform administrator to have it reinstated.");
+      return;
+    }
     if (cartItems.length === 0) return;
     const customerAddress = savedAddressText || manualAddressText;
     if (!customerAddress || customerAddress === ',') {
@@ -112,14 +126,21 @@ const Checkout = () => {
     setPlacing(true);
     try {
       const method = PAYMENT_METHOD_MAP[selectedPayment?.type || paymentMethod] || 'Prepaid';
+      if (method === 'Prepaid' && !onlinePaymentEnabled) {
+        setError("Online payment isn't available yet. Please choose Cash on Delivery.");
+        setPlacing(false);
+        return;
+      }
 
       // Prepaid runs through Razorpay (test mode) first; the backend verifies
       // the signature before it will create the order.
       let payment = {};
       if (method === 'Prepaid') {
+        // The server prices the cart and creates the Razorpay order for that
+        // figure — the browser no longer says what it is willing to pay.
         const { paymentOrder } = await apiRequest('/payments/create-order', {
           method: 'POST',
-          body: JSON.stringify({ amount: total }),
+          body: JSON.stringify({ items: cartItems.map((i) => ({ productId: i.id, qty: i.quantity })) }),
         });
         payment = await collectPayment(paymentOrder, user);
       }
@@ -139,7 +160,7 @@ const Checkout = () => {
         }),
       });
       clearCart();
-      navigate('/orders');
+      navigate('/profile?tab=orders');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -218,7 +239,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {profile?.paymentMethods?.map((method) => (
+                  {onlinePaymentEnabled && profile?.paymentMethods?.map((method) => (
                     <label key={method._id} className="relative border-2 border-gray-100 p-6 rounded-2xl cursor-pointer hover:border-primary transition-all group overflow-hidden">
                       <input type="radio" name="saved-payment" className="sr-only peer" checked={selectedPaymentId === method._id} onChange={() => { setSelectedPaymentId(method._id); setPaymentMethod(method.type); }} />
                       <div className="peer-checked:text-primary transition-colors">
@@ -232,22 +253,51 @@ const Checkout = () => {
                     </label>
                   ))}
                   {[
-                      { id: 'card', name: 'Credit/Debit Card', icon: '💳' },
-                      { id: 'upi', name: 'UPI / Wallet', icon: '📱' },
-                      { id: 'cod', name: 'Cash on Delivery', icon: '💵' },
-                  ].map(method => (
-                      <label key={method.id} className="relative border-2 border-gray-100 p-6 rounded-2xl cursor-pointer hover:border-primary transition-all group overflow-hidden">
-                          <input type="radio" name="payment" className="sr-only peer" checked={!selectedPaymentId && paymentMethod === method.id} onChange={() => { setSelectedPaymentId(''); setPaymentMethod(method.id); }} />
-                          <div className="peer-checked:text-primary transition-colors">
+                      { id: 'card', name: 'Credit/Debit Card', icon: '💳', online: true },
+                      { id: 'upi', name: 'UPI / Wallet', icon: '📱', online: true },
+                      { id: 'cod', name: 'Cash on Delivery', icon: '💵', online: false },
+                  ].map(method => {
+                      // Online methods need Razorpay; disable them until it is configured.
+                      const disabled = method.online && !onlinePaymentEnabled;
+                      return (
+                        <label
+                          key={method.id}
+                          title={disabled ? 'Online payment needs Razorpay, which is not configured yet' : undefined}
+                          className={`relative border-2 p-6 rounded-2xl transition-all group overflow-hidden ${
+                            disabled
+                              ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                              : 'border-gray-100 cursor-pointer hover:border-primary'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="payment"
+                            className="sr-only peer"
+                            disabled={disabled}
+                            checked={!selectedPaymentId && paymentMethod === method.id}
+                            onChange={() => { if (disabled) return; setSelectedPaymentId(''); setPaymentMethod(method.id); }}
+                          />
+                          <div className={disabled ? '' : 'peer-checked:text-primary transition-colors'}>
                               <span className="text-3xl block mb-2">{method.icon}</span>
-                              <p className="font-bold text-gray-900 group-hover:text-primary transition-colors">{method.name}</p>
+                              <p className={`font-bold ${disabled ? 'text-gray-400' : 'text-gray-900 group-hover:text-primary'} transition-colors`}>{method.name}</p>
+                              {disabled && <p className="text-[11px] font-bold text-amber-600 mt-1 uppercase tracking-wide">Coming soon</p>}
                           </div>
-                          <div className="absolute top-3 right-3 opacity-0 peer-checked:opacity-100 transition-opacity">
-                              <HiCheckCircle className="text-primary text-2xl" />
-                          </div>
-                      </label>
-                  ))}
+                          {!disabled && (
+                            <div className="absolute top-3 right-3 opacity-0 peer-checked:opacity-100 transition-opacity">
+                                <HiCheckCircle className="text-primary text-2xl" />
+                            </div>
+                          )}
+                        </label>
+                      );
+                  })}
                 </div>
+                {!onlinePaymentEnabled && (
+                  <p className="mt-4 text-sm text-gray-500">
+                    Card, UPI and net banking are handled by <span className="font-semibold">Razorpay</span> and
+                    will be enabled once the store&apos;s payment credentials are configured. Cash on Delivery
+                    is available now.
+                  </p>
+                )}
               </section>
             </div>
 

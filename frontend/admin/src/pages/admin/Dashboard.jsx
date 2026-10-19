@@ -18,7 +18,6 @@ export default function Dashboard() {
     { title: "Orders", value: stats.orders },
     { title: "Revenue", value: `₹${stats.revenue.toLocaleString("en-IN")}` },
     { title: "Active Carts", value: stats.activeCarts },
-    { title: "Pending Reviews", value: stats.pendingReviews },
     { title: "Open Returns", value: stats.openReturns },
   ] : [];
 

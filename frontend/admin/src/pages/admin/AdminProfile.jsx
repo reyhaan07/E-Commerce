@@ -2,17 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { FaUserShield, FaCamera, FaEnvelope, FaPhone, FaBriefcase, FaClock } from "react-icons/fa";
 import { apiRequest } from "../../api/client";
 
-function Toggle({ enabled, onToggle, disabled }) {
-  return (
-    <button onClick={onToggle} disabled={disabled}
-      className="relative w-11 h-6 rounded-full transition-all duration-300 focus:outline-none disabled:opacity-50"
-      style={{ background: enabled ? "#1d4ed8" : "#cbd5e1" }}>
-      <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
-        style={{ left: enabled ? "1.4rem" : "0.125rem", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }} />
-    </button>
-  );
-}
-
 export default function AdminProfile() {
   const [account, setAccount] = useState(null);
   const [form, setForm] = useState({ name: "", phone: "", jobTitle: "" });
@@ -40,18 +29,6 @@ export default function AdminProfile() {
       setFeedback(err.message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function toggleEmail() {
-    const next = !account.notifyByEmail;
-    setAccount((a) => ({ ...a, notifyByEmail: next }));
-    try {
-      const d = await apiRequest("/users/me", { method: "PATCH", body: JSON.stringify({ notifyByEmail: next }) });
-      setAccount(d.user);
-    } catch (err) {
-      setAccount((a) => ({ ...a, notifyByEmail: !next }));
-      setFeedback(err.message);
     }
   }
 
@@ -141,18 +118,6 @@ export default function AdminProfile() {
             <Info icon={FaClock} label="Last Login" value={account.lastLogin ? new Date(account.lastLogin).toLocaleString() : "—"} />
           </div>
         )}
-      </div>
-
-      {/* Preferences */}
-      <div className="rounded-2xl bg-white shadow-soft border border-slate-100 p-6">
-        <h3 className="font-bold text-slate-800 mb-4">Notification Preferences</h3>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-slate-700">Email notifications</div>
-            <div className="text-xs text-slate-400">Receive platform alerts and daily summaries by email</div>
-          </div>
-          <Toggle enabled={!!account.notifyByEmail} onToggle={toggleEmail} />
-        </div>
       </div>
     </div>
   );
