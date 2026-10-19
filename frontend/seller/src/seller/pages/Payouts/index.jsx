@@ -39,8 +39,8 @@ export default function Payouts() {
   }, [user])
 
   const d = useMemo(() => {
-    const delivered = orders.filter(o => o.sellerStatus === 'Delivered')
-    const inFlight = orders.filter(o => IN_FLIGHT.includes(o.sellerStatus))
+    const delivered = orders.filter(o => o.sellerStatus === 'Delivered' || o.deliveryStatus === 'Delivered' || o.completed)
+    const inFlight = orders.filter(o => !delivered.includes(o) && !['Cancelled', 'Returned'].includes(o.sellerStatus))
     const totalEarnings = delivered.reduce((s, o) => s + o.amount, 0)
     const pending = inFlight.reduce((s, o) => s + o.amount, 0)
     const avg = delivered.length ? Math.round(totalEarnings / delivered.length) : 0

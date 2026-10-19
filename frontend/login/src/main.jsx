@@ -7,8 +7,18 @@ import {
 import './styles.css'
 
 const API_BASE = 'http://localhost:5000/api'
+const FALLBACK_API_BASE = 'http://127.0.0.1:5000/api'
 const USER_REGISTER_URL = 'http://localhost:5175/register'
 const SELLER_REGISTER_URL = 'http://localhost:5174/seller/register'
+const DELIVERY_REGISTER_URL = 'http://localhost:5176/register'
+
+async function apiFetch(endpoint, options) {
+  try {
+    return await fetch(`${API_BASE}${endpoint}`, options)
+  } catch (e) {
+    return await fetch(`${FALLBACK_API_BASE}${endpoint}`, options)
+  }
+}
 
 // This standalone app is the shared login entry for all 4 ShopSphere
 // frontends. Each app runs on its own Vite dev-server port (its own origin),
@@ -53,7 +63,7 @@ const ROLE_META = {
     label: 'Delivery Partner', Icon: FaTruck,
     heading: 'Partner sign in',
     subtitle: 'Accept assignments and manage deliveries',
-    register: null,
+    register: { text: 'Want to deliver with ShopSphere?', label: 'Register as Delivery Partner', href: DELIVERY_REGISTER_URL },
   },
 }
 
@@ -147,20 +157,34 @@ function LoginScreen({ role, initialMode, onBack }) {
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Set when the API rejects the sign-in because of account standing rather
+  // than bad credentials, so that case gets its own panel instead of looking
+  // like a typo'd password. 'suspended' | 'deactivated' | 'deleted'.
+  const [blocked, setBlocked] = useState(null)
   const [notice, setNotice] = useState('')
 
   const handleLogin = async (event) => {
     event.preventDefault()
     setLoading(true)
     setError('')
+    setBlocked(null)
     try {
-      const response = await fetch(`${API_BASE}/login`, {
+      const response = await apiFetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email: email.trim(), password, role }),
       })
       const result = await response.json()
-      if (!response.ok || !result.success) throw new Error(result.message || 'Invalid email or password')
+      if (!response.ok || !result.success) {
+        // The API tags a standing-related refusal with accountStatus (any role
+        // — Accounts and delivery partners both send it).
+        if (result.accountStatus) {
+          setBlocked({ status: result.accountStatus, message: result.message })
+          setLoading(false)
+          return
+        }
+        throw new Error(result.message || 'Invalid email or password')
+      }
 
       const target = new URL(safeRedirectForRole(role))
       target.searchParams.set('authId', result.id)
@@ -182,7 +206,7 @@ function LoginScreen({ role, initialMode, onBack }) {
     event.preventDefault()
     setLoading(true); setError(''); setNotice('')
     try {
-      const response = await fetch(`${API_BASE}/forgot-password`, {
+      const response = await apiFetch('/forgot-password', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
@@ -201,7 +225,7 @@ function LoginScreen({ role, initialMode, onBack }) {
     event.preventDefault()
     setLoading(true); setError(''); setNotice('')
     try {
-      const response = await fetch(`${API_BASE}/reset-password`, {
+      const response = await apiFetch('/reset-password', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: resetToken, password: newPassword }),
       })
@@ -239,6 +263,24 @@ function LoginScreen({ role, initialMode, onBack }) {
       )}
       {error && (
         <div className="mb-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">{error}</div>
+      )}
+
+      {/* Account standing, not bad credentials — deliberately louder than the
+          error line above so it reads as "your account", not "wrong password". */}
+      {blocked && (
+        <div className="mb-4 overflow-hidden rounded-xl border border-rose-200 bg-white">
+          <div className="bg-rose-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white">
+            {blocked.status === 'suspended' ? 'Account suspended' : 'Account deactivated'}
+          </div>
+          <div className="px-4 py-3 text-sm text-slate-600">
+            <p>{blocked.message}</p>
+            <p className="mt-2 text-xs text-slate-500">
+              {blocked.status === 'suspended'
+                ? 'Your sign-in details are still correct — access is paused until a platform administrator reinstates the account.'
+                : 'This account can no longer be used to sign in.'}
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Forgot password */}

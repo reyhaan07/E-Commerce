@@ -3,7 +3,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent: #6366f1;
+  --color-accent: #2563eb;
   --font-sans: 'Inter', ui-sans-serif, system-ui;
   --radius-2xl: 1rem;
   --radius-3xl: 1.25rem;
@@ -17,34 +17,32 @@
 @utility text-balance { text-wrap: balance; }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — flat, enterprise-SaaS. Solid white surfaces, hairline
-   borders, very soft shadows, a single lavender/indigo accent. Every colour
-   is a token so dark mode (and future re-skins) flow from one place.
+   DESIGN TOKENS — aligned with ShopSphere design system (slate-50 + blue-600)
    ══════════════════════════════════════════════════════════════════════════ */
 :root {
   /* Grounds & surfaces */
-  --bg-app:        #e9ebf4;   /* app canvas — soft lavender-grey */
-  --bg-subtle:     #e2e5f1;
+  --bg-app:        #f8fafc;   /* app canvas — slate-50 */
+  --bg-subtle:     #f1f5f9;
   --surface:       #ffffff;   /* cards */
-  --surface-2:     #f7f8fc;   /* inset / raised-subtle */
-  --surface-3:     #eef1f7;   /* table head, chips, tint */
-  --sidebar-bg:    #ffffff;
+  --surface-2:     #f8fafc;   /* inset / raised-subtle */
+  --surface-3:     #f1f5f9;   /* table head, chips, tint */
+  --sidebar-bg:    #0f172a;   /* Unified ShopSphere dark slate sidebar */
   --topbar-bg:     rgba(255,255,255,0.85);
   --input-bg:      #ffffff;
-  --overlay:       rgba(17,24,39,0.45);
+  --overlay:       rgba(15,23,42,0.45);
 
   /* Borders */
-  --border:        #e2e5ef;   /* hairline */
-  --border-strong: #d3d8e6;
-  --border-hover:  #c2c7f5;
+  --border:        #e2e8f0;   /* hairline */
+  --border-strong: #cbd5e1;
+  --border-hover:  #93c5fd;
 
-  /* Brand accent — Indigo / lavender */
-  --accent:        #6366f1;
-  --accent-deep:   #4f46e5;
-  --accent-ink:    #4338ca;   /* accent text on light tint */
-  --accent-soft:   #eef0fe;   /* solid soft tint (not translucent) */
-  --accent-softer: #f4f5ff;
-  --accent-glow:   rgba(99,102,241,0.14);
+  /* Brand accent — ShopSphere Royal Blue */
+  --accent:        #2563eb;
+  --accent-deep:   #1d4ed8;
+  --accent-ink:    #1d4ed8;   /* accent text on light tint */
+  --accent-soft:   #eff6ff;   /* solid soft tint */
+  --accent-softer: #f0f7ff;
+  --accent-glow:   rgba(37,99,235,0.15);
   --on-accent:     #ffffff;
 
   /* Semantic */
@@ -296,19 +294,19 @@ body { transition: background 0.3s ease, color 0.3s ease; }
   .section-title { @apply text-[15px] font-semibold; color: var(--text-primary); }
   .eyebrow { @apply text-[11px] font-semibold uppercase tracking-wider; color: var(--text-muted); }
 
-  /* ─── Sidebar nav link ──────────────────────────────────────────────── */
+  /* ─── Sidebar nav link (Unified Admin/Seller slate-900 & royal-blue) ── */
   .nav-link {
-    @apply flex items-center gap-3 px-3 h-10 rounded-xl text-sm font-medium transition-all duration-150 relative;
-    color: var(--text-muted);
+    @apply flex items-center gap-3 px-3 h-10 rounded-xl text-sm font-semibold transition-all duration-150 relative;
+    color: #cbd5e1;
   }
-  .nav-link:hover { color: var(--text-primary); background: var(--surface-2); }
-  .nav-link .nav-ico { color: var(--text-faint); transition: color 0.15s; }
-  .nav-link:hover .nav-ico { color: var(--text-soft); }
+  .nav-link:hover { color: #ffffff; background: rgba(30, 41, 59, 0.7); }
+  .nav-link .nav-ico { color: #94a3b8; transition: color 0.15s; }
+  .nav-link:hover .nav-ico { color: #ffffff; }
   .nav-link.active {
-    color: var(--on-accent); background: var(--accent);
-    box-shadow: 0 4px 12px -2px var(--accent-glow); font-weight: 600;
+    color: #ffffff; background: #2563eb;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); font-weight: 600;
   }
-  .nav-link.active .nav-ico { color: var(--on-accent); }
+  .nav-link.active .nav-ico { color: #ffffff; }
 
   /* ─── Segmented control / status tabs ───────────────────────────────── */
   .seg {

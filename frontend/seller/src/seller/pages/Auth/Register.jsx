@@ -98,6 +98,7 @@ export default function Register() {
     if (s === 0) {
       if (!form.name.trim()) e.name = 'Full name is required'
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email'
+      if (!form.phone || !/^\d{10}$/.test(form.phone.trim())) e.phone = 'Phone number must be exactly 10 digits'
       if (form.password.length < 8) e.password = 'Password must be at least 8 characters'
     }
     if (s === 1) {

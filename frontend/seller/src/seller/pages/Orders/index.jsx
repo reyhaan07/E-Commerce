@@ -7,11 +7,10 @@ import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
 import { SkeletonTable } from '../../components/Skeleton'
 import { useToast } from '../../components/ui/Toast'
-import AssignPartnerModal from '../../components/orders/AssignPartnerModal'
 import OrderJourney from '../../components/OrderJourney'
 import {
   FiShoppingBag, FiEye, FiTruck, FiPackage, FiCheckCircle, FiThumbsUp,
-  FiXCircle, FiDownload, FiX, FiUserPlus,
+  FiXCircle, FiDownload, FiX, FiAlertTriangle, FiMapPin,
 } from 'react-icons/fi'
 import { getOrders, updateSellerStatus, requestPickup, confirmDelivery, getOrderJourney } from '../../api/orders'
 import { apiRequest } from '../../api/client'
@@ -30,7 +29,11 @@ export default function Orders() {
   const [updatingId, setUpdatingId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [journey, setJourney] = useState(null)
-  const [assignFor, setAssignFor] = useState(null)
+  // The store's own delivery areas. An order whose customer PIN isn't in this
+  // list can never be assigned a courier (gate 1 of serviceability), and the
+  // seller previously had no way to see why from this screen.
+  const [servicePins, setServicePins] = useState(null)
+  const [pinBusy, setPinBusy] = useState(null)
 
   function loadOrders() {
     if (!user) return
@@ -41,11 +44,40 @@ export default function Orders() {
         const ret = await apiRequest('/returns')
         const ownIds = new Set(orders.map(o => o.id))
         setReturns(ret.returns.filter(r => ownIds.has(r.orderId)))
+        const me = await apiRequest('/users/me')
+        setServicePins(me.user?.serviceablePincodes || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }
   useEffect(loadOrders, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gate 1: is this order's destination inside the store's delivery areas?
+  // servicePins === null means we haven't loaded them yet — say nothing rather
+  // than flashing a false warning.
+  function pinBlocked(order) {
+    if (!servicePins) return false
+    const pin = String(order.customerPincode || '').trim()
+    if (!/^\d{6}$/.test(pin)) return false
+    return !servicePins.includes(pin)
+  }
+
+  async function addServicePin(order) {
+    const pin = String(order.customerPincode || '').trim()
+    setPinBusy(order.id)
+    try {
+      const res = await apiRequest('/users/me/serviceable-pincodes', {
+        method: 'POST',
+        body: JSON.stringify({ pincode: pin }),
+      })
+      setServicePins(res.serviceablePincodes)
+      toast.success(`${pin} added to your delivery areas — this order can now be assigned a courier.`)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setPinBusy(null)
+    }
+  }
 
   async function runAction(orderId, action) {
     setUpdatingId(orderId)
@@ -136,6 +168,21 @@ export default function Orders() {
               <td>
                 <StatusBadge status={o.deliveryStatus} fallback="Not Assigned" />
                 {o.deliveryPartnerName && <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{o.deliveryPartnerName}</div>}
+                {!o.deliveryStatus && pinBlocked(o) && (
+                  <div className="mt-1.5 flex flex-col items-start gap-1">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--danger)' }}>
+                      <FiAlertTriangle size={11} /> PIN {o.customerPincode} not in your delivery areas
+                    </span>
+                    <button
+                      className="btn-ghost btn-sm"
+                      disabled={pinBusy === o.id}
+                      onClick={() => addServicePin(o)}
+                      title={`Add ${o.customerPincode} to the PIN codes this store delivers to`}
+                    >
+                      <FiMapPin size={11} /> {pinBusy === o.id ? 'Adding…' : `Add ${o.customerPincode}`}
+                    </button>
+                  </div>
+                )}
               </td>
               <td>
                 <div className="flex items-center justify-end gap-1.5 flex-wrap">
@@ -151,16 +198,11 @@ export default function Orders() {
                   {o.sellerStatus === 'Packed' && (
                     <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleMarkReady(o.id)}><FiTruck size={12} /> Mark Ready</button>
                   )}
-                  {o.sellerStatus === 'Ready For Dispatch' && !o.deliveryStatus && (
-                    <>
-                      <button className="btn-primary btn-sm" onClick={() => setAssignFor(o)}><FiUserPlus size={12} /> Assign</button>
-                      {!o.pickupRequested && (
-                        <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleRequestPickup(o.id)}><FiPackage size={12} /> Pickup</button>
-                      )}
-                    </>
-                  )}
-                  {o.sellerStatus === 'Ready For Dispatch' && o.deliveryStatus === 'Assigned' && (
-                    <button className="btn-ghost btn-sm" onClick={() => setAssignFor(o)}><FiUserPlus size={12} /> Reassign</button>
+                  {/* Assigning a courier is an admin-only capability (the
+                      assign endpoint is requireRole("admin")), so the seller's
+                      handover ends at requesting pickup. */}
+                  {o.sellerStatus === 'Ready For Dispatch' && !o.deliveryStatus && !o.pickupRequested && (
+                    <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleRequestPickup(o.id)}><FiPackage size={12} /> Pickup</button>
                   )}
                   {o.deliveryStatus === 'Delivered' && !o.sellerConfirmedDelivery && (
                     <button className="btn-ghost btn-sm" disabled={updatingId === o.id} onClick={() => handleConfirmDelivery(o.id)}><FiCheckCircle size={12} /> Confirm</button>
@@ -211,7 +253,6 @@ export default function Orders() {
       )}
 
       {/* Assign partner modal (Part B) */}
-      {assignFor && <AssignPartnerModal order={assignFor} onClose={() => setAssignFor(null)} onAssigned={loadOrders} />}
 
       {/* Order detail drawer */}
       {detail && (
@@ -226,7 +267,24 @@ export default function Orders() {
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{detail.customerAddress}</p>
             <div className="text-sm space-y-1">
               {detail.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between"><span>{item.name} × {item.qty}</span><span className="tnum">₹{(item.price * item.qty).toLocaleString('en-IN')}</span></div>
+                <div key={idx}>
+                  <div className="flex justify-between">
+                    <span style={item.cancelled ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>
+                      {item.name} × {item.qty}
+                    </span>
+                    <span className="tnum" style={item.cancelled ? { color: 'var(--text-muted)' } : undefined}>
+                      ₹{(item.price * item.qty).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  {item.cancelled && (
+                    <div className="text-[11px] mt-0.5 space-y-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <div className="font-semibold" style={{ color: 'var(--danger)' }}>Cancelled by customer</div>
+                      {item.cancellationReason && <div>Reason: {item.cancellationReason}{item.cancellationNote ? ` — ${item.cancellationNote}` : ''}</div>}
+                      {item.cancelledAt && <div>Cancelled at: {new Date(item.cancelledAt).toLocaleString('en-IN')}</div>}
+                      {item.refundAmount > 0 && <div>Refund: ₹{item.refundAmount.toLocaleString('en-IN')}{item.refundStatus ? ` · ${item.refundStatus}` : ''}</div>}
+                    </div>
+                  )}
+                </div>
               ))}
               <div className="flex justify-between font-bold pt-1.5 mt-1" style={{ borderTop: '1px solid var(--border)' }}><span>Total ({detail.paymentMethod})</span><span className="tnum">₹{detail.amount.toLocaleString('en-IN')}</span></div>
             </div>

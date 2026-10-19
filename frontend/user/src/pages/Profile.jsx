@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Orders from './Orders';
@@ -20,15 +20,51 @@ import {
   HiOutlineTrash,
   HiOutlineUser,
   HiXMark,
+  HiOutlineLifebuoy,
 } from 'react-icons/hi2';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../api/client';
+import ContactSupportModal from '../components/ContactSupportModal';
 
 const emptyAddress = { label: 'Home', line1: '', line2: '', city: '', state: '', pincode: '', phone: '', isDefault: false };
 const emptyPayment = { type: 'card', label: '', last4: '', upiId: '', isDefault: false };
-const AVATAR_MAX_BYTES = 1000 * 1000;
-const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 const DELIVERY_MAX = 500;
+
+function resizeImageToDataUrl(file, maxWidth = 600, maxHeight = 600) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      };
+      img.onerror = () => reject(new Error('Invalid image file'));
+      img.src = readerEvent.target.result;
+    };
+    reader.onerror = () => reject(new Error('Could not read image file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 function initials(name = '') {
   return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U';
@@ -41,9 +77,9 @@ function formatDate(value) {
 // ── Small presentational helpers (scoped to this page) ──────────────────────
 function StatTile({ label, value, accent }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={`mt-1 text-lg font-extrabold capitalize ${accent || 'text-slate-900'}`}>{value}</p>
+    <div className="rounded-2xl border border-slate-800 bg-slate-800/80 p-3 text-left">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={`mt-1 text-base font-extrabold capitalize ${accent || 'text-white'}`}>{value}</p>
     </div>
   );
 }
@@ -53,39 +89,15 @@ function NavItem({ icon, label, active, danger, onClick }) {
     <button
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-[15px] font-semibold transition-all
+      className={`relative flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[14.5px] font-semibold transition-all
         ${danger
-          ? 'text-red-500 hover:bg-red-50'
+          ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
           : active
-            ? 'bg-primary/10 text-primary'
-            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'}`}
     >
-      {active && !danger && <span className="absolute left-0 top-1/2 h-1/2 w-1 -translate-y-1/2 rounded-r bg-primary" />}
-      <span className={`text-xl ${active && !danger ? 'text-primary' : danger ? 'text-red-500' : 'text-slate-400'}`}>{icon}</span>
-      {label}
-    </button>
-  );
-}
-
-function NotificationToggle({ icon, title, description, checked, onToggle, disabled }) {
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onToggle(!checked)}
-      aria-pressed={checked}
-      disabled={disabled}
-      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all
-        ${checked ? 'border-primary bg-primary/5 ring-2 ring-primary/15' : 'border-slate-200 bg-white hover:border-slate-300'}
-        ${disabled ? 'cursor-default opacity-90' : 'cursor-pointer'}`}
-    >
-      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-white transition-colors
-        ${checked ? 'border-primary bg-primary' : 'border-slate-300 bg-white'}`}>
-        {checked && <HiOutlineCheck className="text-sm" strokeWidth={3} />}
-      </span>
-      <span>
-        <span className="flex items-center gap-2 text-[14.5px] font-bold text-slate-900">{icon} {title}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-slate-500">{description}</span>
-      </span>
+      <span className={`text-lg shrink-0 ${active && !danger ? 'text-white' : danger ? 'text-red-400' : 'text-slate-400'}`}>{icon}</span>
+      <span className="truncate">{label}</span>
     </button>
   );
 }
@@ -94,16 +106,23 @@ const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '', avatar: '', deliveryInstructions: '', notifyByEmail: true, notifyBySms: false });
+  const [profileForm, setProfileForm] = useState({ name: '', phone: '', avatar: '', deliveryInstructions: '' });
   const [addressForm, setAddressForm] = useState(emptyAddress);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [paymentForm, setPaymentForm] = useState(emptyPayment);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  // UI-only state for the re-skin: which section is shown, edit mode, mobile drawer.
-  const [section, setSection] = useState('profile'); // 'profile' | 'addresses' | 'payments'
+  // Which section is shown. Held in the URL (?tab=orders) rather than plain
+  // state so Orders can be linked to directly, survives a refresh, and works
+  // with browser back/forward — every Orders link in the app lands here.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const SECTIONS = ['profile', 'orders', 'addresses', 'payments'];
+  const tabParam = searchParams.get('tab');
+  const section = SECTIONS.includes(tabParam) ? tabParam : 'profile';
+  // UI-only state for the re-skin: edit mode, mobile drawer.
   const [editing, setEditing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const loadProfile = () => {
     if (!user) return;
@@ -115,8 +134,6 @@ const Profile = () => {
           phone: data.user.phone || '',
           avatar: data.user.avatar || '',
           deliveryInstructions: data.user.deliveryInstructions || '',
-          notifyByEmail: data.user.notifyByEmail !== false,
-          notifyBySms: data.user.notifyBySms === true,
         });
       })
       .catch((err) => setError(err.message));
@@ -149,33 +166,33 @@ const Profile = () => {
     setProfileForm((current) => ({ ...current, avatar: data.user.avatar || '' }));
   }
 
-  function handleAvatarFile(e) {
+  async function handleAvatarFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!AVATAR_TYPES.includes(file.type)) {
-      setError('Please choose a PNG, JPG, or WebP image');
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose a valid image file (PNG, JPG, or WebP)');
       return;
     }
     if (file.size > AVATAR_MAX_BYTES) {
-      setError('Avatar image must be under 1MB');
+      setError('Avatar image must be under 5MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const avatar = reader.result;
-      setProfileForm((current) => ({ ...current, avatar }));
+    try {
       setError('');
-      setMessage('Uploading avatar...');
-      try {
-        await saveAvatar(avatar);
-        showSuccess('Avatar updated');
-      } catch (err) {
-        setError(err.message);
-      }
-    };
-    reader.onerror = () => setError('Could not read that image file');
-    reader.readAsDataURL(file);
+      setMessage('Processing image...');
+      const avatarDataUrl = await resizeImageToDataUrl(file, 600, 600);
+      setProfileForm((current) => ({ ...current, avatar: avatarDataUrl }));
+      setProfile((current) => current ? ({ ...current, avatar: avatarDataUrl }) : current);
+      await saveAvatar(avatarDataUrl);
+      showSuccess('Profile picture updated successfully!');
+    } catch (err) {
+      setError(err.message || 'Could not process that image file');
+      setMessage('');
+    } finally {
+      e.target.value = '';
+    }
   }
 
   async function saveAddress(e) {
@@ -248,7 +265,10 @@ const Profile = () => {
 
   function go(target) {
     setDrawerOpen(false);
-    setSection(target); // 'profile' | 'orders' | 'addresses' | 'payments' — all render in-layout
+    // Swaps the section in place (no reload, sidebar stays put) while keeping
+    // the URL in step. `replace` so flicking between sections doesn't bury the
+    // page the customer arrived from under history entries.
+    setSearchParams(target === 'profile' ? {} : { tab: target }, { replace: true });
   }
 
   const avatarSrc = profileForm.avatar || profile?.avatar || '';
@@ -274,38 +294,39 @@ const Profile = () => {
         <div className="flex items-start gap-6">
           {/* ── Sidebar (sticky on desktop, drawer on mobile) ── */}
           <aside
-            className={`fixed left-0 top-0 z-50 flex h-full w-[300px] shrink-0 flex-col gap-5 overflow-y-auto bg-slate-50 p-4 shadow-2xl transition-transform duration-300
-              lg:sticky lg:top-24 lg:z-0 lg:h-auto lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none lg:translate-x-0
+            className={`fixed left-0 top-0 z-50 flex h-full w-[300px] shrink-0 flex-col gap-5 overflow-y-auto bg-slate-900 border-r border-slate-800 p-4 shadow-2xl transition-transform duration-300
+              lg:sticky lg:top-24 lg:z-0 lg:h-auto lg:overflow-visible lg:bg-transparent lg:border-none lg:p-0 lg:shadow-none lg:translate-x-0
               ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
           >
-            <button className="self-end rounded-lg border border-slate-200 bg-white p-2 text-slate-600 lg:hidden" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
+            <button className="self-end rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-300 hover:text-white lg:hidden" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
               <HiXMark className="text-lg" />
             </button>
 
             {/* Identity card */}
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="h-24 bg-gradient-to-br from-primary to-indigo-600" />
+            <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-sm text-white">
+              <div className="h-24 bg-gradient-to-br from-blue-600 to-indigo-700" />
               <div className="-mt-12 px-6 pb-6 text-center">
-                <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-primary/10 text-2xl font-black text-primary shadow-sm">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-slate-900 bg-gradient-to-br from-blue-500 to-indigo-600 text-2xl font-black text-white shadow-md shadow-blue-500/20">
                   {avatarSrc ? <img src={avatarSrc} alt="Avatar" className="h-full w-full object-cover" /> : initials(profile?.name)}
                 </div>
-                <h2 className="mt-4 text-xl font-bold text-slate-900">{profile?.name || 'Loading...'}</h2>
+                <h2 className="mt-4 text-xl font-bold text-white">{profile?.name || 'Loading...'}</h2>
                 <p className="mt-0.5 text-sm font-semibold text-slate-400">Customer since {profile?.createdAt ? new Date(profile.createdAt).getFullYear() : '-'}</p>
                 <p className="mt-1 text-xs text-slate-400">Last login: {formatDate(profile?.lastLogin)}</p>
                 <div className="mt-5 grid grid-cols-2 gap-3">
-                  <StatTile label="Status" value={profile?.status || '-'} accent="text-green-600" />
-                  <StatTile label="Points" value={profile?.loyaltyPoints ?? 0} accent="text-primary" />
+                  <StatTile label="Status" value={profile?.status || '-'} accent="text-emerald-400" />
+                  <StatTile label="Points" value={profile?.loyaltyPoints ?? 0} accent="text-blue-400" />
                 </div>
               </div>
             </div>
 
             {/* Nav card */}
-            <nav className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+            <nav className="rounded-3xl border border-slate-800 bg-slate-900 p-3 shadow-sm space-y-1">
               <NavItem icon={<HiOutlineUser />} label="My Profile" active={section === 'profile'} onClick={() => go('profile')} />
               <NavItem icon={<HiOutlineTicket />} label="My Orders" active={section === 'orders'} onClick={() => go('orders')} />
               <NavItem icon={<HiOutlineHome />} label="Address Book" active={section === 'addresses'} onClick={() => go('addresses')} />
               <NavItem icon={<HiOutlineCreditCard />} label="Payments" active={section === 'payments'} onClick={() => go('payments')} />
-              <div className="my-2 h-px bg-slate-100" />
+              <NavItem icon={<HiOutlineLifebuoy />} label="Help & Support" onClick={() => setSupportModalOpen(true)} />
+              <div className="my-2 h-px bg-slate-800" />
               <NavItem icon={<HiOutlinePower />} label="Logout" danger onClick={handleLogout} />
             </nav>
           </aside>
@@ -371,23 +392,20 @@ const Profile = () => {
                         </div>
                         <div className="min-w-[220px] flex-1">
                           <div className="flex flex-wrap gap-2.5">
-                            <label className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${editing ? 'cursor-pointer bg-primary/10 text-primary hover:bg-primary/15' : 'cursor-default bg-slate-100 text-slate-400'}`}>
+                            <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors bg-primary/10 text-primary hover:bg-primary/15 shadow-xs">
                               <HiOutlinePhoto className="text-lg" /> Upload Image
-                              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarFile} className="sr-only" disabled={!editing} />
+                              <input type="file" accept="image/png,image/jpeg,image/webp,image/jpg" onChange={handleAvatarFile} className="sr-only" />
                             </label>
-                            <button type="button" disabled={!editing || !avatarSrc} onClick={() => saveAvatar('').then(() => showSuccess('Avatar removed')).catch((err) => setError(err.message))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:border-red-200 hover:text-red-500 disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-500">
+                            <button
+                              type="button"
+                              disabled={!avatarSrc}
+                              onClick={() => saveAvatar('').then(() => showSuccess('Avatar removed')).catch((err) => setError(err.message))}
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:border-red-200 hover:text-red-500 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-500"
+                            >
                               <HiOutlineTrash className="text-base" /> Remove
                             </button>
                           </div>
-                          <p className="mt-2.5 text-xs text-slate-500">PNG, JPG, or WebP under 1MB. You can also paste an image URL below.</p>
-                          <input
-                            className={`${inputBase} mt-2.5`}
-                            placeholder="https://..."
-                            disabled={!editing}
-                            readOnly={profileForm.avatar?.startsWith('data:image/')}
-                            value={profileForm.avatar?.startsWith('data:image/') ? 'Uploaded image selected' : profileForm.avatar}
-                            onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
-                          />
+                          <p className="mt-2 text-xs text-slate-400">Upload a square PNG, JPG, or WebP image up to 5MB.</p>
                         </div>
                       </div>
                     </div>
@@ -407,29 +425,6 @@ const Profile = () => {
                         value={profileForm.deliveryInstructions}
                         onChange={(e) => setProfileForm({ ...profileForm, deliveryInstructions: e.target.value })}
                       />
-                    </div>
-
-                    {/* Notifications */}
-                    <div className="mt-6">
-                      <span className={labelBase}>Notifications</span>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <NotificationToggle
-                          icon={<HiOutlineEnvelope className="text-base" />}
-                          title="Email notifications"
-                          description="Receive order updates and important alerts via email."
-                          checked={profileForm.notifyByEmail}
-                          onToggle={(v) => setProfileForm({ ...profileForm, notifyByEmail: v })}
-                          disabled={!editing}
-                        />
-                        <NotificationToggle
-                          icon={<HiOutlineDevicePhoneMobile className="text-base" />}
-                          title="SMS notifications"
-                          description="Receive order updates via SMS."
-                          checked={profileForm.notifyBySms}
-                          onToggle={(v) => setProfileForm({ ...profileForm, notifyBySms: v })}
-                          disabled={!editing}
-                        />
-                      </div>
                     </div>
 
                     {/* Footer */}
@@ -529,6 +524,7 @@ const Profile = () => {
             {section === 'orders' && <Orders embedded />}
           </div>
         </div>
+        <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
       </main>
       <Footer />
     </div>

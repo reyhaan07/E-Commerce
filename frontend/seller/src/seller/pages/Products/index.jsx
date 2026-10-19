@@ -13,8 +13,8 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useToast } from '../../components/ui/Toast'
 import { SkeletonTable, SkeletonCard } from '../../components/Skeleton'
 import {
-  FiPlus, FiBox, FiEdit2, FiTrash2, FiChevronRight, FiPackage,
-  FiCheckCircle, FiAlertTriangle, FiXCircle, FiX,
+  FiPlus, FiMinus, FiBox, FiEdit2, FiTrash2, FiChevronRight, FiPackage,
+  FiCheckCircle, FiAlertTriangle, FiXCircle, FiX, FiUpload, FiImage,
 } from 'react-icons/fi'
 import { apiRequest } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
@@ -64,6 +64,27 @@ export default function Products() {
   const [saving, setSaving] = useState(false)
   const [toDelete, setToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [stockUpdatingId, setStockUpdatingId] = useState(null)
+
+  async function quickAdjustStock(p, delta) {
+    const nextStock = Math.max(0, (Number(p.stock) || 0) + delta)
+    if (nextStock === p.stock) return
+    setStockUpdatingId(p.id)
+    try {
+      const res = await apiRequest(`/products/${p.id}/stock`, {
+        method: 'PATCH',
+        body: JSON.stringify({ stock: nextStock })
+      })
+      if (res && res.success) {
+        setProducts(curr => curr.map(item => item.id === p.id ? { ...item, stock: nextStock } : item))
+        toast.success(`${p.name} stock updated to ${nextStock}`)
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to update stock')
+    } finally {
+      setStockUpdatingId(null)
+    }
+  }
 
   async function refresh() {
     if (!user) return
@@ -129,6 +150,25 @@ export default function Products() {
       return next
     })
   }
+
+  function handleImageFile(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WebP)')
+      return
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error('Image file must be under 3MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      setField('image', reader.result)
+    }
+    reader.onerror = () => toast.error('Could not read image file')
+    reader.readAsDataURL(file)
+  }
+
   async function save(e) {
     e.preventDefault()
     setSaving(true)
@@ -239,7 +279,33 @@ export default function Products() {
                   </td>
                   <td><Placement p={p} /></td>
                   <td className="font-semibold tnum" style={{ color: 'var(--accent-ink)' }}>₹{Number(p.price).toLocaleString('en-IN')}</td>
-                  <td className="font-semibold tnum" style={{ color: 'var(--text-primary)' }}>{p.stock}</td>
+                  <td className="tnum">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="btn-icon w-6 h-6 rounded-md"
+                        style={{ padding: 0 }}
+                        title="Decrease stock"
+                        disabled={stockUpdatingId === p.id || p.stock <= 0}
+                        onClick={() => quickAdjustStock(p, -1)}
+                      >
+                        <FiMinus size={11} />
+                      </button>
+                      <span className="font-bold text-[13px] px-1 min-w-[28px] text-center" style={{ color: 'var(--text-primary)' }}>
+                        {p.stock}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-icon w-6 h-6 rounded-md"
+                        style={{ padding: 0 }}
+                        title="Increase stock"
+                        disabled={stockUpdatingId === p.id}
+                        onClick={() => quickAdjustStock(p, 1)}
+                      >
+                        <FiPlus size={11} />
+                      </button>
+                    </div>
+                  </td>
                   <td><StatusBadge status={key} label={label} /></td>
                   <td>
                     <div className="flex items-center justify-end gap-1.5">
@@ -307,9 +373,47 @@ export default function Products() {
                   <Field label="Stock" required>
                     <input required type="number" min="0" className="input" placeholder="0" value={form.stock} onChange={e => setField('stock', e.target.value)} />
                   </Field>
-                  <Field label="Image URL">
-                    <input className="input" placeholder="https://…" value={form.image} onChange={e => setField('image', e.target.value)} />
-                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Product Image">
+                      <div className="flex items-center gap-4 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                        {form.image ? (
+                          <div className="relative group shrink-0">
+                            <img
+                              src={form.image}
+                              alt="Preview"
+                              className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setField('image', '')}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs shadow-sm hover:bg-rose-600 transition-colors"
+                              title="Remove image"
+                            >
+                              <FiX size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 shrink-0">
+                            <FiImage size={24} />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <label className="btn-primary text-xs font-semibold px-4 py-2 rounded-xl inline-flex items-center gap-2 cursor-pointer shadow-xs transition-all">
+                            <FiUpload size={14} />
+                            <span>{form.image ? 'Change Image File' : 'Upload Image File'}</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={(e) => handleImageFile(e.target.files?.[0])}
+                            />
+                          </label>
+                          <p className="text-[11px] text-slate-500 mt-1">Select an image from device (PNG, JPG, WebP up to 3MB).</p>
+                        </div>
+                      </div>
+                    </Field>
+                  </div>
                 </div>
                 <Field label="Description">
                   <textarea className="input" rows={3} placeholder="Describe the product…" value={form.description} onChange={e => setField('description', e.target.value)} />

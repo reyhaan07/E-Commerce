@@ -5,20 +5,13 @@ import SectionCard from '../../components/ui/SectionCard'
 import StatusBadge from '../../components/StatusBadge'
 import { useToast } from '../../components/ui/Toast'
 import {
-  FiBell, FiShield, FiUser, FiGlobe, FiInfo, FiChevronRight, FiMail, FiPhone,
-  FiExternalLink, FiCalendar, FiCreditCard, FiHash, FiTruck, FiPlus, FiX, FiCheck, FiMapPin,
+  FiShield, FiUser, FiInfo, FiChevronRight, FiMail, FiPhone,
+  FiExternalLink, FiCalendar, FiHash, FiTruck, FiPlus, FiX, FiCheck, FiMapPin,
 } from 'react-icons/fi'
 import { apiRequest } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
 import { SHARED_LOGIN_URL } from '../../config/appNav'
 
-function Toggle({ enabled, onToggle, disabled }) {
-  return (
-    <button onClick={onToggle} disabled={disabled} className="switch" data-on={enabled} aria-pressed={enabled} aria-label="Toggle">
-      <span className="switch-track" /><span className="switch-thumb" />
-    </button>
-  )
-}
 
 function Row({ label, value, control, icon: Icon, top, onClick }) {
   const Comp = onClick ? 'button' : 'div'
@@ -77,18 +70,6 @@ export default function Settings() {
     } catch (err) { toast.error(err.message) } finally { setSavingPins(false) }
   }
 
-  async function toggle(key) {
-    if (!account) return
-    const next = !account[key]
-    setSaving(true)
-    setAccount(a => ({ ...a, [key]: next }))
-    try {
-      const res = await apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify({ [key]: next }) })
-      setAccount(res.user); toast.success('Preferences saved')
-    } catch (err) {
-      setAccount(a => ({ ...a, [key]: !next })); toast.error(err.message)
-    } finally { setSaving(false) }
-  }
 
   const memberSince = account?.createdAt ? new Date(account.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
   const sellerCode = account ? `SPH-${(account.id || '').toUpperCase()}` : '—'
@@ -100,13 +81,6 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         {/* Left column */}
         <div className="space-y-5">
-          <SectionCard icon={<FiBell size={17} />} title="Notifications" description="Choose how you want to stay updated.">
-            <Row label="Email notifications" value="Order updates, payouts and platform notices by email"
-              control={<Toggle enabled={!!account?.notifyByEmail} onToggle={() => toggle('notifyByEmail')} disabled={!account || saving} />} />
-            <Row top label="SMS notifications" value="Time-sensitive alerts by text message"
-              control={<Toggle enabled={!!account?.notifyBySms} onToggle={() => toggle('notifyBySms')} disabled={!account || saving} />} />
-          </SectionCard>
-
           <SectionCard icon={<FiUser size={17} />} title="Account Information" description="Manage your store identity and contact details.">
             <Row label="Store Name" value={account?.name || '—'} />
             <Row top label="Email Address" value={account?.email || '—'} icon={FiMail} />
@@ -123,18 +97,10 @@ export default function Settings() {
 
         {/* Right column */}
         <div className="space-y-5">
-          <SectionCard icon={<FiGlobe size={17} />} title="Store Preferences" description="Set regional and operational preferences.">
-            <Row label="Currency" value="INR — Indian Rupee" icon={FiChevronRight} />
-            <Row top label="Timezone" value="Asia/Kolkata (IST +5:30)" icon={FiChevronRight} />
-            <Row top label="GSTIN" value={account?.gstin || 'Not provided'} />
-            <Row top label="Regional defaults" value="Delivery, return and order preferences"
-              control={<FiChevronRight size={16} />} onClick={() => navigate('/seller/profile')} />
-          </SectionCard>
-
-          <SectionCard icon={<FiInfo size={17} />} title="About Store" description="View key details about your store.">
-            <Row label="Member Since" value={memberSince} icon={FiCalendar} />
+          <SectionCard icon={<FiInfo size={17} />} title="Store Information" description="Official store credentials and operational status.">
+            <Row label="GSTIN" value={account?.gstin || 'Not provided'} />
             <Row top label="Store Status" control={<StatusBadge status={account?.status === 'active' ? 'Active' : (account?.verificationStatus || 'Pending')} />} />
-            <Row top label="Plan" value="Standard Seller" icon={FiCreditCard} />
+            <Row top label="Member Since" value={memberSince} icon={FiCalendar} />
             <Row top label="Seller ID" value={sellerCode} icon={FiHash} />
           </SectionCard>
         </div>

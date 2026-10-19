@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   FiShoppingBag, FiCheckCircle, FiClock, FiAlertTriangle,
   FiLogOut, FiExternalLink, FiLifeBuoy, FiArrowRight,
 } from 'react-icons/fi'
 import { NAV_ITEMS, STOREFRONT_URL } from '../../config/appNav'
+import ContactSupportModal from './ContactSupportModal'
 
 const VERIFICATION = {
   Verified:  { cls: 'badge-success', icon: FiCheckCircle,  label: 'Verified Seller' },
@@ -26,8 +27,8 @@ function NavRow({ item, counts, onNavigate }) {
       {!item.external && count > 0 && (
         <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
           style={active
-            ? { background: 'rgba(255,255,255,0.22)', color: '#fff' }
-            : { background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
+            ? { background: 'rgba(255,255,255,0.25)', color: '#fff' }
+            : { background: '#2563eb', color: '#ffffff' }}>
           {count}
         </span>
       )}
@@ -51,35 +52,33 @@ function NavRow({ item, counts, onNavigate }) {
 
 export default function SellerSidebar({ user, verification, counts, onNavigate, onLogout }) {
   const vb = verification && VERIFICATION[verification]
+  const [supportOpen, setSupportOpen] = useState(false)
 
   return (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-2 h-16 shrink-0">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'var(--accent)' }}>
-          <FiShoppingBag size={19} color="#fff" />
+      <div className="flex items-center gap-3 px-2 h-16 shrink-0 border-b border-slate-800 pb-2">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/20 shrink-0">
+          S
         </div>
         <div className="min-w-0">
-          <div className="text-[15px] font-bold leading-none tracking-tight" style={{ color: 'var(--text-primary)' }}>ShopSphere</div>
-          <div className="text-[11px] leading-none mt-1 font-medium" style={{ color: 'var(--text-muted)' }}>Seller Center</div>
+          <div className="font-extrabold text-base text-white leading-tight tracking-tight">ShopSphere</div>
+          <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">Seller Center</div>
         </div>
       </div>
 
       {/* Profile card */}
-      <div className="mx-1 mb-3 p-3 rounded-xl flex items-center gap-3"
-        style={{ background: 'var(--accent-softer)', border: '1px solid var(--border)' }}>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden"
-          style={{ background: 'var(--accent)', color: '#fff' }}>
+      <div className="mx-1 my-3 p-3 rounded-xl flex items-center gap-3 bg-slate-800 border border-slate-700/80">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
           {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : initials(user?.name)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-[13px] font-semibold truncate text-white">
             {user?.name || 'ShopSphere Store'}
           </div>
           {vb
             ? <span className={`badge ${vb.cls} mt-1`} style={{ fontSize: 10, padding: '2px 7px' }}><vb.icon size={10} />{vb.label}</span>
-            : <div className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{user?.email || 'Seller account'}</div>}
+            : <div className="text-[11px] truncate mt-0.5 text-slate-400">{user?.email || 'Seller account'}</div>}
         </div>
       </div>
 
@@ -91,30 +90,30 @@ export default function SellerSidebar({ user, verification, counts, onNavigate, 
       </nav>
 
       {/* Promo card */}
-      <div className="mx-1 mt-3 p-3.5 rounded-xl relative overflow-hidden"
-        style={{ background: 'var(--accent-soft)', border: '1px solid var(--border-hover)' }}>
-        <div className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>Grow your business</div>
-        <div className="text-[11px] mt-0.5 mb-2.5 leading-snug" style={{ color: 'var(--text-muted)' }}>
+      <div className="mx-1 mt-3 p-3.5 rounded-xl relative overflow-hidden bg-slate-800/80 border border-slate-700/80">
+        <div className="text-[13px] font-semibold text-white">Grow your business</div>
+        <div className="text-[11px] mt-0.5 mb-2.5 leading-snug text-slate-400">
           Optimize your listings and boost your sales.
         </div>
         <a href={STOREFRONT_URL} target="_blank" rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg"
-          style={{ background: 'var(--surface)', color: 'var(--accent-ink)', border: '1px solid var(--border-hover)' }}>
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
           View Storefront <FiArrowRight size={13} />
         </a>
       </div>
 
       {/* Footer: support + logout */}
-      <div className="px-1 pt-2 mt-2 space-y-1" style={{ borderTop: '1px solid var(--border)' }}>
-        <a href="mailto:support@shopsphere.com" className="nav-link" onClick={onNavigate}>
+      <div className="px-1 pt-2 mt-2 space-y-1 border-t border-slate-800">
+        <button type="button" className="nav-link w-full text-left" onClick={() => setSupportOpen(true)}>
           <FiLifeBuoy size={18} className="nav-ico shrink-0" />
           <span>Contact Support</span>
-        </a>
-        <button className="nav-link w-full text-left" style={{ color: 'var(--danger)' }} onClick={onLogout}>
-          <FiLogOut size={18} className="nav-ico shrink-0" style={{ color: 'var(--danger)' }} />
+        </button>
+        <button className="nav-link w-full text-left !text-red-400 hover:!text-red-300 hover:!bg-red-500/10" onClick={onLogout}>
+          <FiLogOut size={18} className="nav-ico shrink-0 !text-red-400" />
           <span>Log Out</span>
         </button>
       </div>
+
+      <ContactSupportModal open={supportOpen} onClose={() => { setSupportOpen(false); onNavigate?.() }} />
     </div>
   )
 }

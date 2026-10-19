@@ -2,18 +2,16 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  FiMenu, FiSearch, FiPlus, FiChevronDown, FiBell, FiMessageSquare,
-  FiSun, FiMoon, FiUser, FiSettings, FiLogOut, FiCheckCircle,
+  FiMenu, FiSearch, FiPlus, FiChevronDown,
+  FiUser, FiSettings, FiLogOut,
 } from 'react-icons/fi'
-import { useTheme } from '../../hooks/useTheme'
 import { QUICK_ACTIONS } from '../../config/appNav'
 
 function initials(name) { return (name?.trim()?.[0] || 'S').toUpperCase() }
 
-export default function SellerHeader({ user, currentPage, onOpenSidebar, onLogout, notifCount = 0 }) {
+export default function SellerHeader({ user, currentPage, onOpenSidebar, onLogout }) {
   const navigate = useNavigate()
-  const { isDark, toggle: toggleTheme } = useTheme()
-  const [open, setOpen] = useState(null) // 'quick' | 'notif' | 'profile' | null
+  const [open, setOpen] = useState(null) // 'quick' | 'profile' | null
   const rootRef = useRef(null)
 
   // close menus on outside click / escape
@@ -82,44 +80,6 @@ export default function SellerHeader({ user, currentPage, onOpenSidebar, onLogou
             )}
           </AnimatePresence>
         </div>
-
-        {/* Messages */}
-        <button className="btn-icon hidden sm:inline-flex" aria-label="Messages" title="Messages" onClick={() => navigate('/seller/orders')}>
-          <FiMessageSquare size={17} />
-        </button>
-
-        {/* Notifications */}
-        <div className="relative">
-          <button className="btn-icon relative" aria-label="Notifications" onClick={() => setOpen(o => o === 'notif' ? null : 'notif')}>
-            <FiBell size={17} />
-            {notifCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-                style={{ background: 'var(--danger)', color: '#fff', border: '2px solid var(--surface)' }}>
-                {notifCount > 9 ? '9+' : notifCount}
-              </span>
-            )}
-          </button>
-          <AnimatePresence>
-            {open === 'notif' && (
-              <motion.div className="menu right-0 mt-2 w-72 !p-0" {...dd}>
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Notifications</span>
-                  <span className="badge badge-accent" style={{ fontSize: 10 }}>Live</span>
-                </div>
-                <div className="flex flex-col items-center text-center px-6 py-9">
-                  <div className="soft-icon mb-3" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}><FiCheckCircle size={20} /></div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>You're all caught up</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>New orders and store alerts appear here.</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Theme toggle */}
-        <button className="btn-icon" aria-label="Toggle theme" title={isDark ? 'Light mode' : 'Dark mode'} onClick={toggleTheme}>
-          {isDark ? <FiSun size={17} /> : <FiMoon size={17} />}
-        </button>
 
         {/* Profile */}
         <div className="relative">

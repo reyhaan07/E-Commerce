@@ -6,6 +6,7 @@ import Banner from '../components/Banner';
 import CategoryCard from '../components/CategoryCard';
 import ProductCard from '../components/ProductCard';
 import { motion } from 'framer-motion';
+import { FaTruck, FaShieldAlt, FaUndoAlt, FaHeadset } from 'react-icons/fa';
 import { listProducts, getCategories, toCardProduct } from '../api/products';
 
 // cover images for category tiles, keyed by catalog category name
@@ -44,73 +45,53 @@ const Home = () => {
     <div className="min-h-screen">
       <Navbar />
       <Banner />
-      
-      {/* Categories */}
-      <section className="py-16 bg-white">
+
+      <section className="bg-white py-16">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Shop by Category</h2>
-              <p className="text-gray-500">Pick from our curated categories for you</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">Curated picks</p>
+              <h2 className="section-heading">Shop by Category</h2>
             </div>
-            <button onClick={() => navigate('/products')} className="text-primary font-bold hover:underline">View All</button>
+            <button onClick={() => navigate('/products')} className="text-sm font-bold text-primary transition-colors hover:text-primary-dark">View All</button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             {categories.map(cat => <CategoryCard key={cat.id} category={cat} />)}
           </div>
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16 bg-gray-50">
+      <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Featured Products</h2>
-              <p className="text-gray-500">Our top sellers and picks for this week</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">Top-rated picks</p>
+              <h2 className="section-heading">Featured Products</h2>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {featuredProducts.map(prod => <ProductCard key={prod.id} product={prod} />)}
           </div>
         </div>
       </section>
 
-      {/* Trust Badges */}
-      <section className="py-12 border-y bg-white">
-          <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
-              {[
-                  { title: 'Free Delivery', desc: 'On orders over ₹99', icon: '🚚' },
-                  { title: 'Secure Payment', desc: 'SSL Protected checkout', icon: '🛡️' },
-                  { title: 'Easy Returns', desc: '30 Days money back', icon: '🔄' },
-                  { title: '24/7 Support', desc: 'Customer help desk', icon: '📞' },
-              ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 text-center md:text-left">
-                      <span className="text-4xl">{item.icon}</span>
-                      <div>
-                          <h4 className="font-bold text-gray-900">{item.title}</h4>
-                          <p className="text-sm text-gray-500">{item.desc}</p>
-                      </div>
-                  </div>
-              ))}
-          </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="py-20 relative overflow-hidden">
-          <div className="absolute inset-0 bg-primary/5"></div>
-          <div className="container mx-auto px-4 relative z-10 text-center max-w-2xl">
-              <h2 className="text-4xl font-extrabold text-gray-900 mb-4">Join Our Newsletter</h2>
-              <p className="text-gray-600 mb-8">Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.</p>
-              <form className="flex gap-2">
-                  <input 
-                    type="email" 
-                    placeholder="Enter your email address"
-                    className="flex-1 px-6 py-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                  />
-                  <button className="btn-primary">Subscribe</button>
-              </form>
-          </div>
+      <section className="border-y border-slate-200 bg-white py-12">
+        <div className="container mx-auto grid grid-cols-1 gap-8 px-4 md:grid-cols-4">
+          {[
+            { title: 'Free Delivery', desc: 'On orders over ₹99', icon: <FaTruck className="text-primary text-xl" /> },
+            { title: 'Secure Payment', desc: 'SSL Protected checkout', icon: <FaShieldAlt className="text-primary text-xl" /> },
+            { title: 'Easy Returns', desc: '30 Days money back', icon: <FaUndoAlt className="text-primary text-xl" /> },
+            { title: '24/7 Support', desc: 'Customer help desk', icon: <FaHeadset className="text-primary text-xl" /> },
+          ].map((item, idx) => (
+            <div key={idx} className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">{item.icon}</span>
+              <div>
+                <h4 className="font-bold text-slate-900">{item.title}</h4>
+                <p className="text-sm text-slate-500">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <Footer />

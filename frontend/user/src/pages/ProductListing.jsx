@@ -180,39 +180,36 @@ const ProductListing = () => {
             </nav>
 
             {/* Header / Sort */}
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="mb-8 flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{heading}</h2>
-                <p className="text-sm text-gray-500">
+                <h2 className="text-xl font-bold text-slate-900">{heading}</h2>
+                <p className="text-sm text-slate-500">
                   {loading ? 'Loading…' : `Showing ${from}-${to} of ${pagination.total} results`}
                 </p>
               </div>
-              <div className="flex gap-4">
-                <div className="relative">
-                  <select
-                    value={sort}
-                    onChange={(e) => setParam('sort', e.target.value)}
-                    className="appearance-none px-4 py-2 pr-10 border border-gray-200 rounded-lg font-medium hover:border-primary transition-colors outline-none bg-white cursor-pointer"
-                  >
-                    {SORT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>Sort By: {opt.label}</option>
-                    ))}
-                  </select>
-                  <HiOutlineChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
-                </div>
+              <div className="relative">
+                <select
+                  value={sort}
+                  onChange={(e) => setParam('sort', e.target.value)}
+                  className="appearance-none cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-10 text-sm font-medium text-slate-700 outline-none transition-all hover:border-primary focus:border-primary focus:ring-4 focus:ring-primary/10"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>Sort By: {opt.label}</option>
+                  ))}
+                </select>
+                <HiOutlineChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
               </div>
             </div>
 
-            {error && <p className="text-red-500 font-medium mb-6">{error}</p>}
+            {error && <p className="mb-6 font-medium text-red-500">{error}</p>}
 
-            {/* Product Grid */}
             {!loading && products.length === 0 && !error ? (
-              <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-gray-200">
-                <p className="text-xl font-bold text-gray-900 mb-2">No products found</p>
-                <p className="text-gray-500">Try a different search or clear some filters.</p>
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-24 text-center shadow-sm">
+                <p className="mb-2 text-xl font-bold text-slate-900">No products found</p>
+                <p className="text-slate-500">Try a different search or clear some filters.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

@@ -3,7 +3,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import SectionCard from '../../components/ui/SectionCard'
 import StatCard from '../../components/cards/StatCard'
 import { SkeletonCard } from '../../components/Skeleton'
-import { FiDollarSign, FiShoppingCart, FiTrendingUp, FiBox } from 'react-icons/fi'
+import { FiDollarSign, FiShoppingCart, FiTrendingUp, FiBox, FiDownload } from 'react-icons/fi'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
@@ -85,13 +85,56 @@ export default function Analytics() {
     ? { stroke: '#818cf8', fillTop: 'rgba(129,140,248,0.30)', fillBot: 'rgba(129,140,248,0)', bar: '#818cf8' }
     : { stroke: '#6366f1', fillTop: 'rgba(99,102,241,0.22)', fillBot: 'rgba(99,102,241,0)', bar: '#6366f1' }
 
+  function exportCsv() {
+    const lines = [
+      'SHOPSPHERE SELLER ANALYTICS REPORT',
+      `Generated: ${new Date().toLocaleString()}`,
+      `Store: "${user?.name || 'Seller Store'}" (ID: ${user?.id || ''})`,
+      `Timeframe: Last ${period} Months`,
+      '',
+      '=== EXECUTIVE KPI SUMMARY ===',
+      'Metric,Value',
+      `Total Revenue,${d.revenue}`,
+      `Total Orders,${d.orderCount}`,
+      `Total Units Sold,${d.units}`,
+      `Average Order Value,${d.avg}`,
+      '',
+      '=== MONTHLY PERFORMANCE ===',
+      'Month,Revenue (INR),Orders Fulfilled',
+      ...d.series.map(s => `"${s.name}",${s.revenue},${s.orders}`),
+      '',
+      '=== SALES BY CATEGORY ===',
+      'Category,Revenue (INR)',
+      ...d.cats.map(c => `"${c.name}",${c.value}`),
+      '',
+      '=== TOP PERFORMING PRODUCTS ===',
+      'Rank,Product Name,Units Sold,Revenue (INR)',
+      ...d.top.map((p, i) => `${i + 1},"${(p.name || '').replace(/"/g, '""')}",${p.sales},${p.revenue}`)
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shopsphere-analytics-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
       <PageHeader title="Analytics" subtitle="Sales insights and performance across your store."
         actions={
-          <select className="input h-10 w-44" value={period} onChange={e => setPeriod(Number(e.target.value))}>
-            {PERIODS.map(p => <option key={p.k} value={p.k}>{p.label}</option>)}
-          </select>
+          <div className="flex items-center gap-3">
+            <select className="input h-10 w-44" value={period} onChange={e => setPeriod(Number(e.target.value))}>
+              {PERIODS.map(p => <option key={p.k} value={p.k}>{p.label}</option>)}
+            </select>
+            <button className="btn-ghost flex items-center gap-2" onClick={exportCsv} disabled={loading}>
+              <FiDownload size={15} /> Download Report
+            </button>
+          </div>
         } />
 
       {/* KPIs */}

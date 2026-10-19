@@ -24,8 +24,8 @@ export async function apiRequest(path, options = {}) {
   // raw "Missing or invalid Authorization header" error with a stuck page.
   if (response.status === 401) {
     try { localStorage.removeItem('user_user'); } catch (e) { /* ignore */ }
-    const redirect = encodeURIComponent(window.location.href);
-    window.location.href = `http://localhost:5177?role=user&redirect=${redirect}`;
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?redirect=${redirect}`;
     throw new Error('Your session has expired — please sign in again.');
   }
 

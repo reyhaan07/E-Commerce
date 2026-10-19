@@ -56,25 +56,37 @@ export function CartProvider({ children }) {
     }).catch(() => {})
   }, [items, user])
 
+  const HIGH_VALUE_THRESHOLD = 25000;
+  const HIGH_VALUE_MAX_QTY = 1;
+  const MAX_QTY_PER_ITEM = 5;
+
   function addItem(product, qty = 1) {
+    const isHighVal = Number(product.price || 0) >= HIGH_VALUE_THRESHOLD;
+    const maxAllowed = isHighVal ? HIGH_VALUE_MAX_QTY : MAX_QTY_PER_ITEM;
+
     setItems((current) => {
       const existing = current.find((i) => i.id === product.id)
       if (existing) {
-        return current.map((i) => (i.id === product.id ? { ...i, quantity: i.quantity + qty } : i))
+        return current.map((i) => (i.id === product.id ? { ...i, quantity: Math.min(maxAllowed, i.quantity + qty) } : i))
       }
       return [...current, {
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
-        quantity: qty,
+        quantity: Math.min(maxAllowed, qty),
       }]
     })
   }
 
   function updateQuantity(id, quantity) {
     if (quantity < 1) return
-    setItems((current) => current.map((i) => (i.id === id ? { ...i, quantity } : i)))
+    setItems((current) => current.map((i) => {
+      if (i.id !== id) return i;
+      const isHighVal = Number(i.price || 0) >= HIGH_VALUE_THRESHOLD;
+      const maxAllowed = isHighVal ? HIGH_VALUE_MAX_QTY : MAX_QTY_PER_ITEM;
+      return { ...i, quantity: Math.min(maxAllowed, quantity) };
+    }))
   }
 
   function removeItem(id) {

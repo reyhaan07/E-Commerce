@@ -40,47 +40,54 @@ const ProductCard = ({ product }) => {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="card-hover group border border-transparent hover:border-primary/10"
+      whileHover={{ y: -4 }}
+      className="card-hover group"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-        <Link to={`/product/${product.id}`}>
+      <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+        <Link to={`/product/${product.id}`} className="block h-full">
           <img
             src={product.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         </Link>
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {product.isNew && <span className="bg-primary text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">New</span>}
-            {product.discount && <span className="bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">-{product.discount}%</span>}
+
+        <div className="absolute left-3 top-3 flex flex-col gap-2">
+          {product.isNew && <span className="rounded-full bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm">New</span>}
+          {product.discount && <span className="rounded-full bg-red-500 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-sm">-{product.discount}%</span>}
         </div>
+
         <button
           onClick={handleToggleWishlist}
-          className={`absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur shadow-sm flex items-center justify-center transition-all duration-300 hover:text-red-500 ${wishlisted ? 'text-red-500 opacity-100' : 'opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0'}`}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/80 text-slate-700 shadow-sm backdrop-blur-md transition-all duration-200 hover:scale-105 hover:text-red-500 ${wishlisted ? 'text-red-500 opacity-100' : 'opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0'}`}
         >
-          <HiOutlineHeart className="text-xl" />
+          <HiOutlineHeart className={`text-xl ${wishlisted ? 'fill-current' : ''}`} />
         </button>
-        <div className="absolute bottom-4 left-4 right-4 flex gap-2 translate-y-20 group-hover:translate-y-0 transition-transform duration-300">
-          <button onClick={handleAddToCart} className="flex-1 bg-primary text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-primary-dark shadow-lg">
-            <HiOutlineShoppingBag /> Add to Cart
+
+        <div className="absolute inset-x-4 bottom-4 translate-y-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <button onClick={handleAddToCart} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary-dark">
+            <HiOutlineShoppingBag className="text-lg" /> Add to Cart
           </button>
         </div>
       </div>
-      
+
       <div className="p-4">
-        <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">{product.category || 'Lifestyle'}</p>
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{product.category || 'Lifestyle'}</p>
         <Link to={`/product/${product.id}`}>
-          <h3 className="font-semibold text-gray-800 line-clamp-1 mb-2 group-hover:text-primary transition-colors">{product.name}</h3>
+          <h3 className="mb-2 line-clamp-1 text-base font-semibold text-slate-800 transition-colors group-hover:text-primary">{product.name}</h3>
         </Link>
-        <div className="flex items-center gap-1 mb-3">
-            {[...Array(5)].map((_, i) => (
-                <HiStar key={i} className={`text-sm ${i < (product.rating || 4) ? 'text-yellow-400' : 'text-gray-200'}`} />
-            ))}
-            <span className="text-[10px] text-gray-400 ml-1">({product.reviews || 0})</span>
+
+        <div className="mb-3 flex items-center gap-1">
+          {[...Array(5)].map((_, i) => (
+            <HiStar key={i} className={`text-sm ${i < (product.rating || 4) ? 'text-amber-400' : 'text-slate-200'}`} />
+          ))}
+          <span className="ml-1 text-[10px] text-slate-400">({product.reviews || 0})</span>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-gray-900">₹{product.price}</span>
-          {product.oldPrice && <span className="text-sm text-gray-400 line-through">₹{product.oldPrice}</span>}
+          <span className="text-lg font-bold text-slate-900">₹{product.price}</span>
+          {product.oldPrice && <span className="text-sm text-slate-400 line-through">₹{product.oldPrice}</span>}
         </div>
       </div>
     </motion.div>

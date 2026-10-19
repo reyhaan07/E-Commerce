@@ -13,30 +13,22 @@ function osPrefersDark() {
 }
 
 export function resolveInitialTheme() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'light' || saved === 'dark') return saved
-  } catch { /* ignore */ }
-  return osPrefersDark() ? 'dark' : 'light'
+  return 'light'
 }
 
-// Called once from main.jsx before React renders, so there's no flash.
+// Called once from main.jsx before React renders. Always light mode.
 export function applyInitialTheme() {
-  const theme = resolveInitialTheme()
-  document.documentElement.setAttribute('data-theme', theme)
-  return theme
+  document.documentElement.setAttribute('data-theme', 'light')
+  try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+  return 'light'
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState(resolveInitialTheme)
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    try { localStorage.setItem(STORAGE_KEY, theme) } catch { /* ignore */ }
-  }, [theme])
+    document.documentElement.setAttribute('data-theme', 'light')
+    try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+  }, [])
 
-  const setTheme = useCallback((next) => setThemeState(next === 'dark' ? 'dark' : 'light'), [])
-  const toggle = useCallback(() => setThemeState(t => (t === 'dark' ? 'light' : 'dark')), [])
-
-  return { theme, toggle, setTheme, isDark: theme === 'dark' }
+  return { theme: 'light', toggle: () => {}, setTheme: () => {}, isDark: false }
 }
+

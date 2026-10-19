@@ -38,6 +38,12 @@ const productSchema = new mongoose.Schema({
   // "isNew" is reserved by Mongoose, hence the longer name
   isNewArrival: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  // Delisted rather than deleted. Orders, reviews and return requests all
+  // reference productId, so removing the row left that history pointing at
+  // nothing. Archived products are filtered out of every listing, so the
+  // console behaves exactly as it did when delete was destructive.
+  isArchived: { type: Boolean, default: false },
+  archivedAt: { type: Date, default: null },
 });
 
 productSchema.index({ name: "text", description: "text", category: "text" });

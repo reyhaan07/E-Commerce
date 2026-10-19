@@ -8,6 +8,16 @@ import SellerSidebar from '../components/shell/SellerSidebar'
 import SellerHeader from '../components/shell/SellerHeader'
 import { NAV_ITEMS, MOBILE_NAV, SHARED_LOGIN_URL } from '../config/appNav'
 
+// Account.status === "suspended" (set from admin > Seller Management) is a
+// different thing from verificationStatus === "Suspended": it suspends the whole
+// account, and the API now rejects every seller write with 403 while it holds.
+// It outranks the verification banner below.
+const ACCOUNT_SUSPENDED_BANNER = {
+  color: 'var(--danger)', soft: 'var(--danger-soft)', bd: 'var(--danger-bd)', Icon: FiAlertTriangle,
+  head: 'Account suspended',
+  text: 'A platform administrator has suspended this account. You can still view your store, but adding or editing products, updating your store profile and acting on orders are disabled until it is reinstated.',
+}
+
 const BANNERS = {
   Pending: {
     color: 'var(--warning)', soft: 'var(--warning-soft)', bd: 'var(--warning-bd)', Icon: FiClock,
@@ -54,14 +64,15 @@ export default function SellerLayout() {
 
   const shellUser = { ...(user || {}), ...(account || {}) }
   const verification = account?.verificationStatus || null
-  const banner = verification && BANNERS[verification]
+  const suspended = Boolean(account) && account.status !== 'active'
+  const banner = suspended ? ACCOUNT_SUSPENDED_BANNER : (verification && BANNERS[verification])
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-app)' }}>
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 shrink-0 px-3 py-3"
-        style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)' }}>
+        style={{ background: '#0f172a', borderRight: '1px solid #1e293b' }}>
         <SellerSidebar user={shellUser} verification={verification} counts={counts} onLogout={handleLogout} />
       </aside>
 
@@ -73,9 +84,9 @@ export default function SellerLayout() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)} />
             <motion.aside className="fixed top-0 left-0 h-full w-72 z-50 lg:hidden flex flex-col px-3 py-3"
-              style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)' }}
+              style={{ background: '#0f172a', borderRight: '1px solid #1e293b' }}
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'tween', duration: 0.22 }}>
-              <button className="btn-icon absolute top-3 right-3 z-10" onClick={() => setDrawerOpen(false)} aria-label="Close menu"><FiX size={17} /></button>
+              <button className="btn-icon absolute top-3 right-3 z-10 !bg-slate-800 !text-slate-200 !border-slate-700" onClick={() => setDrawerOpen(false)} aria-label="Close menu"><FiX size={17} /></button>
               <SellerSidebar user={shellUser} verification={verification} counts={counts}
                 onNavigate={() => setDrawerOpen(false)} onLogout={handleLogout} />
             </motion.aside>
@@ -102,7 +113,7 @@ export default function SellerLayout() {
               </motion.div>
             )}
           </AnimatePresence>
-          <Outlet context={{ account, counts }} />
+          <Outlet context={{ account, counts, suspended }} />
         </main>
       </div>
 

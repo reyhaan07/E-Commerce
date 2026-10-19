@@ -234,7 +234,7 @@ function buildWorld(products, users) {
         orderId: order.id,
         rating,
         comment,
-        moderationStatus: reviewNumber % 13 === 0 ? "Pending" : "Approved", // ~9 pending
+        moderationStatus: "Approved", // reviews publish on submission
         createdAt: new Date(order.createdAt.getTime() + 4 * DAY),
       });
     }

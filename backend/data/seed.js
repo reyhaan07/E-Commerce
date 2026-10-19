@@ -134,13 +134,49 @@ async function seedDatabase() {
     console.log(`Backfilled admin tiers: ${tierless.modifiedCount} set to ADMIN, ${promoted.modifiedCount} promoted to SUPER_ADMIN`);
   }
 
+  // Review approval was removed — reviews publish on submission. Anything left
+  // Pending from the old queue would otherwise be invisible forever, so it is
+  // published here. Idempotent, and aggregates are recomputed below.
+  const unqueued = await Review.updateMany(
+    { moderationStatus: { $ne: "Approved" } },
+    { $set: { moderationStatus: "Approved" } }
+  );
+  if (unqueued.modifiedCount) {
+    console.log(`Published ${unqueued.modifiedCount} review(s) left in the removed moderation queue`);
+    await recomputeAggregates();
+  }
+
+  // Backfill per-line itemId for orders written before item-level cancellation
+  // existed. The item subdocument has no _id, so item routes need this handle.
+  // Idempotent: only orders with a line still missing one are touched.
+  const needItemIds = await Order.find({ "items.itemId": null }, "id items").lean();
+  if (needItemIds.length) {
+    for (const o of needItemIds) {
+      const items = (o.items || []).map((item, i) => ({ ...item, itemId: item.itemId || `${o.id}-${i + 1}` }));
+      await Order.updateOne({ id: o.id }, { $set: { items } });
+    }
+    console.log(`Backfilled order item ids on ${needItemIds.length} orders`);
+  }
+
+  // Backfill accountStatus for partners seeded before the field existed. Same
+  // reason as the admin tiers above: Mongoose defaults only apply to new
+  // documents. Every read path already treats a missing value as "active", so
+  // this is cosmetic consistency rather than a behaviour change. Idempotent.
+  const statusless = await DeliveryPartner.updateMany(
+    { accountStatus: { $in: [null, undefined] } },
+    { $set: { accountStatus: "active" } }
+  );
+  if (statusless.modifiedCount) {
+    console.log(`Backfilled delivery partner account status: ${statusless.modifiedCount} set to active`);
+  }
+
   // Backfill Part B PIN fields for databases seeded before they existed, so the
   // delivery-serviceability feature works without a full reseed. Idempotent.
   const { CITY_HUBS, CITY_SERVICE_AREAS } = require("./pincodes");
   let pinFixes = 0;
   const barePartners = await DeliveryPartner.find({ $or: [{ pincode: { $in: [null, ""] } }, { pincode: { $exists: false } }] });
   for (const p of barePartners) {
-    const hub = CITY_HUBS[p.zone];
+    const hub = CITY_HUBS[p.zone] || (p.city && CITY_HUBS[p.city]) || "600100";
     if (hub) { p.pincode = hub; await p.save(); pinFixes++; }
   }
   const bareSellers = await Account.find({ role: "seller", $or: [{ warehousePincode: { $in: [null, ""] } }, { warehousePincode: { $exists: false } }, { serviceablePincodes: { $size: 0 } }] });
