@@ -142,7 +142,7 @@ function tocLine(text, key, lvl) {
 // =====================================================================
 // CONTENT
 // =====================================================================
-const TEAMS = 'Control + Alt + Win and SEME Forces';
+const TEAMS = 'Ctrl+Alt+Win and Femme Forces';
 const body = [];
 const push = (...x) => x.flat().forEach((e) => body.push(e));
 const TOC = [];
@@ -152,8 +152,8 @@ const sec = (id, t) => { TOC.push([`${id}  ${t}`, `s${id}`, 1]); push(H2(`${id} 
 // ---------------- Chapter 1 ----------------
 ch(1, 'Introduction and Company Profile');
 sec('1.1', 'Overview of the Internship');
-push(P('This report documents the industry internship undertaken by **Reyhaan S** (Register No. 312325205176), B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai, at **TechPower Solutions**, Chennai, from **18 June 2026 to 15 September 2026**. The internship was carried out in the MERN stack domain (MongoDB, Express.js, React and Node.js) and centred on a single project: **ShopSphere — a Multi-Vendor Social E-Commerce Platform**, developed jointly by two student teams, **Control + Alt + Win** and **SEME Forces**.'));
-push(P('ShopSphere connects four kinds of users — customers, sellers, platform administrators and delivery partners — through five React web applications that share one Node.js/Express API and one MongoDB database. The source code is maintained in the repository https://github.com/reyhaan07/E-Commerce [1]. Although the project was built by the combined team, this report is submitted individually. It describes the whole system so that the context is clear, and then separates Reyhaan’s own responsibility — **authentication, authorization, the shared login, security validation and integration** — from the work of the other members (Chapter 7).'));
+push(P('This report is presented jointly by the teams **Ctrl+Alt+Win** and **Femme Forces**, six students of B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai, who completed an internship at **TechPower Solutions**, Chennai, from **18 June 2026 to 15 September 2026**. The internship was carried out in the MERN stack domain (MongoDB, Express.js, React and Node.js) and centred on a single team project: **ShopSphere — a Multi-Vendor Social E-Commerce Platform**.'));
+push(P('ShopSphere connects four kinds of users — customers, sellers, platform administrators and delivery partners — through five React web applications that share one Node.js/Express API and one MongoDB database. The source code is maintained in the repository https://github.com/reyhaan07/E-Commerce [1]. The work was divided among the members by module, with three main contributors and three supporting members; the division of responsibilities is described in Chapter 7.'));
 sec('1.2', 'Company Profile');
 push(P('TechPower Solutions is an information technology company located at #05, 1st Floor, 100 Feet Road, Vadapalani, Chennai – 600 026, Tamil Nadu (website: www.techpowersolutions.in). The organisation works in software development, technical training, industrial internships and project-based learning, with the stated aim of bridging the gap between academic education and industry requirements. Its training areas include Full Stack and MERN Stack Development, Artificial Intelligence, Machine Learning, Data Analytics, Cloud Computing, the Internet of Things, Mobile Application Development, Python, Java and Software Testing.'));
 push(P('The company follows a structured Software Development Life Cycle (requirement analysis, design, development, testing, deployment and maintenance) for its internship projects. Internship programmes are coordinated by **Mr. Gokul E, HR Manager**, who handles student onboarding, training schedules and professional guidance during the internship period.'));
@@ -164,7 +164,7 @@ push(B('Design and implement secure authentication and role-based authorization 
 push(B('Integrate several independently deployed React front-ends with a shared backend, and debug cross-application issues.'));
 push(B('Practise collaborative development with Git and GitHub, API testing, regression checking and technical documentation.'));
 sec('1.4', 'Scope and Organisation of the Report');
-push(P('The technical content of this report was verified against the repository’s main branch (commit `8f85bbd`, inspected on 21 October 2026). The application was installed and run locally for this report, its automated test scripts were executed, and every screenshot was captured from that running instance (Section 6.1). Chapter 2 introduces the project and its technology; Chapter 3 presents the architecture and data model; Chapter 4 the functional modules; Chapter 5 the authentication and authorization implementation; Chapter 6 testing; Chapter 7 Reyhaan’s contribution and the team’s work allocation; Chapter 8 challenges, outcomes and limitations; and Chapter 9 learning outcomes, conclusions and future enhancements.'));
+push(P('The technical content of this report was verified against the repository’s main branch (commit `8f85bbd`, inspected on 21 October 2026). The application was installed and run locally for this report, its automated test scripts were executed, and every screenshot was captured from that running instance (Section 6.1). Chapter 2 introduces the project and its technology; Chapter 3 presents the architecture and data model; Chapter 4 the functional modules; Chapter 5 the authentication and authorization implementation; Chapter 6 testing; Chapter 7 the team’s contributions and work allocation; Chapter 8 challenges, outcomes and limitations; and Chapter 9 learning outcomes, conclusions and future enhancements.'));
 
 // ---------------- Chapter 2 ----------------
 ch(2, 'Project Overview and Requirements');
@@ -177,7 +177,7 @@ push(B('**Server-side enforcement.** Every privileged API route is guarded by co
 push(B('**Persistent, validated data.** Eleven Mongoose models with enumerated statuses and an explicit seller status-transition table prevent invalid order states.'));
 push(B('**Coordinated workflows.** Seller verification, product approval, PIN-code-based courier assignment, delivery tracking, cancellations and returns are connected end to end, with real-time Socket.io notifications.'));
 sec('2.3', 'Joint Project Teams');
-push(P(`ShopSphere was developed as a joint project of two teams, **Control + Alt + Win** and **SEME Forces**, comprising six students. The division of responsibilities, as recorded in the team’s work-allocation workbook, is summarised in Section 7.3.`));
+push(P(`ShopSphere was developed as a joint project of two teams, **Ctrl+Alt+Win** and **Femme Forces**, comprising six students. The division of responsibilities, as recorded in the team’s work-allocation workbook, is summarised in Section 7.3.`));
 sec('2.4', 'Software Requirements and Development Environment');
 push(table('2.1', 'Software requirements and development environment (from README.md and package.json files)',
   ['Item', 'Requirement / version used'],
@@ -202,7 +202,7 @@ push(table('2.2', 'Technology stack confirmed in the repository',
    ['Integrations', 'Razorpay SDK (test mode), Nodemailer', 'Optional online payment with HMAC signature verification; optional SMTP e-mail with console fallback'],
    ['Version control', 'Git, GitHub', 'Shared repository; pull-request based merges']],
   [1700, 2900, 4066]));
-push(P('The commit history also records co-author trailers from an AI coding assistant on many commits, including some of Reyhaan’s; AI-assisted development was therefore part of the team’s workflow.', { run: { size: 22 } }));
+push(P('The commit history also records co-author trailers from an AI coding assistant on many commits, across several members’ accounts; AI-assisted development was therefore part of the team’s workflow.', { run: { size: 22 } }));
 
 // ---------------- Chapter 3 ----------------
 ch(3, 'System Design');
@@ -242,7 +242,7 @@ push(P('Online payment uses Razorpay in test mode only when test keys are config
 
 // ---------------- Chapter 5 ----------------
 ch(5, 'Authentication and Authorization Implementation');
-push(P('Authentication and authorization were Reyhaan’s principal area of responsibility. This chapter describes the mechanism as it exists on the current main branch. Items marked † were added in the post-internship commit `5452ea8` (20 October 2026) and are described for completeness only; Section 7.2 lists which parts of this mechanism are evidenced as Reyhaan’s work in the commit history.', { run: { size: 23 } }));
+push(P('Within the team, the authentication and authorization work was led by Reyhaan S. This chapter describes the mechanism as it exists on the current main branch. Items marked † were added in the post-internship commit `5452ea8` (20 October 2026) and are described for completeness only; Section 7.3 lists the related commits.', { run: { size: 23 } }));
 sec('5.1', 'Shared Login and Role Selection');
 push(P('The shared login application (frontend/login, port 5177) is the single sign-in entry point for all four roles. The user first chooses a role (Figure 5.2) and then signs in on a role-specific screen reached through `/login/<role>` or the `?role=` deep link used by the other portals (Figure 5.3); a wrong password produces the generic error in Figure 5.4. The same app hosts the forgot-password and reset-password forms and links to each role’s registration page.'));
 sec('5.2', 'Login Processing on the Server');
@@ -330,29 +330,10 @@ push(table('6.2', 'Authentication and authorization checks (expected vs. observe
   [900, 4466, 1650, 1650], { size: 19 }));
 
 // ---------------- Chapter 7 ----------------
-ch(7, 'Individual Contribution and Team Collaboration');
-sec('7.1', 'Reyhaan’s Responsibilities');
-push(P(`Within the joint project of ${TEAMS}, Reyhaan S was one of three main contributors, with primary ownership of **authentication, authorization, the shared login, security validation and integration**. In practice this covered:`));
-push(B('**Shared login and role-based access:** consolidating the separate per-app login pages into the single shared login application, the per-role login entry, and the safe redirect to each role’s portal.'));
-push(B('**Authorization and protected routes:** the super-administrator tier (`requireSuperAdmin`, `adminRole` in the token, and the hidden roster screen) and protected-route behaviour in the portals.'));
-push(B('**Credential security:** removing the e-mail OTP step from registration and adding a migration that re-hashes any plaintext password at rest.'));
-push(B('**Integration and session handling:** front-end re-authentication on `401` so customers with an expired token are sent back through the shared login and returned to their page.'));
-push(B('**Validation and regression testing:** the backend smoke test that checks login for all four roles, and repeated security and cross-portal regression checks (as allocated in the workbook).'));
-push(B('**Documentation** of the implementation and project workflows.'));
-sec('7.2', 'Repository Evidence for Reyhaan’s Work');
-push(P('Table 7.1 lists commits recorded under Reyhaan’s accounts (“Reyhaan S” and “reyhaan07”) that relate to his area. Commit authorship is useful evidence but is not a complete record of who did what: much of the work was discussed and tested jointly, and several commits carry AI co-author trailers.'));
-push(table('7.1', 'Authentication-related commits recorded under Reyhaan’s accounts',
-  ['Date', 'Commit', 'Change relevant to authentication and integration'],
-  [['16 Jul 2026', '631eed3', 'Migrated the backend to MongoDB; replaced each app’s own login with the shared frontend/login app; added safeRedirectForRole and admin/delivery session handling'],
-   ['19 Jul 2026', '3384e7b', 'Per-role login entry screens; seller registration and verification refinements in routes/auth.js'],
-   ['25 Jul 2026', 'dc43a8f', 'Removed e-mail OTP verification and the emailVerified gate; added `npm run hash-passwords` migration'],
-   ['25 Jul 2026', '998db43', 'Added backend/test/smoke.js (login for all four roles, registration); removed dead emailVerified writes'],
-   ['20 Aug 2026', 'e83285c', 'Super-admin roster routes behind requireSuperAdmin; adminRole carried in the JWT and hand-off; roster hidden from ordinary admins'],
-   ['22 Aug 2026', '4c808b0', 'Storefront re-authentication on 401 with redirect back to the original page']],
-  [1250, 1000, 6416], { size: 19 }));
-push(P('Other parts of the authentication mechanism were committed by other accounts: the original `requireAuth`, `requireSelfOrAdmin`, timing-normalised login and the URL hand-off appear first in commits by “Harini-G-07” (13 July 2026); `requireRole` first appears in a commit attributed to an AI coding assistant (17 July 2026); and `requireActiveAccount`, `requireActivePartner`, the database re-check in `isSuperAdmin` and delivery-partner self-registration were added in Sai Saran S’s commit of 20 October 2026, after the internship. These are therefore not claimed as Reyhaan’s individual work.'));
-sec('7.3', 'Team Members and Responsibilities');
-push(table('7.2', `Team responsibilities — ${TEAMS} (from the Task Assignment sheet)`,
+ch(7, 'Team Contributions and Collaboration');
+sec('7.1', 'Team Structure');
+push(P(`ShopSphere was developed jointly by the teams **Ctrl+Alt+Win** and **Femme Forces**. Work was divided by module: three members acted as main contributors with ownership of a core area, one member supported the seller module, and two members carried out limited, bounded testing and evidence tasks. Table 7.1 summarises the responsibilities recorded in the team’s Task Assignment sheet.`));
+push(table('7.1', `Team members and responsibilities — ${TEAMS}`,
   ['Member (Reg. No.)', 'Level', 'Main responsibility'],
   [['Reyhaan S (312325205176)', 'Main contributor', 'Authentication, authorization, shared login, protected routes, security validation and integration'],
    ['Sai Saran S (312325205188)', 'Main contributor', 'System architecture, frontend/backend integration, API and data flow, build configuration and coordination'],
@@ -361,6 +342,26 @@ push(table('7.2', `Team responsibilities — ${TEAMS} (from the Task Assignment 
    ['Priyadharshini P (312325205165)', 'Limited support', 'Customer UI spot-checks, cart/checkout smoke checks, screenshot evidence'],
    ['Niraimathi V (312325205141)', 'Light support', 'Occasional delivery-workflow checks, screenshots and simple QA notes']],
   [2700, 1700, 4266], { size: 19 }));
+sec('7.2', 'Member Contributions');
+push(B('**Reyhaan S — authentication, authorization and integration.** The shared login application and per-role login entry, the safe redirect to each role’s portal, the super-administrator tier (`requireSuperAdmin` and `adminRole` in the token), removal of the e-mail OTP step with a migration that re-hashes plaintext passwords, storefront re-authentication on `401`, the four-role login smoke test, and security and cross-portal regression checks (Chapter 5).'));
+push(B('**Sai Saran S — architecture, integration and coordination.** Overall system architecture and the mapping of each portal to its backend routes, frontend/backend data flow (including cart-to-order integration), build and run configuration, cross-portal API consistency, error-handling alignment, integration test planning and documentation; the later UI and data-flow enhancements merged as pull request #3 were committed under the Sai Saran S account.'));
+push(B('**Mrityunjai G — administration portal.** Seller verification and product approval workflows, user and seller management, role-permission checks on admin-only screens and actions, order administration and delivery assignment, and status-transition verification (Sections 4.3 and 4.5).'));
+push(B('**Pasupathi G — seller portal (supporting).** Seller dashboard navigation, product-entry and validation review, inventory and stock workflows, seller-side order handling and fulfilment status, and consistency checks between seller listings and the storefront (Section 4.2).'));
+push(B('**Priyadharshini P — customer storefront checks (limited).** Cart and checkout smoke tests, checkout validation, customer UI spot-checks and organisation of customer-flow screenshots.'));
+push(B('**Niraimathi V — delivery checks (light).** Occasional delivery-status and navigation spot-checks, cross-role status-label comparison, simple form checks and help with labelling report evidence.'));
+sec('7.3', 'Repository Evidence');
+push(P('Table 7.2 lists notable commits from the internship period and the one later merge. Commit authorship is useful evidence but is not a complete record of who did what: much of the work was discussed and tested jointly, some members contributed through testing rather than commits, and several commits carry AI co-author trailers.'));
+push(table('7.2', 'Notable commits in the shared repository',
+  ['Date', 'Commit (author)', 'Change'],
+  [['16 Jul 2026', '631eed3 (Reyhaan S)', 'Migrated the backend to MongoDB; replaced each app’s own login with the shared frontend/login app'],
+   ['17–18 Jul 2026', 'several (AI-assistant identity)', 'Catalogue, reviews, returns, real-time events, payments; storefront, seller, admin and delivery screens wired to the live API; seed data'],
+   ['19 Jul 2026', '3384e7b (reyhaan07)', 'Payroll module, editable admin/seller profiles, per-role login entry, seller onboarding, delivery history'],
+   ['25 Jul 2026', 'dc43a8f, 998db43 (reyhaan07)', 'Removed e-mail OTP verification; password re-hash migration; backend smoke test'],
+   ['20 Aug 2026', 'e83285c (reyhaan07)', 'Super-admin roster behind requireSuperAdmin; order status-transition graph and phased journey; features test'],
+   ['20–22 Aug 2026', 'b00380b, 612e7f0, 44ba684, 4c808b0', 'Seller Center redesign and PIN-code delivery settings; customer profile redesign; storefront re-authentication on 401'],
+   ['20 Oct 2026', '5452ea8 (Sai Saran S), merged as PR #3', 'UI and data-flow enhancements, account-status re-checks, delivery self-registration — after the internship period']],
+  [1350, 2400, 4916], { size: 19 }));
+push(P('Earlier commits (26 June – 13 July 2026) by the accounts “Blueundead24” and “Harini-G-07” created the initial project structure, the first login API, the delivery app and the user-account module, including the original `requireAuth` and `requireSelfOrAdmin` guards; these accounts are not mapped to team members in the allocation workbook.'));
 sec('7.4', 'Work Allocation Summary');
 push(P('The team’s workbook covers **15 July 2026 to 14 September 2026**, a sub-period of the internship (18 June – 15 September 2026). It allocates one recurring task per member for each of 41 working days. The workbook itself states that its daily calendar is a proposed retrospective allocation and not a verified record of attendance or completion dates; it is summarised here as a work-allocation record, not as a daily log.'));
 push(table('7.3', 'Recurring task areas per member in the work-allocation calendar (days allocated in brackets)',
@@ -374,7 +375,7 @@ push(table('7.3', 'Recurring task areas per member in the work-allocation calend
   [1900, 6766], { size: 19 }));
 push(table('7.4', 'Project phases reconstructed from repository history and the allocation workbook',
   ['Period', 'Activity', 'Evidence'],
-  [['18 Jun – 14 Jul', 'Onboarding and MERN training; initial project set-up, common login, first backend APIs and user-account module', 'Commits 26 Jun – 13 Jul (other accounts)'],
+  [['18 Jun – 14 Jul', 'Onboarding and MERN training; initial project set-up, common login, first backend APIs and user-account module', 'Commits 26 Jun – 13 Jul'],
    ['15 – 31 Jul', 'MongoDB migration and shared login; full module build-out; per-role login; OTP removal and password hashing; smoke test', 'Commits 16 – 25 Jul; workbook'],
    ['1 – 31 Aug', 'Super-admin tier and order journey; seller centre redesign; PIN-code delivery settings; 401 re-authentication', 'Commits 20 – 22 Aug; workbook'],
    ['1 – 15 Sep', 'Regression checks, cross-portal verification, documentation and report preparation', 'Workbook only (no commits dated in September)'],
@@ -384,14 +385,14 @@ push(table('7.4', 'Project phases reconstructed from repository history and the 
 // ---------------- Chapter 8 ----------------
 ch(8, 'Challenges, Outcomes and Limitations');
 sec('8.1', 'Challenges and Solutions');
-push(P('The challenges below are those that are visible in the code and commit history of Reyhaan’s area.'));
+push(P('The challenges below are those that are visible in the code and commit history.'));
 push(B('**Sharing a login across separate origins.** Each portal runs on its own port, so a session stored by the login app is invisible to the others. The solution was a one-time hand-off through redirect query parameters, accepted only for the matching role, stored per portal and immediately removed from the URL; redirect targets are restricted to the selected role’s own origin.'));
 push(B('**Distinguishing roles for the same person.** Looking up accounts by e-mail _and_ role keeps a customer login from opening the seller or admin console, and gives each portal a clear expected role.'));
 push(B('**Registration friction versus security.** The six-digit e-mail OTP step was removed from registration (commit dc43a8f); to keep credential storage safe, a migration was added to re-hash any password not already in bcrypt format.'));
 push(B('**Expired sessions breaking pages.** An expired token used to leave customers on a raw “Missing or invalid Authorization header” message. The API client now clears the session and returns the user through the shared login to the same page.'));
 push(B('**Graded administrator permissions.** A super-administrator tier was introduced for roster management, with the UI hiding the screen and the API enforcing it independently.'));
 sec('8.2', 'Project Outcomes');
-push(P('The team delivered a working multi-vendor platform with five role-specific front-ends, a REST API of thirteen route modules, eleven data models and an integrated workflow from seller onboarding to delivery and returns. All six repository test scripts passed (107 checks) and the focused authentication and authorization checks matched the behaviour described in the code. For Reyhaan, the outcome was a single shared login used by all four roles, server-side role enforcement on privileged routes and a tested session-recovery path in the storefront.'));
+push(P('The team delivered a working multi-vendor platform with five role-specific front-ends, a REST API of thirteen route modules, eleven data models and an integrated workflow from seller onboarding to delivery and returns. All six repository test scripts passed (107 checks) and the focused authentication and authorization checks matched the behaviour described in the code. Key results in authentication and integration were a single shared login used by all four roles, server-side role enforcement on privileged routes and a tested session-recovery path in the storefront.'));
 sec('8.3', 'Limitations Identified')
 push(P('The following limitations were identified while verifying the code for this report (October 2026). They are recorded so that they can be addressed, and are not claimed to have been fixed.'));
 push(B('**Unauthenticated read endpoints.** `GET /api/orders` (without a `userId` filter), `GET /api/orders/:id` and `GET /api/delivery-partners` do not require a token. Against the seeded demo data they returned customer names, addresses and phone numbers, and partner documents. These routes should require authentication and filter results by role.'));
@@ -410,7 +411,7 @@ push(B('Modelling data with Mongoose (schemas, enums, indexes, transforms) and r
 push(B('Testing APIs systematically with scripted checks, comparing expected and observed status codes, and reporting limitations honestly.'));
 push(B('Working in a six-member, two-team project with Git and GitHub, pull requests and a shared work-allocation plan.'));
 sec('9.2', 'Conclusion');
-push(P(`The internship at TechPower Solutions provided practical experience of building a real multi-role web application with the MERN stack. ShopSphere, developed jointly by ${TEAMS}, demonstrates a complete marketplace workflow across customer, seller, administrator and delivery-partner portals. Reyhaan’s contribution centred on the shared login and on authentication and authorization: one entry point for all roles, server-enforced role and tier checks, safer credential storage and dependable session recovery. Verifying the system for this report also showed where its security can be strengthened, which forms the basis of the enhancements below.`));
+push(P(`The internship at TechPower Solutions provided practical experience of building a real multi-role web application with the MERN stack. ShopSphere, developed jointly by ${TEAMS}, demonstrates a complete marketplace workflow across customer, seller, administrator and delivery-partner portals. Each member’s work — authentication and the shared login, the overall architecture and integration, the administration and seller portals, and testing of the customer and delivery flows — contributed to one integrated platform. Verifying the system for this report also showed where its security can be strengthened, which forms the basis of the enhancements below.`));
 sec('9.3', 'Future Enhancements');
 push(B('Require authentication and role-based filtering on the order and delivery-partner read endpoints identified in Section 8.3.'));
 push(B('Move session tokens to secure, HTTP-only cookies or a short-lived access token with a refresh token, and replace the URL hand-off with a one-time code exchange.'));
@@ -423,7 +424,7 @@ push(B('Deploy the portals behind a single domain so that sessions can be shared
 TOC.push(['REFERENCES', 'refs', 0]);
 push(H1(null, 'References'));
 [
-  'R. S., S. S. S. et al., “ShopSphere — Multi-Vendor E-Commerce Platform,” GitHub repository. https://github.com/reyhaan07/E-Commerce (main branch, commit 8f85bbd; accessed 21 Oct. 2026).',
+  'Ctrl+Alt+Win and Femme Forces, “ShopSphere — Multi-Vendor E-Commerce Platform,” GitHub repository. https://github.com/reyhaan07/E-Commerce (main branch, commit 8f85bbd; accessed 21 Oct. 2026).',
   'M. Jones, J. Bradley and N. Sakimura, “JSON Web Token (JWT),” RFC 7519, IETF, May 2015. https://www.rfc-editor.org/rfc/rfc7519',
   'Auth0, “jsonwebtoken” library documentation. https://github.com/auth0/node-jsonwebtoken',
   'D. Wirtz, “bcrypt.js” library documentation. https://github.com/dcodeIO/bcrypt.js',
@@ -443,51 +444,35 @@ push(H1(null, 'References'));
 // FRONT MATTER
 // =====================================================================
 const cover = [
-  C('AN INTERNSHIP REPORT', { run: { bold: true, size: 32 }, after: 126, before: 1950 }),
-  C('A report submitted in partial fulfilment of the requirements for the Industry Internship Program', { run: { size: 22 }, after: 336 }),
-  C('on', { run: { italics: true, size: 22 }, after: 84 }),
-  C('SHOPSPHERE — MULTI-VENDOR SOCIAL E-COMMERCE PLATFORM', { run: { bold: true, size: 26 }, after: 126 }),
-  C('A joint project of the teams **Control + Alt + Win** and **SEME Forces**', { run: { size: 23 }, after: 336 }),
-  C('Submitted By', { run: { bold: true, italics: true, size: 24 }, after: 84 }),
-  C('REYHAAN S – 312325205176', { run: { bold: true, size: 26 }, after: 336 }),
-  new Paragraph({ children: [img('logos/techpower_logo.png', 2.9)], alignment: AlignmentType.CENTER, spacing: { after: 126 } }),
-  C('TechPower Solutions, Vadapalani, Chennai – 600 026', { run: { size: 22 }, after: 420 }),
-  C('in partial fulfilment for the award of the degree of', { run: { bold: true, italics: true, size: 24 }, after: 126 }),
-  C('BACHELOR OF TECHNOLOGY', { run: { bold: true, size: 26 }, after: 42 }),
-  C('IN', { run: { bold: true, size: 22 }, after: 42 }),
-  C('INFORMATION TECHNOLOGY', { run: { bold: true, size: 26 }, after: 294 }),
-  new Paragraph({ children: [img('logos/sjce_logo.jpeg', 1.35, 'jpg')], alignment: AlignmentType.CENTER, spacing: { after: 168 } }),
-  C('St. JOSEPH’S COLLEGE OF ENGINEERING', { run: { bold: true, size: 30 }, after: 42 }),
-  C('(An Autonomous Institution)', { run: { size: 22 }, after: 42 }),
-  C('St. Joseph’s Group of Institutions, OMR, Chennai 600 119', { run: { size: 22 }, after: 42 }),
-  C('ANNA UNIVERSITY :: CHENNAI 600 025', { run: { size: 22 }, after: 252 }),
-  C('Internship period: 18-06-2026 to 15-09-2026', { run: { bold: true, size: 23 }, after: 0 }),
+  new Paragraph({ children: [img('logos/techpower_logo.png', 3.0)], alignment: AlignmentType.CENTER, spacing: { before: 2700, after: 360 } }),
+  C('INTERNSHIP COMPLETION REPORT', { run: { bold: true, size: 34 }, after: 120 }),
+  C('MERN Stack Development Internship', { run: { size: 24 }, after: 360 }),
+  C('SHOPSPHERE', { run: { bold: true, size: 40 }, after: 40 }),
+  C('Multi-Vendor Social E-Commerce Platform', { run: { bold: true, size: 26 }, after: 480 }),
+  C('Presented by', { run: { italics: true, size: 24 }, after: 60 }),
+  C('CTRL+ALT+WIN  &  FEMME FORCES', { run: { bold: true, size: 28 }, after: 160 }),
+  ...[['Reyhaan S', '312325205176'], ['Sai Saran S', '312325205188'], ['Mrityunjai G', '312325205132'], ['Pasupathi G', '312325205157'], ['Priyadharshini P', '312325205165'], ['Niraimathi V', '312325205141']]
+    .map(([n, r], k) => C(`${n} – ${r}`, { run: { size: 23 }, after: k === 5 ? 120 : 30 })),
+  C('B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai', { run: { italics: true, size: 21 }, after: 480 }),
+  C('Submitted to', { run: { italics: true, size: 24 }, after: 60 }),
+  C('Mr. Gokul E, HR Manager', { run: { bold: true, size: 25 }, after: 30 }),
+  C('TechPower Solutions', { run: { bold: true, size: 25 }, after: 30 }),
+  C('#05, 1st Floor, 100 Feet Road, Vadapalani, Chennai – 600 026', { run: { size: 22 }, after: 360 }),
+  C('Internship period: 18 June 2026 – 15 September 2026', { run: { bold: true, size: 23 }, after: 0 }),
 ];
 
 const front = [];
 const fpush = (...x) => x.flat().forEach((e) => front.push(e));
 const fH = (t) => new Paragraph({ children: [new TextRun({ text: t, bold: true, size: 30 })], alignment: AlignmentType.CENTER, spacing: { after: 300 }, pageBreakBefore: front.length > 0 });
-fpush(fH('ACKNOWLEDGEMENT'));
-const ack = [
-  'At the outset I would like to express my sincere gratitude to our beloved Chairman, **Dr. Babu Manoharan, M.A., M.B.A., Ph.D.**, for his constant guidance and support.',
-  'I would like to express my heartfelt thanks to our respected Managing Director, **Mr. B. Shashi Sekar, M.Sc.**, for the kind encouragement and blessings.',
-  'I wish to express my sincere thanks and gratitude to our Executive Director, **Mrs. S. Jessie Priya, M.Com.**, for providing ample facilities in the institution.',
-  'I express my deepest gratitude and thanks to our beloved Principal, **Dr. Vaddi Seshagiri Rao, M.E., M.B.A., Ph.D., F.I.E.**, for his inspirational ideas during the internship.',
-  'I wish to express my sincere thanks and gratitude to **Dr. Heltin Genitha, M.E., (Ph.D.)**, Professor and Head of the Department of Information Technology, St. Joseph’s College of Engineering, for her guidance and assistance throughout the internship.',
-  'I am deeply grateful to **TechPower Solutions** for the opportunity to undertake an internship in MERN Stack Development, and to **Mr. Gokul E, HR Manager**, for coordinating the internship and supporting the interns throughout the programme.',
-  `Finally, I thank my teammates in **Control + Alt + Win** and **SEME Forces** — Sai Saran S, Mrityunjai G, Pasupathi G, Priyadharshini P and Niraimathi V — for their collaboration in building ShopSphere.`,
-];
-ack.forEach((t) => fpush(P(t, { line: 336, after: 160 })));
-
 fpush(fH('ABSTRACT'));
-fpush(P('This report presents the industry internship carried out by Reyhaan S at TechPower Solutions, Chennai, from 18 June to 15 September 2026, in the domain of MERN stack development. The internship centred on ShopSphere, a multi-vendor social e-commerce platform developed jointly by the teams Control + Alt + Win and SEME Forces.', { line: 336, after: 160 }));
+fpush(P('This report is presented by the teams Ctrl+Alt+Win and Femme Forces and describes the internship completed by their six members at TechPower Solutions, Chennai, from 18 June to 15 September 2026, in the domain of MERN stack development. The internship centred on the teams’ joint project, ShopSphere, a multi-vendor social e-commerce platform.', { line: 336, after: 160 }));
 fpush(P('ShopSphere consists of five React 19 single-page applications — a customer storefront, a seller portal, an administrator console, a delivery-partner console and a shared login application — served by one Node.js/Express 5 API with MongoDB persistence through eleven Mongoose models. The platform implements seller onboarding with GSTIN, PAN and document validation, administrator verification and product approval, cart and checkout with server-side pricing, PIN-code-based delivery assignment, a phased order journey, cancellations, returns, notifications over Socket.io and optional Razorpay test-mode payments with HMAC signature verification.', { line: 336, after: 160 }));
-fpush(P('Reyhaan’s principal responsibility was authentication, authorization and integration. The report explains the shared login, role-aware credential checking with bcrypt and timing-normalised failures, seven-day JSON Web Tokens, the safe cross-origin session hand-off, and the composable Express middleware that enforces roles, ownership and a super-administrator tier on the server. Repository evidence for his individual commits is distinguished from the work of other members.', { line: 336, after: 160 }));
+fpush(P('The report explains the system architecture, data model and functional modules, and examines the security design in detail: the shared login, role-aware credential checking with bcrypt and timing-normalised failures, seven-day JSON Web Tokens, the safe cross-origin session hand-off, and the composable Express middleware that enforces roles, ownership and a super-administrator tier on the server. The contribution of each team member is described, with main contributors distinguished from supporting members.', { line: 336, after: 160 }));
 fpush(P('The system was run locally for verification: all six repository test scripts passed (107 checks), and a focused set of authentication and authorization checks matched the implemented behaviour. The verification also identified limitations — notably unauthenticated order and delivery-partner read endpoints and token storage in browser storage — which are recorded with recommended enhancements.', { line: 336, after: 160 }));
 fpush(P('**Keywords:** MERN stack, multi-vendor e-commerce, JWT, role-based access control, Express middleware, MongoDB, React.', { line: 336 }));
 
 fpush(fH('TABLE OF CONTENTS'));
-fpush(tocLine('ACKNOWLEDGEMENT', 'ack', 0), tocLine('ABSTRACT', 'abs', 0), tocLine('LIST OF FIGURES AND TABLES', 'lof', 0));
+fpush(tocLine('ABSTRACT', 'abs', 0), tocLine('LIST OF FIGURES AND TABLES', 'lof', 0));
 TOC.forEach(([t, k, l]) => fpush(tocLine(t, k, l)));
 
 fpush(fH('LIST OF FIGURES AND TABLES'));
@@ -506,10 +491,10 @@ TABS.forEach((t) => fpush(lofLine(`Table ${t.id}`, t.text, `t${t.id}`)));
 // =====================================================================
 const pageProps = { page: { size: { width: 11906, height: 16838 }, margin: { top: 1300, bottom: 1200, left: 1800, right: 1440, header: 600, footer: 600 } } };
 const footer = (fmt) => new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 22 })] })] });
-const header = new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '9AA5B4', space: 2 } }, children: [new TextRun({ text: 'ShopSphere — Internship Completion Report  |  Reyhaan S (312325205176)', size: 17, color: '5A6474' })] })] });
+const header = new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '9AA5B4', space: 2 } }, children: [new TextRun({ text: 'ShopSphere — Internship Report  |  Ctrl+Alt+Win & Femme Forces', size: 17, color: '5A6474' })] })] });
 
 const doc = new Document({
-  creator: 'Reyhaan S', title: 'Internship Completion Report — ShopSphere', description: 'Internship report, TechPower Solutions, 2026',
+  creator: 'Ctrl+Alt+Win & Femme Forces', title: 'Internship Report — ShopSphere', description: 'Internship report, TechPower Solutions, 2026',
   styles: {
     default: { document: { run: { font: FONT, size: 24 } } },
     paragraphStyles: [
@@ -530,7 +515,7 @@ const doc = new Document({
   ],
 });
 Packer.toBuffer(doc).then((buf) => {
-  fs.writeFileSync(path.join(OUT, 'REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx'), buf);
+  fs.writeFileSync(path.join(OUT, 'SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx'), buf);
   fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify({ toc: TOC, figs: FIGS, tabs: TABS }, null, 1));
   console.log('written', FIGS.length, 'figures', TABS.length, 'tables');
 });

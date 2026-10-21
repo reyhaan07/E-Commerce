@@ -1,6 +1,6 @@
 # Details to confirm before submission
 
-Report: `REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx` (28 pages including the cover)
+Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (27 pages including the cover)
 
 ## Documents that were not supplied (not included in the report)
 1. **Internship completion certificate from TechPower Solutions.** The reference report only had Sai Saran's offer letter. Nothing was copied or invented. Add Reyhaan's own certificate or offer letter as an annexure if the department needs it. That adds 1–2 pages, which keeps the report within the 30-page limit only if it is a single page.
@@ -25,8 +25,8 @@ Report: `REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx` (28 pages including the cove
 14. **Security gaps in the current code (Section 8.3).** These are real: `GET /api/orders`, `GET /api/orders/:id` and `GET /api/delivery-partners` return customer and partner details without a token. You may want to fix them before any demo or viva.
 
 ## Files in this folder
-- `REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx`: the editable report
-- `REYHAAN_INTERNSHIP_COMPLETION_REPORT.pdf`: PDF export (rendered with LibreOffice, so fonts may differ slightly from Word)
+- `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`: the editable report
+- `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.pdf`: PDF export (rendered with LibreOffice, so fonts may differ slightly from Word)
 - `assets/screenshots/`: 20 screenshots from the running app (16 are used in the report)
 - `assets/diagrams/`: 6 diagrams drawn from the repository
 - `assets/logos/`: the TechPower and SJCE logos extracted from the reference report
