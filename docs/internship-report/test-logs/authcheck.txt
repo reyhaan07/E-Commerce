@@ -1,0 +1,30 @@
+A1 | Valid customer login returns JWT | 200 | 200 | PASS
+A2 | Wrong password rejected | 401 | 401 | PASS
+A3 | Unknown email rejected (same message) | 401 | 401 | PASS
+A4 | Correct credentials but wrong role (customer as seller) | 401 | 401 | PASS
+A5 | Missing role field rejected | 400 | 400 | PASS
+A6 | Invalid role value rejected | 400 | 400 | PASS
+B1 | GET /users/me without token | 401 | 401 | PASS
+B2 | GET /users/me with tampered token | 401 | 401 | PASS
+B3 | GET /users/me with valid customer token | 200 | 200 | PASS
+C1 | Customer calls admin stats (requireRole admin) | 403 | 403 | PASS
+C2 | Seller calls admin stats | 403 | 403 | PASS
+C3 | Admin calls admin stats | 200 | 200 | PASS
+C4 | Customer tries to approve a product | 403 | 403 | PASS
+C5 | Customer tries to create a product | 403 | 403 | PASS
+C6 | Delivery partner tries seller-status update | 403 | 403 | PASS
+D1 | Customer reads another user profile (requireSelfOrAdmin) | 403 | 403 | PASS
+D2 | Customer reads own profile by id | 200 | 200 | PASS
+D3 | Customer lists another user's orders | 403 | 403 | PASS
+D4 | Orders by userId without token | 401 | 401 | PASS
+D5 | Admin reads any user profile | 200 | 200 | PASS
+E1 | Plain admin hits super-admin roster (if seeded admin is SUPER_ADMIN, expect 200) | 200 | 200 | PASS
+F1 | Register rejects 7-char password | 400 | 400 | PASS
+F2 | Register rejects malformed email | 400 | 400 | PASS
+F3 | Reset with invalid token rejected | 400 | 400 | PASS
+G1 | Password hash not returned by /users/me | absent | absent | PASS
+G2 | JWT payload holds only id/role/iat/exp | id,role,iat,exp | id,role,iat,exp | PASS
+G3 | JWT lifetime (days) | 7 | 7 | PASS
+H1 | Order list without token (no userId filter) — public endpoint | 200 | 200 | PASS
+H2 | Order detail without token — public endpoint | 200 | 200 | PASS
+[{"id":"A1","desc":"Valid customer login returns JWT","exp":200,"got":200,"ok":true},{"id":"A2","desc":"Wrong password rejected","exp":"401","got":401,"ok":true},{"id":"A3","desc":"Unknown email rejected (same message)","exp":"401","got":401,"ok":true},{"id":"A4","desc":"Correct credentials but wrong role (customer as seller)","exp":"401","got":401,"ok":true},{"id":"A5","desc":"Missing role field rejected","exp":"400","got":400,"ok":true},{"id":"A6","desc":"Invalid role value rejected","exp":"400","got":400,"ok":true},{"id":"B1","desc":"GET /users/me without token","exp":"401","got":401,"ok":true},{"id":"B2","desc":"GET /users/me with tampered token","exp":"401","got":401,"ok":true},{"id":"B3","desc":"GET /users/me with valid customer token","exp":200,"got":200,"ok":true},{"id":"C1","desc":"Customer calls admin stats (requireRole admin)","exp":"403","got":403,"ok":true},{"id":"C2","desc":"Seller calls admin stats","exp":"403","got":403,"ok":true},{"id":"C3","desc":"Admin calls admin stats","exp":200,"got":200,"ok":true},{"id":"C4","desc":"Customer tries to approve a product","exp":"403","got":403,"ok":true},{"id":"C5","desc":"Customer tries to create a product","exp":"403","got":403,"ok":true},{"id":"C6","desc":"Delivery partner tries seller-status update","exp":"403","got":403,"ok":true},{"id":"D1","desc":"Customer reads another user profile (requireSelfOrAdmin)","exp":"403","got":403,"ok":true},{"id":"D2","desc":"Customer reads own profile by id","exp":200,"got":200,"ok":true},{"id":"D3","desc":"Customer lists another user's orders","exp":"403","got":403,"ok":true},{"id":"D4","desc":"Orders by userId without token","exp":"401","got":401,"ok":true},{"id":"D5","desc":"Admin reads any user profile","exp":200,"got":200,"ok":true},{"id":"E1","desc":"Plain admin hits super-admin roster (if seeded admin is SUPER_ADMIN, expect 200)","exp":200,"got":200,"ok":true},{"id":"F1","desc":"Register rejects 7-char password","exp":"400","got":400,"ok":true},{"id":"F2","desc":"Register rejects malformed email","exp":"400","got":400,"ok":true},{"id":"F3","desc":"Reset with invalid token rejected","exp":"400","got":400,"ok":true},{"id":"G1","desc":"Password hash not returned by /users/me","exp":"absent","got":"absent","ok":true},{"id":"G2","desc":"JWT payload holds only id/role/iat/exp","exp":"id,role,iat,exp","got":"id,role,iat,exp","ok":true},{"id":"G3","desc":"JWT lifetime (days)","exp":"7","got":"7","ok":true},{"id":"H1","desc":"Order list without token (no userId filter) — public endpoint","exp":"200","got":200,"ok":true},{"id":"H2","desc":"Order detail without token — public endpoint","exp":"200","got":200,"ok":true}]

@@ -1,0 +1,34 @@
+ShopSphere feature test -> http://localhost:5000
+
+Administrator hierarchy
+
+  PASS  founding administrator authenticates as SUPER_ADMIN
+  PASS  super administrator lists the roster (20 administrators)
+  PASS  ordinary administrator authenticates as ADMIN
+  PASS  ordinary administrator is denied the roster (403)
+  PASS  super administrator creates an administrator
+  PASS  password shorter than 8 characters is rejected
+  PASS  duplicate email is rejected (409)
+  PASS  founding administrator cannot be demoted
+  PASS  founding administrator cannot be suspended
+  PASS  a suspended administrator is refused at login
+  PASS  test administrator removed (no residue left behind)
+
+Order journey
+
+  PASS  placed a fresh order ORD-1065
+  PASS  an in-stock order is auto-accepted on creation
+  PASS  the auto-acceptance is recorded with actor "system"
+  PASS  advancing an order without a token is refused (401)
+  PASS  skipping straight to Delivered is rejected by the state machine
+  PASS  seller advances the order to Packed
+  PASS  seller advances the order to Ready For Dispatch
+  PASS  a seller cannot advance another seller's order (403)
+  PASS  GET /api/orders/:id returns the computed journey
+        Placed:done  Accepted:done  Packed:done  Ready For Dispatch:current  Assigned:upcoming  Picked Up:upcoming  In Transit:upcoming  Out For Delivery:upcoming  Delivered:upcoming
+  PASS  Ready For Dispatch is marked as the current step
+  PASS  the seller's Accepted hop is recorded with a timestamp
+  PASS  the courier's Accepted step stays separate from the seller's
+  PASS  the Placed step resolves with a timestamp
+
+OK — 24 passed, 0 failed

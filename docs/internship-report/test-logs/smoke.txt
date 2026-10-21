@@ -1,0 +1,10 @@
+ShopSphere smoke test -> http://localhost:5000
+
+  PASS  GET /api/products (12 returned)
+  PASS  POST /api/login (user)
+  PASS  POST /api/login (seller)
+  PASS  POST /api/login (admin)
+  PASS  POST /api/login (delivery)
+  PASS  POST /api/register (created + token)
+
+OK — 6 passed, 0 failed

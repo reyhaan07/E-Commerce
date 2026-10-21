@@ -1,0 +1,21 @@
+PIN serviceability
+
+  PASS  nearby mapping is symmetric within a cluster
+  PASS  numerically-adjacent PINs are NOT treated as nearby
+  PASS  an unmapped PIN is near only itself
+  PASS  edge 1: seller PIN === customer PIN → serviceable
+  PASS  edge 2: customer PIN in service area → serviceable
+  PASS  edge 3: customer PIN NOT in service area → unavailable
+  PASS  edge 7: missing customer PIN → graceful failure, not a crash
+  PASS  invalid (non 6-digit) customer PIN → rejected
+  PASS  leading zeros preserved (string comparison, not numeric)
+  PASS  customer PIN is trimmed before comparison
+  PASS  area label: same PIN → 'Same area', different → 'Nearby area'
+  PASS  only active + available + nearby partners are eligible
+  PASS  same-area partner sorts before nearby partners
+  PASS  edge 5: an unavailable (On Delivery) nearby partner is hidden
+  PASS  edge 6: an inactive (Offline) nearby partner is hidden
+  PASS  edge 4: seller serviceable but no nearby partner → empty list
+  PASS  a same-city-but-not-nearby partner (600042) is excluded
+
+OK — 17 passed, 0 failed
