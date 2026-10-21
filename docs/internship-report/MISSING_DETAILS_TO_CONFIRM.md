@@ -1,11 +1,11 @@
 # Details to confirm before submission
 
-Report: `REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx` (29 pages including the cover)
+Report: `REYHAAN_INTERNSHIP_COMPLETION_REPORT.docx` (28 pages including the cover)
 
 ## Documents that were not supplied (not included in the report)
 1. **Internship completion certificate from TechPower Solutions.** The reference report only had Sai Saran's offer letter. Nothing was copied or invented. Add Reyhaan's own certificate or offer letter as an annexure if the department needs it. That adds 1–2 pages, which keeps the report within the 30-page limit only if it is a single page.
 2. **Bonafide certificate signed by the HOD or guide.** Add this if the department's format needs it. The reference report did not have one.
-3. **Signature and date** on the Declaration page.
+3. The Declaration page was removed at your request.
 
 ## Facts taken from the reference report that need checking
 4. **Internship domain "MERN Stack Development".** This comes from Sai's offer letter. Confirm that Reyhaan's offer used the same domain.

@@ -443,36 +443,30 @@ push(H1(null, 'References'));
 // FRONT MATTER
 // =====================================================================
 const cover = [
-  C('AN INTERNSHIP REPORT', { run: { bold: true, size: 32 }, after: 296 }),
-  C('A report submitted in partial fulfilment of the requirements for the Industry Internship Program', { run: { size: 22 }, after: 506 }),
-  C('on', { run: { italics: true, size: 22 }, after: 254 }),
-  C('SHOPSPHERE — MULTI-VENDOR SOCIAL E-COMMERCE PLATFORM', { run: { bold: true, size: 26 }, after: 296 }),
-  C('A joint project of the teams **Control + Alt + Win** and **SEME Forces**', { run: { size: 23 }, after: 506 }),
-  C('Submitted By', { run: { bold: true, italics: true, size: 24 }, after: 254 }),
-  C('REYHAAN S – 312325205176', { run: { bold: true, size: 26 }, after: 506 }),
-  new Paragraph({ children: [img('logos/techpower_logo.png', 2.9)], alignment: AlignmentType.CENTER, spacing: { after: 296 } }),
-  C('TechPower Solutions, Vadapalani, Chennai – 600 026', { run: { size: 22 }, after: 590 }),
-  C('in partial fulfilment for the award of the degree of', { run: { bold: true, italics: true, size: 24 }, after: 296 }),
-  C('BACHELOR OF TECHNOLOGY', { run: { bold: true, size: 26 }, after: 212 }),
-  C('IN', { run: { bold: true, size: 22 }, after: 212 }),
-  C('INFORMATION TECHNOLOGY', { run: { bold: true, size: 26 }, after: 464 }),
-  new Paragraph({ children: [img('logos/sjce_logo.jpeg', 1.35, 'jpg')], alignment: AlignmentType.CENTER, spacing: { after: 338 } }),
-  C('St. JOSEPH’S COLLEGE OF ENGINEERING', { run: { bold: true, size: 30 }, after: 212 }),
-  C('(An Autonomous Institution)', { run: { size: 22 }, after: 212 }),
-  C('St. Joseph’s Group of Institutions, OMR, Chennai 600 119', { run: { size: 22 }, after: 212 }),
-  C('ANNA UNIVERSITY :: CHENNAI 600 025', { run: { size: 22 }, after: 422 }),
+  C('AN INTERNSHIP REPORT', { run: { bold: true, size: 32 }, after: 126, before: 1950 }),
+  C('A report submitted in partial fulfilment of the requirements for the Industry Internship Program', { run: { size: 22 }, after: 336 }),
+  C('on', { run: { italics: true, size: 22 }, after: 84 }),
+  C('SHOPSPHERE — MULTI-VENDOR SOCIAL E-COMMERCE PLATFORM', { run: { bold: true, size: 26 }, after: 126 }),
+  C('A joint project of the teams **Control + Alt + Win** and **SEME Forces**', { run: { size: 23 }, after: 336 }),
+  C('Submitted By', { run: { bold: true, italics: true, size: 24 }, after: 84 }),
+  C('REYHAAN S – 312325205176', { run: { bold: true, size: 26 }, after: 336 }),
+  new Paragraph({ children: [img('logos/techpower_logo.png', 2.9)], alignment: AlignmentType.CENTER, spacing: { after: 126 } }),
+  C('TechPower Solutions, Vadapalani, Chennai – 600 026', { run: { size: 22 }, after: 420 }),
+  C('in partial fulfilment for the award of the degree of', { run: { bold: true, italics: true, size: 24 }, after: 126 }),
+  C('BACHELOR OF TECHNOLOGY', { run: { bold: true, size: 26 }, after: 42 }),
+  C('IN', { run: { bold: true, size: 22 }, after: 42 }),
+  C('INFORMATION TECHNOLOGY', { run: { bold: true, size: 26 }, after: 294 }),
+  new Paragraph({ children: [img('logos/sjce_logo.jpeg', 1.35, 'jpg')], alignment: AlignmentType.CENTER, spacing: { after: 168 } }),
+  C('St. JOSEPH’S COLLEGE OF ENGINEERING', { run: { bold: true, size: 30 }, after: 42 }),
+  C('(An Autonomous Institution)', { run: { size: 22 }, after: 42 }),
+  C('St. Joseph’s Group of Institutions, OMR, Chennai 600 119', { run: { size: 22 }, after: 42 }),
+  C('ANNA UNIVERSITY :: CHENNAI 600 025', { run: { size: 22 }, after: 252 }),
   C('Internship period: 18-06-2026 to 15-09-2026', { run: { bold: true, size: 23 }, after: 0 }),
 ];
 
 const front = [];
 const fpush = (...x) => x.flat().forEach((e) => front.push(e));
 const fH = (t) => new Paragraph({ children: [new TextRun({ text: t, bold: true, size: 30 })], alignment: AlignmentType.CENTER, spacing: { after: 300 }, pageBreakBefore: front.length > 0 });
-fpush(fH('DECLARATION'));
-fpush(P(`I, **Reyhaan S** (Register No. 312325205176), a student of B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai, hereby declare that this internship report entitled **“ShopSphere — Multi-Vendor Social E-Commerce Platform”** is a record of the internship I undertook at **TechPower Solutions**, Chennai, from 18 June 2026 to 15 September 2026, submitted in partial fulfilment of the requirements for the Industry Internship Program.`, { line: 360, after: 200 }));
-fpush(P(`The project described in this report was developed jointly by the teams **${TEAMS}**. My individual contribution, principally authentication, authorization, the shared login, security validation and integration, is identified in Chapter 7; the work of other team members is acknowledged as theirs. The technical descriptions, screenshots and test results in this report were prepared from the project repository and the running application, and have not been submitted elsewhere for the award of any degree.`, { line: 360, after: 600 }));
-fpush(new Paragraph({ tabStops: [{ type: TabStopType.RIGHT, position: 8660 }], children: [new TextRun({ text: 'Place: Chennai\tSignature of the Student', size: 24 })], spacing: { after: 120 } }));
-fpush(new Paragraph({ tabStops: [{ type: TabStopType.RIGHT, position: 8660 }], children: [new TextRun({ text: 'Date: ____________\t', size: 24 }), new TextRun({ text: 'REYHAAN S (312325205176)', size: 24, bold: true })] }));
-
 fpush(fH('ACKNOWLEDGEMENT'));
 const ack = [
   'At the outset I would like to express my sincere gratitude to our beloved Chairman, **Dr. Babu Manoharan, M.A., M.B.A., Ph.D.**, for his constant guidance and support.',
@@ -493,7 +487,7 @@ fpush(P('The system was run locally for verification: all six repository test sc
 fpush(P('**Keywords:** MERN stack, multi-vendor e-commerce, JWT, role-based access control, Express middleware, MongoDB, React.', { line: 336 }));
 
 fpush(fH('TABLE OF CONTENTS'));
-fpush(tocLine('DECLARATION', 'decl', 0), tocLine('ACKNOWLEDGEMENT', 'ack', 0), tocLine('ABSTRACT', 'abs', 0), tocLine('LIST OF FIGURES AND TABLES', 'lof', 0));
+fpush(tocLine('ACKNOWLEDGEMENT', 'ack', 0), tocLine('ABSTRACT', 'abs', 0), tocLine('LIST OF FIGURES AND TABLES', 'lof', 0));
 TOC.forEach(([t, k, l]) => fpush(tocLine(t, k, l)));
 
 fpush(fH('LIST OF FIGURES AND TABLES'));

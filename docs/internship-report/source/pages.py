@@ -15,7 +15,7 @@ def find(pat,start=0):
   for i in range(start,n):
     if re.search(pat,norm[i]): return i
   return None
-for key,pat in [('decl','^\\s*DECLARATION'),('ack','^\\s*ACKNOWLEDGEMENT'),('abs','^\\s*ABSTRACT'),('lof','^\\s*LIST OF FIGURES AND TABLES')]:
+for key,pat in [('ack','^\\s*ACKNOWLEDGEMENT'),('abs','^\\s*ABSTRACT'),('lof','^\\s*LIST OF FIGURES AND TABLES')]:
   i=find(pat); res[key]=roman(i) if i is not None else '?'
 def body(i): return str(i-body_start+1) if i is not None else '?'
 for t,k,l in ix['toc']:
