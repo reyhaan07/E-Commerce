@@ -18,7 +18,7 @@ const TEXT_W = 9026 - 360; // A4 width 11906 - left 1800 - right 1440 = 8666 dxa
 // ---------- inline markup: **bold**, `code`, _italic_ ----------
 function runs(text, base = {}) {
   const out = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g;
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|(?<![A-Za-z0-9])_[^_]+_(?![A-Za-z0-9]))/g;
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(new TextRun({ text: text.slice(last, m.index), ...base }));
@@ -150,20 +150,17 @@ const ch = (n, t) => { TOC.push([`${n}. ${t.toUpperCase()}`, `ch${n}`, 0]); push
 const sec = (id, t) => { TOC.push([`${id}  ${t}`, `s${id}`, 1]); push(H2(`${id}  ${t}`)); };
 
 // ---------------- Chapter 1 ----------------
-ch(1, 'Introduction and Company Profile');
+ch(1, 'Introduction');
 sec('1.1', 'Overview of the Internship');
 push(P('This report is presented jointly by the teams **Ctrl+Alt+Win** and **Femme Forces**, six students of B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai, who completed an internship at **TechPower Solutions**, Chennai, from **18 June 2026 to 15 September 2026**. The internship was carried out in the MERN stack domain (MongoDB, Express.js, React and Node.js) and centred on a single team project: **ShopSphere — a Multi-Vendor Social E-Commerce Platform**.'));
 push(P('ShopSphere connects four kinds of users — customers, sellers, platform administrators and delivery partners — through five React web applications that share one Node.js/Express API and one MongoDB database. The source code is maintained in the repository https://github.com/reyhaan07/E-Commerce [1]. The work was divided among the members by module, with three main contributors and three supporting members; the division of responsibilities is described in Chapter 7.'));
-sec('1.2', 'Company Profile');
-push(P('TechPower Solutions is an information technology company located at #05, 1st Floor, 100 Feet Road, Vadapalani, Chennai – 600 026, Tamil Nadu (website: www.techpowersolutions.in). The organisation works in software development, technical training, industrial internships and project-based learning, with the stated aim of bridging the gap between academic education and industry requirements. Its training areas include Full Stack and MERN Stack Development, Artificial Intelligence, Machine Learning, Data Analytics, Cloud Computing, the Internet of Things, Mobile Application Development, Python, Java and Software Testing.'));
-push(P('The company follows a structured Software Development Life Cycle (requirement analysis, design, development, testing, deployment and maintenance) for its internship projects. Internship programmes are coordinated by **Mr. Gokul E, HR Manager**, who handles student onboarding, training schedules and professional guidance during the internship period.'));
-sec('1.3', 'Objectives of the Internship');
+sec('1.2', 'Objectives of the Internship');
 push(B('Gain practical experience in full-stack web development with the MERN stack across the complete development life cycle.'));
 push(B('Build RESTful APIs with Node.js and Express, and model persistent data in MongoDB through Mongoose.'));
 push(B('Design and implement secure authentication and role-based authorization for a multi-role application using JSON Web Tokens (JWT) and bcrypt password hashing.'));
 push(B('Integrate several independently deployed React front-ends with a shared backend, and debug cross-application issues.'));
 push(B('Practise collaborative development with Git and GitHub, API testing, regression checking and technical documentation.'));
-sec('1.4', 'Scope and Organisation of the Report');
+sec('1.3', 'Scope and Organisation of the Report');
 push(P('The technical content of this report was verified against the repository’s main branch (commit `8f85bbd`, inspected on 21 October 2026). The application was installed and run locally for this report, its automated test scripts were executed, and every screenshot was captured from that running instance (Section 6.1). Chapter 2 introduces the project and its technology; Chapter 3 presents the architecture and data model; Chapter 4 the functional modules; Chapter 5 the authentication and authorization implementation; Chapter 6 testing; Chapter 7 the team’s contributions and work allocation; Chapter 8 challenges, outcomes and limitations; and Chapter 9 learning outcomes, conclusions and future enhancements.'));
 
 // ---------------- Chapter 2 ----------------

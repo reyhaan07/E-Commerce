@@ -1,6 +1,6 @@
 # Details to confirm before submission
 
-Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (27 pages including the cover)
+Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (26 pages including the cover)
 
 ## Documents that were not supplied (not included in the report)
 1. **Internship completion certificate from TechPower Solutions.** The reference report only had Sai Saran's offer letter. Nothing was copied or invented. Add Reyhaan's own certificate or offer letter as an annexure if the department needs it. That adds 1–2 pages, which keeps the report within the 30-page limit only if it is a single page.
