@@ -177,7 +177,7 @@ async function testOrderJourney() {
   }
 
   // the journey itself
-  const fetched = await api(`/api/orders/${orderId}`);
+  const fetched = await api(`/api/orders/${orderId}`, { token: sellerToken });
   const journey = fetched.body?.journey;
   if (!journey?.steps?.length) return bad("journey", "GET /api/orders/:id did not return a journey");
   ok("GET /api/orders/:id returns the computed journey");

@@ -10,7 +10,7 @@ const { ReturnRequest, RETURN_STATUSES } = require("../models/returnRequest.mode
 const { Order } = require("../models/order.model");
 const { Product } = require("../models/product.model");
 const { DeliveryPartner } = require("../models/deliveryPartner.model");
-const { requireAuth, requireRole, requireActivePartner } = require("../middleware/auth");
+const { requireAuth, requireRole, requireActivePartner, requireActiveAccount } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { notifyRole, notifyUser } = require("../utils/notify");
 const { emitToAll } = require("../realtime");
@@ -38,6 +38,13 @@ async function nextReturnId() {
   return `RET-${maxNum + 1}`;
 }
 
+// Returns carry no sellerId, so ownership is read from the order. Orders with no
+// seller attributed (legacy seed data) stay actionable by any seller, as before.
+async function sellerOwnsReturn(auth, ret) {
+  const order = await Order.findOne({ id: ret.orderId }, "sellerId");
+  return !order || !order.sellerId || order.sellerId === auth.id;
+}
+
 function pushStatus(ret, status, note) {
   ret.status = status;
   ret.statusHistory.push({ status, timestamp: new Date(), note });
@@ -49,7 +56,7 @@ async function broadcast(ret, message) {
 }
 
 // POST /api/returns  { orderId, items, reason, photos }
-router.post("/", requireAuth, requireRole("user"), asyncHandler(async (req, res) => {
+router.post("/", requireAuth, requireActiveAccount, requireRole("user"), asyncHandler(async (req, res) => {
   const { orderId, items, reason, photos } = req.body;
   if (typeof reason !== "string" || !reason.trim()) {
     return res.status(400).json({ success: false, message: "reason is required" });
@@ -69,9 +76,25 @@ router.post("/", requireAuth, requireRole("user"), asyncHandler(async (req, res)
     return res.status(400).json({ success: false, message: "A return is already open for this order" });
   }
 
-  const returnItems = Array.isArray(items) && items.length
-    ? items
-    : order.items.map((i) => ({ productId: i.productId, name: i.name, qty: i.qty }));
+  // These quantities are put back in stock when the refund goes through, so a
+  // client-supplied list is limited to live lines of this order and never more
+  // than was bought (it used to be stored as-is, so a crafted request could
+  // restock any product by any amount). Lines already cancelled are excluded.
+  let returnItems;
+  if (Array.isArray(items) && items.length) {
+    returnItems = [];
+    for (const it of items) {
+      const line = it && order.items.find((i) => !i.cancelled && i.productId && i.productId === String(it.productId));
+      if (!line || returnItems.some((r) => r.productId === line.productId)) continue;
+      const qty = Math.min(line.qty, Math.max(1, Math.floor(Number(it.qty) || line.qty)));
+      returnItems.push({ productId: line.productId, name: line.name, qty });
+    }
+    if (!returnItems.length) {
+      return res.status(400).json({ success: false, message: "None of those items are part of this order" });
+    }
+  } else {
+    returnItems = order.items.filter((i) => !i.cancelled).map((i) => ({ productId: i.productId, name: i.name, qty: i.qty }));
+  }
 
   const ret = await ReturnRequest.create({
     id: await nextReturnId(),
@@ -124,7 +147,7 @@ router.get("/:id", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // PATCH /api/returns/:id/status  { status, note }
-router.patch("/:id/status", requireAuth, requireActivePartner, asyncHandler(async (req, res) => {
+router.patch("/:id/status", requireAuth, requireActivePartner, requireActiveAccount, asyncHandler(async (req, res) => {
   const { status, note } = req.body;
   const rule = TRANSITIONS[status];
   if (!RETURN_STATUSES.includes(status) || !rule) {
@@ -139,6 +162,14 @@ router.patch("/:id/status", requireAuth, requireActivePartner, asyncHandler(asyn
   const ret = await ReturnRequest.findOne({ id: req.params.id });
   if (!ret) {
     return res.status(404).json({ success: false, message: "Return request not found" });
+  }
+  // A partner may only move a pickup that is actually assigned to them, and a
+  // seller only a return on one of their own orders.
+  if (req.auth.role === "delivery" && ret.pickupPartnerId !== req.auth.id) {
+    return res.status(403).json({ success: false, message: "This pickup is assigned to another partner" });
+  }
+  if (req.auth.role === "seller" && !(await sellerOwnsReturn(req.auth, ret))) {
+    return res.status(403).json({ success: false, message: "This return belongs to another seller's order" });
   }
   if (!rule.from.includes(ret.status)) {
     return res.status(400).json({ success: false, message: `Can't move from "${ret.status}" to "${status}"` });
@@ -179,7 +210,7 @@ router.patch("/:id/assign-pickup", requireAuth, requireRole("admin"), asyncHandl
 }));
 
 // PATCH /api/returns/:id/inspect  { result: "Pass"|"Fail", note } — seller
-router.patch("/:id/inspect", requireAuth, requireRole("seller"), asyncHandler(async (req, res) => {
+router.patch("/:id/inspect", requireAuth, requireActiveAccount, requireRole("seller"), asyncHandler(async (req, res) => {
   const { result, note } = req.body;
   if (result !== "Pass" && result !== "Fail") {
     return res.status(400).json({ success: false, message: "result must be Pass or Fail" });
@@ -188,6 +219,9 @@ router.patch("/:id/inspect", requireAuth, requireRole("seller"), asyncHandler(as
   const ret = await ReturnRequest.findOne({ id: req.params.id });
   if (!ret) {
     return res.status(404).json({ success: false, message: "Return request not found" });
+  }
+  if (!(await sellerOwnsReturn(req.auth, ret))) {
+    return res.status(403).json({ success: false, message: "This return belongs to another seller's order" });
   }
   if (ret.status !== "Under Inspection") {
     return res.status(400).json({ success: false, message: `Inspection only applies while "Under Inspection" (currently "${ret.status}")` });
@@ -218,7 +252,12 @@ router.post("/:id/refund", requireAuth, requireRole("admin"), asyncHandler(async
   }
 
   const order = await Order.findOne({ id: ret.orderId });
-  const amount = order ? order.amount : 0;
+  // Lines cancelled before delivery were already refunded by the item-cancel
+  // route; refunding the full order amount again would pay them out twice.
+  const alreadyRefunded = order
+    ? order.items.reduce((sum, i) => sum + (i.cancelled && i.refundStatus === "Refunded" ? Number(i.refundAmount) || 0 : 0), 0)
+    : 0;
+  const amount = order ? Math.round((order.amount - alreadyRefunded) * 100) / 100 : 0;
   const isPrepaid = order && order.paymentMethod === "Prepaid";
 
   const refund = await razorpay.refundPayment(isPrepaid ? order.razorpayPaymentId : null, amount);

@@ -48,13 +48,18 @@ async function nextOrderId() {
 // order stranded its stock and never refunded the customer.
 async function releaseOrder(order) {
   let refund = null;
-  if (order.paymentMethod === "Prepaid" && order.razorpayPaymentId && !order.cancellation.refundId) {
-    refund = await razorpay.refundPayment(order.razorpayPaymentId, order.amount);
+  // Lines already cancelled through the item route were restocked and refunded
+  // there, so they must not be restocked or refunded a second time here.
+  const alreadyRefunded = order.items.reduce(
+    (sum, i) => sum + (i.cancelled && i.refundStatus === "Refunded" ? Number(i.refundAmount) || 0 : 0), 0);
+  const refundAmount = Math.round((order.amount - alreadyRefunded) * 100) / 100;
+  if (order.paymentMethod === "Prepaid" && order.razorpayPaymentId && !order.cancellation.refundId && refundAmount > 0) {
+    refund = await razorpay.refundPayment(order.razorpayPaymentId, refundAmount);
     order.cancellation.refundId = refund.id;
-    order.cancellation.refundAmount = order.amount;
+    order.cancellation.refundAmount = refundAmount;
   }
   for (const item of order.items) {
-    if (item.productId) {
+    if (item.productId && !item.cancelled) {
       await Product.updateOne({ id: item.productId }, { $inc: { stock: item.qty } });
     }
   }
@@ -97,8 +102,20 @@ function sellerOwnsOrder(auth, order) {
 }
 
 // GET /api/orders?deliveryPartnerId=&sellerStatus=&deliveryStatus=&userId=&sellerId=&pickupRequested=&history=true
-router.get("/", asyncHandler(async (req, res) => {
+router.get("/", requireAuth, asyncHandler(async (req, res) => {
   const { deliveryPartnerId, sellerStatus, deliveryStatus, userId, sellerId, pickupRequested, history } = req.query;
+  const auth = req.auth;
+
+  // Orders carry customer names, addresses and phone numbers, so everyone
+  // except an admin only ever reads their own: a customer their purchases, a
+  // seller their store's orders, a partner the jobs assigned to them.
+  const scope = {};
+  if (auth.role === "user") scope.userId = auth.id;
+  else if (auth.role === "seller") scope.sellerId = auth.id;
+  else if (auth.role === "delivery") scope.deliveryPartnerId = auth.id;
+  else if (auth.role !== "admin") {
+    return res.status(403).json({ success: false, message: "You don't have access to this resource" });
+  }
 
   // Delivery History (Feature 4): terminal-state jobs for one partner —
   // delivered, cancelled or returned work, newest first. The demo partner
@@ -114,23 +131,14 @@ router.get("/", asyncHandler(async (req, res) => {
     };
     const filter =
       deliveryPartnerId && deliveryPartnerId !== "delivery-demo"
-        ? { deliveryPartnerId, ...terminal }
-        : terminal;
+        ? { deliveryPartnerId, ...terminal, ...scope }
+        : { ...terminal, ...scope };
     const jobs = await Order.find(filter).sort({ createdAt: -1 });
     return res.json({ success: true, orders: jobs });
   }
 
-  // filtering by deliveryPartnerId/sellerStatus/deliveryStatus is used by the
-  // admin/seller/delivery apps and stays open like before - but asking for a
-  // specific user's orders needs to be that user (or an admin)
-  if (userId) {
-    const auth = getAuthFromHeader(req);
-    if (!auth) {
-      return res.status(401).json({ success: false, message: "Missing or invalid Authorization header" });
-    }
-    if (auth.role !== "admin" && auth.id !== userId) {
-      return res.status(403).json({ success: false, message: "You don't have access to this user's orders" });
-    }
+  if (userId && auth.role !== "admin" && auth.id !== userId) {
+    return res.status(403).json({ success: false, message: "You don't have access to this user's orders" });
   }
 
   const filter = {};
@@ -138,10 +146,10 @@ router.get("/", asyncHandler(async (req, res) => {
   if (sellerStatus) filter.sellerStatus = sellerStatus;
   if (deliveryStatus) filter.deliveryStatus = deliveryStatus;
   if (userId) filter.userId = userId;
-  const auth = getAuthFromHeader(req);
-  const resolvedSellerId = sellerId === "me" ? auth && auth.id : sellerId;
+  const resolvedSellerId = sellerId === "me" ? auth.id : sellerId;
   if (resolvedSellerId) filter.sellerId = resolvedSellerId;
   if (pickupRequested !== undefined) filter.pickupRequested = pickupRequested === "true";
+  Object.assign(filter, scope);
 
   const orders = await Order.find(filter).sort({ createdAt: -1 });
   res.json({ success: true, orders: orders.map((o) => redactPartnerForSeller(o, auth)) });
@@ -151,12 +159,20 @@ router.get("/", asyncHandler(async (req, res) => {
 // `journey` is the end-to-end timeline (seller phase + delivery phase) that
 // both the storefront and the seller console render, so neither has to
 // reimplement what the steps are or which one is current.
-router.get("/:id", asyncHandler(async (req, res) => {
+router.get("/:id", requireAuth, asyncHandler(async (req, res) => {
   const order = await Order.findOne({ id: req.params.id });
   if (!order) {
     return res.status(404).json({ success: false, message: "Order not found" });
   }
-  const auth = getAuthFromHeader(req);
+  const auth = req.auth;
+  const allowed =
+    auth.role === "admin" ||
+    (auth.role === "user" && order.userId === auth.id) ||
+    (auth.role === "seller" && order.sellerId === auth.id) ||
+    (auth.role === "delivery" && order.deliveryPartnerId === auth.id);
+  if (!allowed) {
+    return res.status(403).json({ success: false, message: "You don't have access to this order" });
+  }
   res.json({ success: true, order: redactPartnerForSeller(order, auth), journey: buildJourney(order) });
 }));
 
@@ -405,7 +421,7 @@ router.post("/", asyncHandler(async (req, res) => {
   if (userId) {
     const account = await Account.findOne({ id: userId, role: "user" });
     if (account) {
-      account.loyaltyPoints += Math.round(amount * LOYALTY_POINTS_PER_RUPEE);
+      account.loyaltyPoints += Math.round(order.amount * LOYALTY_POINTS_PER_RUPEE);
       account.cart = [];
       await account.save();
     }
@@ -413,12 +429,12 @@ router.post("/", asyncHandler(async (req, res) => {
 
   // steps 6-7: real-time notifications for admin + seller dashboards
   emitToAll("order-created", { orderId: order.id, amount: order.amount, sellerStatus: order.sellerStatus });
-  await notifyRole("admin", "new-order", `New order ${order.id}`, `${customerName} — ₹${amount}`, { orderId: order.id });
+  await notifyRole("admin", "new-order", `New order ${order.id}`, `${customerName} — ₹${order.amount}`, { orderId: order.id });
   // The seller who owns the order is notified directly; only orders we couldn't
   // attribute to a seller fall back to the role-wide broadcast.
   const sellerNote = autoAccepted
-    ? `${customerName} — ₹${amount} · auto-accepted, all items in stock`
-    : `${customerName} — ₹${amount}`;
+    ? `${customerName} — ₹${order.amount} · auto-accepted, all items in stock`
+    : `${customerName} — ₹${order.amount}`;
   if (order.sellerId) {
     await notifyUser(order.sellerId, "new-order", `New order ${order.id}`, sellerNote, { orderId: order.id, sellerStatus: order.sellerStatus });
   } else {
@@ -486,7 +502,7 @@ router.patch("/:id/seller-status", requireAuth, requireActiveAccount, requireRol
 
   emitToAll("order-updated", { orderId: order.id, sellerStatus });
   if ((sellerStatus === "Cancelled" || sellerStatus === "Rejected") && order.customerEmail && order.paymentMethod === "Prepaid") {
-    await sendMail({ to: order.customerEmail, ...templates.refundConfirmed(order.customerName, order.id, order.amount) });
+    await sendMail({ to: order.customerEmail, ...templates.refundConfirmed(order.customerName, order.id, order.cancellation.refundAmount || order.amount) });
   }
   if (order.userId) {
     await notifyUser(order.userId, "order-status", `Order ${order.id}: ${sellerStatus}`, note || "", { orderId: order.id, sellerStatus });
@@ -685,6 +701,12 @@ router.patch("/:id/delivery-status", requireAuth, requireActivePartner, requireR
   if (req.auth.role === "delivery" && order.deliveryPartnerId !== req.auth.id) {
     return res.status(403).json({ success: false, message: "This delivery is assigned to another partner" });
   }
+  // A cancelled/rejected/returned order is closed. Without this a partner who was
+  // assigned before the cancellation could still mark it Delivered, which flipped
+  // it back to sellerStatus "Delivered" and paymentStatus "Paid" after the refund.
+  if (["Cancelled", "Rejected", "Returned"].includes(order.sellerStatus)) {
+    return res.status(400).json({ success: false, message: `This order is "${order.sellerStatus}" and can no longer be updated` });
+  }
 
   order.deliveryStatus = deliveryStatus;
   if (deliveryStatus === "Picked Up" && order.sellerStatus === "Ready For Dispatch") {
@@ -827,7 +849,7 @@ router.patch("/:id/cancellation", requireAuth, requireActiveAccount, requireRole
 
     await releaseOrder(order);
     order.sellerStatus = "Cancelled";
-    recordHop(order, { status: "Cancelled", phase: "seller", actor: "admin", note: note || order.cancellation.reason || "" });
+    recordHop(order, { status: "Cancelled", phase: "seller", actor: req.auth.role, note: note || order.cancellation.reason || "" });
   }
   await order.save();
 
@@ -837,7 +859,7 @@ router.patch("/:id/cancellation", requireAuth, requireActiveAccount, requireRole
   }
   if (order.customerEmail) {
     if (decision === "Approved" && order.paymentMethod === "Prepaid") {
-      await sendMail({ to: order.customerEmail, ...templates.refundConfirmed(order.customerName, order.id, order.amount) });
+      await sendMail({ to: order.customerEmail, ...templates.refundConfirmed(order.customerName, order.id, order.cancellation.refundAmount || order.amount) });
     } else if (decision === "Rejected") {
       await sendMail({ to: order.customerEmail, ...templates.cancellationRejected(order.customerName, order.id, note) });
     }
@@ -851,7 +873,7 @@ router.patch("/:id/cancellation", requireAuth, requireActiveAccount, requireRole
 // seller has packed anything a cancellation costs them nothing, so making the
 // customer wait for approval only adds a queue. The order-level request flow
 // above is untouched and still handles whole-order cancellations.
-router.post("/:id/items/:itemId/cancel", requireAuth, asyncHandler(async (req, res) => {
+router.post("/:id/items/:itemId/cancel", requireAuth, requireActiveAccount, asyncHandler(async (req, res) => {
   const { reason, note } = req.body;
   if (typeof reason !== "string" || !CANCEL_REASONS.includes(reason)) {
     return res.status(400).json({ success: false, message: `reason must be one of: ${CANCEL_REASONS.join(", ")}` });
