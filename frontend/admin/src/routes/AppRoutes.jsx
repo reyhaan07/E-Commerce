@@ -64,6 +64,7 @@ export default function AppRoutes() {
           </RequireAuth>
         }
       >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="sellers" element={<SellerManagement />} />
@@ -87,6 +88,7 @@ export default function AppRoutes() {
             rendering an empty shell. */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

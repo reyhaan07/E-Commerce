@@ -481,6 +481,7 @@ function App() {
   const [selectedId, setSelectedId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [initialLoaded, setInitialLoaded] = useState(false)
   const [error, setError] = useState('')
   const [dialog, setDialog] = useState(null)
   const [lastSynced, setLastSynced] = useState(new Date())
@@ -526,7 +527,7 @@ function App() {
     setError('')
     try {
       await loadAccount()
-      const response = await fetch(`${API_BASE}/orders`)
+      const response = await fetch(`${API_BASE}/orders`, { headers: authHeaders() })
       const result = await response.json()
       if (!response.ok || !result.success) throw new Error(result.message || 'Failed to load orders')
 
@@ -552,6 +553,7 @@ function App() {
       setError(err.message || 'Unable to load delivery orders')
     } finally {
       setLoading(false)
+      setInitialLoaded(true)
     }
   }, [user, loadAccount])
 
@@ -700,7 +702,9 @@ function App() {
       </div>
     )
   }
-  if (loading || !accountChecked) return <main className="app"><div className="loading">Loading delivery orders from MongoDB...</div></main>
+  // Only the first load blocks the screen; socket-driven / manual refreshes
+  // keep the console (and the History/Profile tabs) mounted.
+  if ((loading && !initialLoaded) || !accountChecked) return <main className="app"><div className="loading">Loading delivery orders from MongoDB...</div></main>
 
   // A suspended or deactivated partner never reaches the console. Their token
   // stays valid until it expires, so this is what stops the app from looking
@@ -1060,7 +1064,7 @@ function HistoryView({ user }) {
     ;(async () => {
       setLoading(true); setError('')
       try {
-        const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`)
+        const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`, { headers: authHeaders() })
         const data = await res.json()
         if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load history')
         let rets = []
@@ -1204,7 +1208,7 @@ function ProfileView({ user, onNameChange }) {
           setPartner(fallback); setForm(fromPartner(fallback))
         }
         try {
-          const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`)
+          const res = await fetch(`${API_BASE}/orders?history=true&deliveryPartnerId=${encodeURIComponent(user.id)}`, { headers: authHeaders() })
           const data = await res.json()
           if (res.ok && data.success && !cancelled) setStats(computeStats(data.orders, user.id))
         } catch { /* ignore */ }

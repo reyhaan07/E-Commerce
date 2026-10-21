@@ -78,7 +78,7 @@ export default function Dashboard() {
     const byMonth = {}
     for (const o of active) {
       const dt = new Date(o.createdAt)
-      const key = dt.toLocaleString('en', { month: 'short' })
+      const key = dt.toLocaleString('en', { month: 'short', year: '2-digit' })
       byMonth[key] = byMonth[key] || { name: key, revenue: 0, orders: 0, index: dt.getFullYear() * 12 + dt.getMonth() }
       byMonth[key].revenue += o.amount
       byMonth[key].orders += 1

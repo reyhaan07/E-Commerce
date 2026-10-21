@@ -16,8 +16,8 @@ export default function AnalyticsDashboard() {
     const byMonth = {};
     for (const o of active) {
       const d = new Date(o.createdAt);
-      const key = d.toLocaleString("en", { month: "short" });
-      byMonth[key] = byMonth[key] || { name: key, revenue: 0, orders: 0, index: d.getMonth() };
+      const key = d.toLocaleString("en", { month: "short", year: "2-digit" });
+      byMonth[key] = byMonth[key] || { name: key, revenue: 0, orders: 0, index: d.getFullYear() * 12 + d.getMonth() };
       byMonth[key].revenue += o.amount;
       byMonth[key].orders += 1;
     }

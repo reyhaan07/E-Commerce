@@ -13,6 +13,7 @@ const TINTS = {
 
 // Tiny dependency-free sparkline (area + line).
 function Sparkline({ data = [], color = 'var(--accent)', width = 54, height = 30 }) {
+  const gid = useId().replace(/:/g, '')
   const pts = data.filter(n => Number.isFinite(n))
   if (pts.length < 2) return null
   const min = Math.min(...pts), max = Math.max(...pts)
@@ -21,7 +22,6 @@ function Sparkline({ data = [], color = 'var(--accent)', width = 54, height = 30
   const coords = pts.map((v, i) => [i * stepX, height - ((v - min) / span) * (height - 6) - 3])
   const line = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
   const area = `${line} L${width},${height} L0,${height} Z`
-  const gid = useId().replace(/:/g, '')
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" aria-hidden="true">
       <defs>
