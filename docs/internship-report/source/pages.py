@@ -20,6 +20,7 @@ for key,pat in [('abs','^\\s*ABSTRACT'),('lof','^\\s*LIST OF FIGURES AND TABLES'
 def body(i): return str(i-body_start+1) if i is not None else '?'
 for t,k,l in ix['toc']:
   if k.startswith('ch'): res[k]=body(find(r'CHAPTER %s '%k[2:],body_start))
+  elif k=='appA': res[k]=body(find(r'APPENDIX A DEMO LOGIN CREDENTIALS All accounts',body_start))
   elif k=='refs': res[k]=body(find(r'REFERENCES \[1\]',body_start))
   else:
     sid=k[1:]; title=t.split('  ',1)[1]

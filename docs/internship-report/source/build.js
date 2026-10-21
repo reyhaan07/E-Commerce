@@ -109,8 +109,8 @@ function table(id, title, headers, rows, widths, o = {}) {
     width: { size: widths[i], type: WidthType.DXA },
     shading: hdr ? { fill: 'DCE6F2', type: ShadingType.CLEAR, color: 'auto' } : undefined,
     borders: { top: bd, bottom: bd, left: bd, right: bd },
-    margins: { top: 40, bottom: 40, left: 80, right: 80 }, verticalAlign: VerticalAlign.CENTER,
-    children: String(t).split('\n').map((line) => new Paragraph({ children: runs(line, { size: o.size || 20, bold: hdr || undefined }), spacing: { after: 0, line: 252 }, alignment: hdr ? AlignmentType.CENTER : AlignmentType.LEFT })),
+    margins: o.compact ? { top: 10, bottom: 10, left: 60, right: 60 } : { top: 40, bottom: 40, left: 80, right: 80 }, verticalAlign: VerticalAlign.CENTER,
+    children: String(t).split('\n').map((line) => new Paragraph({ children: runs(line, { size: o.size || 20, bold: hdr || undefined }), spacing: { after: 0, line: o.compact ? 216 : 252 }, alignment: hdr ? AlignmentType.CENTER : AlignmentType.LEFT })),
   });
   return [caption('Table', id, title), new Table({
     width: { size: total, type: WidthType.DXA }, columnWidths: widths, alignment: AlignmentType.CENTER,
@@ -161,7 +161,7 @@ push(B('Design and implement secure authentication and role-based authorization 
 push(B('Integrate several independently deployed React front-ends with a shared backend, and debug cross-application issues.'));
 push(B('Practise collaborative development with Git and GitHub, API testing, regression checking and technical documentation.'));
 sec('1.3', 'Scope and Organisation of the Report');
-push(P('The technical content of this report was verified against the repository’s main branch (commit `8f85bbd`, inspected on 21 October 2026). The application was installed and run locally for this report, its automated test scripts were executed, and every screenshot was captured from that running instance (Section 6.1). Chapter 2 introduces the project and its technology; Chapter 3 presents the architecture and data model; Chapter 4 the functional modules; Chapter 5 the authentication and authorization implementation; Chapter 6 testing; Chapter 7 the team’s contributions and work allocation; Chapter 8 challenges, outcomes and limitations; and Chapter 9 learning outcomes, conclusions and future enhancements.'));
+push(P('The technical content of this report was verified against the final project code (commit `f707f90`, 21 October 2026), which includes a last review in which a number of defects were fixed (Section 6.4). The application was installed and run locally for this report, its automated test scripts were executed, and every screenshot was captured from that running instance (Section 6.1). Chapter 2 introduces the project and its technology; Chapter 3 presents the architecture and data model; Chapter 4 the functional modules; Chapter 5 the authentication and authorization implementation; Chapter 6 testing; Chapter 7 the team’s contributions and work allocation; Chapter 8 challenges, outcomes and limitations; and Chapter 9 learning outcomes, conclusions and future enhancements.'));
 
 // ---------------- Chapter 2 ----------------
 ch(2, 'Project Overview and Requirements');
@@ -215,7 +215,7 @@ push(figure('diagrams/fig_data_model.png', '3.2', 'Principal collections and rel
 
 // ---------------- Chapter 4 ----------------
 ch(4, 'Functional Modules and Workflows');
-push(P('This chapter describes the modules that were confirmed in the code and exercised in the running application. The screenshots were captured on 21 October 2026 from the current main branch using the seeded demo data (no real customer data). Product photographs are loaded from an external image CDN that was not reachable from the capture environment, so image areas show placeholder or alternative text.', { run: { size: 22 } }));
+push(P('This chapter describes the modules that were confirmed in the code and exercised in the running application. The screenshots were captured on 21 October 2026 from the final code using the seeded demo data (no real customer data). Product photographs are loaded from an external image CDN that was not reachable from the capture environment, so image areas show placeholder or alternative text.', { run: { size: 22 } }));
 sec('4.1', 'Customer Storefront');
 push(P('The storefront (frontend/user, port 5175) provides a home page with category navigation, a filterable product listing (category hierarchy, price, rating and sort), product details with specifications, a cart, a wishlist and a checkout page (Figures 4.1–4.4). Only products whose `approvalStatus` is “Approved” and which are not archived are returned to customers. Checkout calls `POST /api/orders`; the server prices the cart from the catalogue rather than trusting the browser, checks PIN-code serviceability, decrements stock, notifies the seller and administrators in real time and sends a confirmation e-mail. The account area lists the customer’s orders and links to a tracking page that renders the order journey (Figures 4.5 and 4.6). Checkout, profile, wishlist and tracking routes are wrapped in a `RequireAuth` component.'));
 push(pair(['screenshots/05_user_home.png', '4.1', 'Customer home page after sign-in'], ['screenshots/07_user_product.png', '4.2', 'Product details page']));
@@ -239,7 +239,7 @@ push(P('Online payment uses Razorpay in test mode only when test keys are config
 
 // ---------------- Chapter 5 ----------------
 ch(5, 'Authentication and Authorization Implementation');
-push(P('Within the team, the authentication and authorization work was led by Reyhaan S. This chapter describes the mechanism as it exists on the current main branch. Items marked † were added in the post-internship commit `5452ea8` (20 October 2026) and are described for completeness only; Section 7.3 lists the related commits.', { run: { size: 23 } }));
+push(P('Within the team, the authentication and authorization work was led by Reyhaan S. This chapter describes the mechanism as it exists in the final code. Items marked † were added in the post-internship commit `5452ea8` (20 October 2026) and are described for completeness only; Section 7.3 lists the related commits.', { run: { size: 23 } }));
 sec('5.1', 'Shared Login and Role Selection');
 push(P('The shared login application (frontend/login, port 5177) is the single sign-in entry point for all four roles. The user first chooses a role (Figure 5.2) and then signs in on a role-specific screen reached through `/login/<role>` or the `?role=` deep link used by the other portals (Figure 5.3); a wrong password produces the generic error in Figure 5.4. The same app hosts the forgot-password and reset-password forms and links to each role’s registration page.'));
 sec('5.2', 'Login Processing on the Server');
@@ -279,7 +279,7 @@ push(table('5.1', 'Authorization guards and where they are applied',
    ['requireSelfOrAdmin(param)', '403 unless the caller owns the :id or is an admin', 'Every /api/users/:id route (profile, addresses, cart, wishlist)'],
    ['requireSuperAdmin', 'Re-reads the caller from the database and requires an active SUPER_ADMIN†', 'Admin roster, payroll generation and edits'],
    ['requireActiveAccount / requireActivePartner†', 'Re-reads account status so a suspension takes effect before the 7-day token expires', 'Order, product, payment and delivery updates'],
-   ['getAuthFromHeader', 'Optional authentication without failing the request', 'GET /api/orders?userId= (owner or admin only)'],
+   ['Role-scoped reads', 'Order reads return only the caller’s own orders; the partner roster is admin-only', 'GET /api/orders, /api/orders/:id, /api/delivery-partners'],
    ['Frontend RequireAuth', 'Redirects unauthenticated users to the login; hides super-admin screens', 'Checkout, profile, seller layout, admin layout']],
   [2500, 3300, 2866], { size: 19 }));
 sec('5.5', 'Password, Reset and Registration Controls');
@@ -291,7 +291,7 @@ push(B('The seeded founding administrator cannot be demoted, suspended or delete
 // ---------------- Chapter 6 ----------------
 ch(6, 'Testing and Verification');
 sec('6.1', 'Test Environment and Approach');
-push(P('For this report the repository was cloned at commit `8f85bbd`, dependencies were installed with `npm install` and `npm run install:all`, MongoDB 7 was run in a local Docker container and all six processes were started with `npm run dev:all` using a locally generated `JWT_SECRET`. Testing combined (a) the backend test scripts that ship with the repository, which call the running API and print PASS or FAIL for each check, (b) a focused authentication and authorization check written for this report, and (c) manual walkthroughs of each portal while capturing the screenshots with Playwright [14]. All tests were run on 21 October 2026, after the internship period; they verify the current code, not historical behaviour.'));
+push(P('For this report the final code (commit `f707f90`) was used: dependencies were installed with `npm install` and `npm run install:all`, MongoDB 7 was run in a local Docker container and all six processes were started with `npm run dev:all` using a locally generated `JWT_SECRET`. Testing combined (a) the backend test scripts that ship with the repository, which call the running API and print PASS or FAIL for each check, (b) a focused authentication and authorization check written for this report, and (c) manual walkthroughs of each portal while capturing the screenshots with Playwright [14]. All tests were run on 21 October 2026, after the internship period, against the final code.'));
 sec('6.2', 'Repository Test Suites');
 push(table('6.1', 'Results of the repository test scripts (backend/test, run on 21 October 2026)',
   ['Script', 'What it checks', 'Result'],
@@ -323,8 +323,25 @@ push(table('6.2', 'Authentication and authorization checks (expected vs. observe
    ['F1–F3', 'Short password, malformed e-mail, invalid reset token', '400', '400 ✔'],
    ['G1', 'Password hash absent from /users/me response', 'absent', 'absent ✔'],
    ['G2–G3', 'JWT payload fields and lifetime', 'id, role; 7 days', 'id, role, iat, exp; 7 days ✔'],
-   ['H1–H2', 'GET /orders and GET /orders/:id without a token', '(not restricted in code)', '200 — limitation, see 8.3']],
+   ['H1–H3', 'GET /orders, /orders/:id, /delivery-partners without a token', '401', '401 ✔'],
+   ['H4–H5', 'Customer / seller list orders', 'own orders only', 'own orders only ✔'],
+   ['H6–H7', 'Customer reads another customer’s order; seller reads partner roster', '403', '403 ✔'],
+   ['H8', 'Admin reads the partner roster', '200', '200 ✔']],
   [900, 4466, 1650, 1650], { size: 19 }));
+
+sec('6.4', 'Defects Fixed During the Final Review');
+push(P('Before submission the whole codebase was reviewed and the defects in Table 6.3 were fixed. After the fixes all five front-ends build without errors, all six backend test scripts still pass (107 checks), every check in Table 6.2 passes, and every screen in Chapter 4 was re-captured from the fixed code.'));
+push(table('6.3', 'Defects fixed in the final review (commits fd224c2, bf17b77, f707f90)',
+  ['Area', 'Defect', 'Fix'],
+  [['Backend security', 'Order list, order details and partner roster readable without logging in', 'Require a JWT; each role sees only its own orders; roster admin-only'],
+   ['Backend', 'Requests without a JSON body crashed with 500; bad JSON or IDs returned 500', 'Empty body defaults to {}; such errors now return 400'],
+   ['Cancellations / returns', 'Already-cancelled lines restocked and refunded twice; return quantities not checked', 'Skip cancelled lines; refund only the remainder; cap return quantities'],
+   ['Returns / admin', 'Any partner or seller could act on others’ returns; any admin could suspend super admins', 'Ownership checks; admin accounts managed only from the roster'],
+   ['Orders', 'Loyalty points from the client-sent amount; delivered status allowed on cancelled orders', 'Use server-priced amount; block updates on closed orders'],
+   ['Storefront', 'Cart/wishlist missed same-tab login; local cart could overwrite saved cart; endless image requests on My Orders', 'Same-tab auth event; wait for server cart; cache empty results'],
+   ['Storefront checkout', 'Saved card forced a failing prepaid order when only COD was available', 'Saved methods count only when online payment is on'],
+   ['Seller / admin / delivery', 'Hook-order crash in seller chart; revenue mixed years; blank /admin page; delivery console reset on every update', 'Hook moved; group by year and month; redirects added; loader only on first load']],
+  [1700, 3700, 3266], { size: 17, compact: true }));
 
 // ---------------- Chapter 7 ----------------
 ch(7, 'Team Contributions and Collaboration');
@@ -356,7 +373,8 @@ push(table('7.2', 'Notable commits in the shared repository',
    ['25 Jul 2026', 'dc43a8f, 998db43 (reyhaan07)', 'Removed e-mail OTP verification; password re-hash migration; backend smoke test'],
    ['20 Aug 2026', 'e83285c (reyhaan07)', 'Super-admin roster behind requireSuperAdmin; order status-transition graph and phased journey; features test'],
    ['20–22 Aug 2026', 'b00380b, 612e7f0, 44ba684, 4c808b0', 'Seller Center redesign and PIN-code delivery settings; customer profile redesign; storefront re-authentication on 401'],
-   ['20 Oct 2026', '5452ea8 (Sai Saran S), merged as PR #3', 'UI and data-flow enhancements, account-status re-checks, delivery self-registration — after the internship period']],
+   ['20 Oct 2026', '5452ea8 (Sai Saran S), merged as PR #3', 'UI and data-flow enhancements, account-status re-checks, delivery self-registration — after the internship period'],
+   ['21 Oct 2026', 'fd224c2, bf17b77, f707f90', 'Final review fixes before submission (Section 6.4)']],
   [1350, 2400, 4916], { size: 19 }));
 push(P('Earlier commits (26 June – 13 July 2026) by the accounts “Blueundead24” and “Harini-G-07” created the initial project structure, the first login API, the delivery app and the user-account module, including the original `requireAuth` and `requireSelfOrAdmin` guards; these accounts are not mapped to team members in the allocation workbook.'));
 sec('7.4', 'Work Allocation Summary');
@@ -392,7 +410,7 @@ sec('8.2', 'Project Outcomes');
 push(P('The team delivered a working multi-vendor platform with five role-specific front-ends, a REST API of thirteen route modules, eleven data models and an integrated workflow from seller onboarding to delivery and returns. All six repository test scripts passed (107 checks) and the focused authentication and authorization checks matched the behaviour described in the code. Key results in authentication and integration were a single shared login used by all four roles, server-side role enforcement on privileged routes and a tested session-recovery path in the storefront.'));
 sec('8.3', 'Limitations Identified')
 push(P('The following limitations were identified while verifying the code for this report (October 2026). They are recorded so that they can be addressed, and are not claimed to have been fixed.'));
-push(B('**Unauthenticated read endpoints.** `GET /api/orders` (without a `userId` filter), `GET /api/orders/:id` and `GET /api/delivery-partners` do not require a token. Against the seeded demo data they returned customer names, addresses and phone numbers, and partner documents. These routes should require authentication and filter results by role.'));
+push(B('**Read endpoints (fixed).** The order list, order details and delivery-partner roster were readable without a token; this was fixed in the final review (Section 6.4).'));
 push(B('**Token handling.** The JWT is passed in the URL during the cross-origin hand-off and stored in `localStorage`, where any injected script could read it [13]. Tokens last seven days and there is no refresh-token or revocation list (the post-internship status re-check reduces, but does not remove, this risk).'));
 push(B('**Configuration defaults.** `JWT_SECRET` falls back to a hard-coded development value if the environment variable is missing; CORS and Socket.io accept any origin; and Socket.io rooms are joined from query parameters without verifying a token.'));
 push(B('**No rate limiting** on login, registration or password-reset endpoints, and reset tokens are stored unhashed.'));
@@ -410,7 +428,6 @@ push(B('Working in a six-member, two-team project with Git and GitHub, pull requ
 sec('9.2', 'Conclusion');
 push(P(`The internship at TechPower Solutions provided practical experience of building a real multi-role web application with the MERN stack. ShopSphere, developed jointly by ${TEAMS}, demonstrates a complete marketplace workflow across customer, seller, administrator and delivery-partner portals. Each member’s work — authentication and the shared login, the overall architecture and integration, the administration and seller portals, and testing of the customer and delivery flows — contributed to one integrated platform. Verifying the system for this report also showed where its security can be strengthened, which forms the basis of the enhancements below.`));
 sec('9.3', 'Future Enhancements');
-push(B('Require authentication and role-based filtering on the order and delivery-partner read endpoints identified in Section 8.3.'));
 push(B('Move session tokens to secure, HTTP-only cookies or a short-lived access token with a refresh token, and replace the URL hand-off with a one-time code exchange.'));
 push(B('Fail start-up when `JWT_SECRET` is missing, restrict CORS and Socket.io origins, and authenticate socket connections with the JWT.'));
 push(B('Add rate limiting and lockout on authentication endpoints, hash password-reset tokens and optionally reintroduce e-mail verification or two-factor authentication for administrators.'));
@@ -421,7 +438,7 @@ push(B('Deploy the portals behind a single domain so that sessions can be shared
 TOC.push(['REFERENCES', 'refs', 0]);
 push(H1(null, 'References'));
 [
-  'Ctrl+Alt+Win and Femme Forces, “ShopSphere — Multi-Vendor E-Commerce Platform,” GitHub repository. https://github.com/reyhaan07/E-Commerce (main branch, commit 8f85bbd; accessed 21 Oct. 2026).',
+  'Ctrl+Alt+Win and Femme Forces, “ShopSphere — Multi-Vendor E-Commerce Platform,” GitHub repository. https://github.com/reyhaan07/E-Commerce (final code, commit f707f90; accessed 21 Oct. 2026).',
   'M. Jones, J. Bradley and N. Sakimura, “JSON Web Token (JWT),” RFC 7519, IETF, May 2015. https://www.rfc-editor.org/rfc/rfc7519',
   'Auth0, “jsonwebtoken” library documentation. https://github.com/auth0/node-jsonwebtoken',
   'D. Wirtz, “bcrypt.js” library documentation. https://github.com/dcodeIO/bcrypt.js',
@@ -436,6 +453,26 @@ push(H1(null, 'References'));
   'OWASP Foundation, “HTML5 Security Cheat Sheet — Local Storage.” https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html',
   'Microsoft, “Playwright Documentation” (used to capture the screenshots). https://playwright.dev/',
 ].forEach((r, i) => push(new Paragraph({ children: runs(`[${i + 1}]  ${r}`, { size: 22 }), spacing: { after: 80, line: 264 }, indent: { left: 480, hanging: 480 } })));
+
+// ---------------- Appendix A: demo logins (verified list in creds.json) ----------------
+const CREDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'creds.json')));
+TOC.push(['APPENDIX A  DEMO LOGIN CREDENTIALS', 'appA', 0]);
+push(H1(null, 'Appendix A  Demo Login Credentials'));
+push(P('All accounts below are demo accounts created by the database seed script (backend/data) when the backend starts with an empty database; they contain no real personal data. Each of the 80 accounts was signed in successfully through `POST /api/login` on 21 October 2026. Sign in at the shared login (http://localhost:5177) by choosing the role, or open a portal directly and it redirects to the login. These passwords are for local demonstration only and must be changed before any real deployment. For admin-16 to admin-20, the repository’s DEMO_LOGINS.md lists accounts that are not seeded; the accounts below, taken from the seed code, are the ones that work.', { run: { size: 21 }, after: 80 }));
+push(table('A.1', 'Quick-start accounts (one per role)',
+  ['Role', 'Portal', 'E-mail', 'Password'],
+  [['Customer', 'http://localhost:5175', 'aditi@example.com', 'aditi123'],
+   ['Seller', 'http://localhost:5174', 'seller@shopsphere.com', 'seller1234'],
+   ['Administrator (super admin)', 'http://localhost:5173', 'admin@shopsphere.com', 'admin1234'],
+   ['Delivery partner', 'http://localhost:5176', 'ravi.delivery@shopsphere.com', 'ravi123']],
+  [2300, 2100, 2800, 1466], { size: 18 }));
+[['user', 'Customer storefront accounts (http://localhost:5175)', 'Location'],
+ ['seller', 'Seller portal accounts (http://localhost:5174)', 'City'],
+ ['delivery', 'Delivery partner accounts (http://localhost:5176)', 'Vehicle, zone PIN'],
+ ['admin', 'Administrator console accounts (http://localhost:5173)', 'Role']].forEach(([role, title, extra], i) => {
+  const rows = CREDS.filter((c) => c.role === role).map((c) => [c.actualId, c.name, c.email, c.password, c.extra]);
+  push(table(`A.${i + 2}`, title, ['ID', role === 'seller' ? 'Store' : 'Name', 'E-mail', 'Password', extra], rows, [1000, 1950, 3050, 1150, 1516], { size: 16, compact: true }));
+});
 
 // =====================================================================
 // FRONT MATTER
@@ -452,7 +489,6 @@ const cover = [
     .map(([n, r], k) => C(`${n} – ${r}`, { run: { size: 23 }, after: k === 5 ? 120 : 30 })),
   C('B.Tech. Information Technology, St. Joseph’s College of Engineering, Chennai', { run: { italics: true, size: 21 }, after: 480 }),
   C('Submitted to', { run: { italics: true, size: 24 }, after: 60 }),
-  C('Mr. Gokul E, HR Manager', { run: { bold: true, size: 25 }, after: 30 }),
   C('TechPower Solutions', { run: { bold: true, size: 25 }, after: 30 }),
   C('#05, 1st Floor, 100 Feet Road, Vadapalani, Chennai – 600 026', { run: { size: 22 }, after: 360 }),
   C('Internship period: 18 June 2026 – 15 September 2026', { run: { bold: true, size: 23 }, after: 0 }),
@@ -465,7 +501,7 @@ fpush(fH('ABSTRACT'));
 fpush(P('This report is presented by the teams Ctrl+Alt+Win and Femme Forces and describes the internship completed by their six members at TechPower Solutions, Chennai, from 18 June to 15 September 2026, in the domain of MERN stack development. The internship centred on the teams’ joint project, ShopSphere, a multi-vendor social e-commerce platform.', { line: 336, after: 160 }));
 fpush(P('ShopSphere consists of five React 19 single-page applications — a customer storefront, a seller portal, an administrator console, a delivery-partner console and a shared login application — served by one Node.js/Express 5 API with MongoDB persistence through eleven Mongoose models. The platform implements seller onboarding with GSTIN, PAN and document validation, administrator verification and product approval, cart and checkout with server-side pricing, PIN-code-based delivery assignment, a phased order journey, cancellations, returns, notifications over Socket.io and optional Razorpay test-mode payments with HMAC signature verification.', { line: 336, after: 160 }));
 fpush(P('The report explains the system architecture, data model and functional modules, and examines the security design in detail: the shared login, role-aware credential checking with bcrypt and timing-normalised failures, seven-day JSON Web Tokens, the safe cross-origin session hand-off, and the composable Express middleware that enforces roles, ownership and a super-administrator tier on the server. The contribution of each team member is described, with main contributors distinguished from supporting members.', { line: 336, after: 160 }));
-fpush(P('The system was run locally for verification: all six repository test scripts passed (107 checks), and a focused set of authentication and authorization checks matched the implemented behaviour. The verification also identified limitations — notably unauthenticated order and delivery-partner read endpoints and token storage in browser storage — which are recorded with recommended enhancements.', { line: 336, after: 160 }));
+fpush(P('The system was run locally for verification: all six repository test scripts passed (107 checks), and a focused set of authentication and authorization checks matched the implemented behaviour. A final review fixed the defects it found, including order and delivery-partner data that was readable without logging in; remaining limitations, such as token storage in the browser, are recorded with recommended enhancements.', { line: 336, after: 160 }));
 fpush(P('**Keywords:** MERN stack, multi-vendor e-commerce, JWT, role-based access control, Express middleware, MongoDB, React.', { line: 336 }));
 
 fpush(fH('TABLE OF CONTENTS'));

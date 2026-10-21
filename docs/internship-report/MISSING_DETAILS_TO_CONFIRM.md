@@ -1,6 +1,6 @@
 # Details to confirm before submission
 
-Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (26 pages including the cover)
+Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (29 pages including the cover)
 
 ## Documents that were not supplied (not included in the report)
 1. **Internship completion certificate from TechPower Solutions.** The reference report only had Sai Saran's offer letter. Nothing was copied or invented. Add Reyhaan's own certificate or offer letter as an annexure if the department needs it. That adds 1–2 pages, which keeps the report within the 30-page limit only if it is a single page.
@@ -22,7 +22,8 @@ Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win
 11. **Screenshots and tests are from 21 Oct 2026.** They were taken on the current `main` branch (commit `8f85bbd`), which includes PR #3, merged on 20 Oct 2026 after the internship ended. Features added in that commit are marked † in Chapter 5. Replace the screenshots if your department needs captures from the internship period.
 12. **Product photos are missing from the screenshots.** The image CDN (images.unsplash.com) was blocked in the capture environment, so placeholder or alt text shows instead.
 13. **Razorpay prepaid checkout was not tested.** No test keys were available. Only Cash-on-Delivery mode was verified.
-14. **Security gaps in the current code (Section 8.3).** These are real: `GET /api/orders`, `GET /api/orders/:id` and `GET /api/delivery-partners` return customer and partner details without a token. You may want to fix them before any demo or viva.
+14. **Security gaps:** the unauthenticated order and delivery-partner reads were fixed in the final review (report Section 6.4). The limitations left in Section 8.3 are design-level (token storage, open CORS, no rate limiting).
+15. **DEMO_LOGINS.md is wrong for admin-16 to admin-20.** Those five accounts don't exist in the seed data. Appendix A of the report lists the accounts that actually work.
 
 ## Files in this folder
 - `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`: the editable report

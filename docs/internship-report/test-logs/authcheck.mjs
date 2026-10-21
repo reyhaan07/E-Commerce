@@ -27,7 +27,7 @@ rec('D2','Customer reads own profile by id',200,(await j('/users/'+u.b.id,{heade
 rec('D3','Customer lists another user\'s orders','403',(await j('/orders?userId=user-2',{headers:H(u.b.token)})).s);
 rec('D4','Orders by userId without token','401',(await j('/orders?userId=user-1')).s);
 rec('D5','Admin reads any user profile',200,(await j('/users/user-2',{headers:H(a.b.token)})).s);
-rec('E1','Plain admin hits super-admin roster (if seeded admin is SUPER_ADMIN, expect 200)',200,(await j('/admin/admins',{headers:H(a.b.token)})).s);
+rec('E1','Super admin reaches the admin roster',200,(await j('/admin/admins',{headers:H(a.b.token)})).s);
 rec('F1','Register rejects 7-char password','400',(await j('/register',{method:'POST',body:JSON.stringify({name:'T',email:'t'+Date.now()+'@ex.com',password:'short12',phone:'9876543210'})})).s);
 rec('F2','Register rejects malformed email','400',(await j('/register',{method:'POST',body:JSON.stringify({name:'T',email:'bad',password:'longenough1',phone:'9876543210'})})).s);
 rec('F3','Reset with invalid token rejected','400',(await j('/reset-password',{method:'POST',body:JSON.stringify({token:'deadbeef',password:'longenough1'})})).s);
@@ -35,7 +35,16 @@ rec('G1','Password hash not returned by /users/me','absent',('password' in ((awa
 const tokParts=JSON.parse(Buffer.from(u.b.token.split('.')[1],'base64url'));
 rec('G2','JWT payload holds only id/role/iat/exp',"id,role,iat,exp",Object.keys(tokParts).join(','));
 rec('G3','JWT lifetime (days)','7',String((tokParts.exp-tokParts.iat)/86400));
-rec('H1','Order list without token (no userId filter) — public endpoint','200',(await j('/orders')).s);
-rec('H2','Order detail without token — public endpoint','200',(await j('/orders/ORD-1001')).s);
+rec('H1','GET /orders without a token','401',(await j('/orders')).s);
+rec('H2','GET /orders/:id without a token','401',(await j('/orders/ORD-1001')).s);
+rec('H3','GET /delivery-partners without a token','401',(await j('/delivery-partners')).s);
+const uo=(await j('/orders',{headers:H(u.b.token)})).b.orders||[];
+rec('H4','Customer GET /orders returns only own orders','true',String(uo.length>0&&uo.every(o=>o.userId===u.b.id)));
+const so=(await j('/orders',{headers:H(s.b.token)})).b.orders||[];
+rec('H5','Seller GET /orders returns only own store orders','true',String(so.length>0&&so.every(o=>o.sellerId===s.b.id)));
+const foreign=(await j('/orders',{headers:H(a.b.token)})).b.orders.find(o=>o.userId!==u.b.id);
+rec('H6','Customer reads another customer order by id','403',(await j('/orders/'+foreign.id,{headers:H(u.b.token)})).s);
+rec('H7','Seller reads the delivery-partner roster','403',(await j('/delivery-partners',{headers:H(s.b.token)})).s);
+rec('H8','Admin reads the delivery-partner roster',200,(await j('/delivery-partners',{headers:H(a.b.token)})).s);
 for(const r of rows) console.log([r.id,r.desc,r.exp,r.got,r.ok?'PASS':'MISMATCH'].join(' | '));
 console.log(JSON.stringify(rows));
