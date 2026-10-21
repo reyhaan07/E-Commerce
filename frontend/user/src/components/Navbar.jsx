@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineShoppingBag, HiOutlineHeart, HiMagnifyingGlass, HiOutlineExclamationCircle, HiOutlineLifebuoy, HiOutlineBars3 } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';

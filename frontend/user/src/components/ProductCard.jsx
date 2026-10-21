@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { HiStar } from 'react-icons/hi';
 import { HiOutlineHeart, HiOutlineShoppingBag } from 'react-icons/hi';

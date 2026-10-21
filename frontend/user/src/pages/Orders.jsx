@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -75,7 +75,7 @@ const Orders = ({ embedded = false }) => {
       setOrders(data.orders);
       const ret = await apiRequest('/returns');
       setReturns(ret.returns);
-    } catch (e) { /* not fatal for the page */ }
+    } catch { /* not fatal for the page */ }
   }
 
   useEffect(() => { refresh(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,7 +84,7 @@ const Orders = ({ embedded = false }) => {
     let active = true;
     const missingImageIds = [...new Set(
       orders.flatMap((order) => order.items || [])
-        .filter((item) => !item.image && item.productId && !productImages[item.productId])
+        .filter((item) => !item.image && item.productId && productImages[item.productId] === undefined)
         .map((item) => item.productId)
     )];
 
@@ -98,9 +98,11 @@ const Orders = ({ embedded = false }) => {
         }
       })).then((entries) => {
         if (active) {
+          // '' is kept too, marking the lookup as done — dropping it made this
+          // effect re-fetch image-less/deleted products in an endless loop
           setProductImages((current) => ({
             ...current,
-            ...Object.fromEntries(entries.filter(([, image]) => image)),
+            ...Object.fromEntries(entries),
           }));
         }
       });

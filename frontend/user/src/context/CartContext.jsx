@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { apiRequest } from '../api/client'
 
@@ -9,7 +9,7 @@ function loadCart() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
     return Array.isArray(raw) ? raw : []
-  } catch (e) {
+  } catch {
     return []
   }
 }
@@ -17,6 +17,9 @@ function loadCart() {
 export function CartProvider({ children }) {
   const { user } = useAuth()
   const [items, setItems] = useState(loadCart)
+  // id of the user whose server cart has been loaded; until then local items
+  // (a guest cart, or the previous account's) must not be pushed over it
+  const loadedFor = useRef(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
@@ -25,9 +28,11 @@ export function CartProvider({ children }) {
   // once someone logs in, whatever cart they had saved on the server
   // becomes the source of truth instead of the guest cart in localStorage
   useEffect(() => {
+    loadedFor.current = null
     if (!user) return
     apiRequest(`/users/${user.id}/cart`)
       .then((data) => {
+        loadedFor.current = user.id
         setItems(data.cart.map((i) => ({
           id: i.productId,
           name: i.name,
@@ -41,7 +46,7 @@ export function CartProvider({ children }) {
 
   // push cart changes to the server so it's there next time they log in
   useEffect(() => {
-    if (!user) return
+    if (!user || loadedFor.current !== user.id) return
     apiRequest(`/users/${user.id}/cart`, {
       method: 'PUT',
       body: JSON.stringify({

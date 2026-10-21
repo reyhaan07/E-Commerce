@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/Navbar';
@@ -62,7 +62,7 @@ const TrackOrder = () => {
       setOrder(found);
       setJourney(foundJourney);
       navigate(`/track-order/${encodeURIComponent(targetId)}`, { replace: true });
-    } catch (err) {
+    } catch {
       setError('We could not find an order with that ID. Please check and try again.');
     } finally {
       setLoading(false);
