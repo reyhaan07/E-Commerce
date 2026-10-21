@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAccountStatus } from '../hooks/useAccountStatus';
 import Footer from '../components/Footer';
-import { HiCreditCard, HiCheckCircle, HiHome, HiPhone, HiUser } from 'react-icons/hi2';
+import { HiCreditCard, HiCheckCircle, HiHome } from 'react-icons/hi2';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../api/client';
@@ -99,7 +99,9 @@ const Checkout = () => {
   }, [user]);
 
   const selectedAddress = useMemo(() => profile?.addresses?.find((item) => item._id === selectedAddressId), [profile, selectedAddressId]);
-  const selectedPayment = useMemo(() => profile?.paymentMethods?.find((item) => item._id === selectedPaymentId), [profile, selectedPaymentId]);
+  // A saved card/UPI only counts while online payment is on — otherwise the
+  // preselected default (whose radios are hidden) would force a Prepaid order.
+  const selectedPayment = useMemo(() => (onlinePaymentEnabled ? profile?.paymentMethods?.find((item) => item._id === selectedPaymentId) : undefined), [profile, selectedPaymentId, onlinePaymentEnabled]);
 
   const manualAddressText = `${address.street}, ${address.city}, ${address.state} ${address.pincode}`.replace(/^,\s*/, '').trim();
   const savedAddressText = selectedAddress
@@ -274,7 +276,7 @@ const Checkout = () => {
                             name="payment"
                             className="sr-only peer"
                             disabled={disabled}
-                            checked={!selectedPaymentId && paymentMethod === method.id}
+                            checked={!selectedPayment && paymentMethod === method.id}
                             onChange={() => { if (disabled) return; setSelectedPaymentId(''); setPaymentMethod(method.id); }}
                           />
                           <div className={disabled ? '' : 'peer-checked:text-primary transition-colors'}>

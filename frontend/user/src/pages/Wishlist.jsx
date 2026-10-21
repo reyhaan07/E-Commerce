@@ -1,4 +1,4 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
@@ -31,7 +31,7 @@ const Wishlist = () => {
                 <HiOutlineHeart className="mx-auto text-6xl text-gray-200 mb-4" />
                 <h2 className="text-2xl font-bold text-gray-900">Your wishlist is empty</h2>
                 <p className="text-gray-500 mb-8 mt-2">Save items you love to find them later easily</p>
-                <button className="btn-primary">Browse Products</button>
+                <Link to="/products" className="btn-primary">Browse Products</Link>
             </div>
         )}
       </main>

@@ -1,0 +1,18 @@
+
+ShopSphere payment-integrity test -> http://localhost:5000/api
+
+Cash on Delivery only (Razorpay not configured)
+  PASS  payment config reports online payment disabled
+  PASS  create-order refused
+  PASS  mock checkout refused
+  PASS  a Prepaid order is refused  (400)
+  PASS  message points at Cash on Delivery  "Online payment isn't available yet. Please choose Cash on Delivery."
+  PASS  Cash on Delivery still works  (201)
+
+test order created: ORD-1075
+
+========================================================
+  6 passed, 0 failed
+========================================================
+
+Run with ENABLE_MOCK_PAYMENTS=true (and restart the server) to exercise the prepaid paths.

@@ -1,15 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Orders from './Orders';
 import {
   HiBars3,
-  HiOutlineBell,
-  HiOutlineCheck,
   HiOutlineCheckCircle,
   HiOutlineCreditCard,
-  HiOutlineDevicePhoneMobile,
   HiOutlineEnvelope,
   HiOutlineHome,
   HiOutlinePencilSquare,
@@ -29,7 +26,6 @@ import ContactSupportModal from '../components/ContactSupportModal';
 const emptyAddress = { label: 'Home', line1: '', line2: '', city: '', state: '', pincode: '', phone: '', isDefault: false };
 const emptyPayment = { type: 'card', label: '', last4: '', upiId: '', isDefault: false };
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
-const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 const DELIVERY_MAX = 500;
 
 function resizeImageToDataUrl(file, maxWidth = 600, maxHeight = 600) {

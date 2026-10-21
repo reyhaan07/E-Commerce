@@ -136,11 +136,11 @@ Administrators moderate catalog listings, inspect seller & delivery partner regi
 | 13 | `admin-13` | Shruti Haasan | `shruti.reviews@shopsphere.com` | `shruti123` | Review Moderator |
 | 14 | `admin-14` | Gaurav Taneja | `gaurav.fraud@shopsphere.com` | `gaurav123` | Fraud & Risk Analyst |
 | 15 | `admin-15` | Asha Bhonsle | `asha.payments@shopsphere.com` | `asha1234` | Payments Officer |
-| 16 | `admin-16` | Tarun Gogoi | `tarun.payments@shopsphere.com` | `tarun123` | Payments Officer |
-| 17 | `admin-17` | Preeti Zinta | `preeti.marketing@shopsphere.com` | `preeti123` | Marketing & Promotions |
-| 18 | `admin-18` | Anil Kapoor | `anil.exec@shopsphere.com` | `anil1234` | Executive / Super Admin |
-| 19 | `admin-19` | Madhuri Dixit | `madhuri.audit@shopsphere.com` | `madhuri123` | Compliance & Audit |
-| 20 | `admin-20` | Ratan Tata | `ratan.board@shopsphere.com` | `ratan123` | Board Observer (Super Admin) |
+| 16 | `admin-16` | Nikhil Chinapa | `nikhil.growth@shopsphere.com` | `nikhil123` | Growth & Promotions Admin |
+| 17 | `admin-17` | Swati Mohan | `swati.data@shopsphere.com` | `swati123` | Data & Analytics Admin |
+| 18 | `admin-18` | Imran Qureshi | `imran.delivery@shopsphere.com` | `imran123` | Delivery Network Manager |
+| 19 | `admin-19` | Rekha Jain | `rekha.compliance@shopsphere.com` | `rekha123` | Compliance Officer |
+| 20 | `admin-20` | Arvind Swamy | `arvind.escalations@shopsphere.com` | `arvind123` | Escalations Manager |
 
 ---
 

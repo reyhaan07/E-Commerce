@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'user_user'
 const EXPECTED_ROLE = 'user'
+// Every useAuth() call holds its own copy of the user, and the 'storage' event
+// only fires in *other* tabs — so login/logout announce themselves in this tab
+// too, or the long-lived Cart/Wishlist providers keep the old session.
+const AUTH_CHANGE_EVENT = 'user-auth-change'
 
 // Consumes the auth handoff appended to the URL by the shared login page
 // (the frontend/login role-picker app) after a successful cross-origin
@@ -33,30 +37,37 @@ function consumeAuthHandoff() {
 export function useAuth() {
   const [user, setUser] = useState(() => {
     consumeAuthHandoff()
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch (e) { return null }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null }
   })
 
   useEffect(() => {
     const onStorage = e => { if (e.key === STORAGE_KEY) setUser(JSON.parse(e.newValue)) }
+    const onAuthChange = () => setUser(getCurrentUser())
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener(AUTH_CHANGE_EVENT, onAuthChange)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(AUTH_CHANGE_EVENT, onAuthChange)
+    }
   }, [])
 
   const login = useCallback((payload) => {
     const u = { id: payload.id, name: payload.name, email: payload.email, token: payload.token || null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
     setUser(u)
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
     return u
   }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY)
     setUser(null)
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
   }, [])
 
   return { user, login, logout }
 }
 
 export function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch (e) { return null }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null }
 }

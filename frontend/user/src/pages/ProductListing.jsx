@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -62,7 +62,6 @@ const ProductListing = () => {
   }, [q, category, subcategory, productType, maxPrice, minRating, sort, page]);
 
   const activeCategory = tree.find((c) => c.name === category);
-  const activeSubcategory = activeCategory?.subcategories.find((s) => s.name === subcategory);
   const heading = q ? `Results for “${q}”`
     : productType || subcategory || (category ? `${category}` : 'All Products');
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;

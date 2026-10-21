@@ -7,11 +7,13 @@ const { Order } = require("../models/order.model");
 const { Product } = require("../models/product.model");
 const { Review } = require("../models/review.model");
 const { ReturnRequest } = require("../models/returnRequest.model");
-const { requireAuth, requireRole, requireSuperAdmin, SYSTEM_SUPER_ADMIN_EMAIL } = require("../middleware/auth");
+const { requireAuth, requireRole, requireSuperAdmin, requireActiveAccount, SYSTEM_SUPER_ADMIN_EMAIL } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 const { notifyUser } = require("../utils/notify");
 
-router.use(requireAuth, requireRole("admin"));
+// requireActiveAccount: a suspended admin's JWT stays valid for 7 days, so the
+// status is re-checked here or they could keep suspending/verifying accounts.
+router.use(requireAuth, requireRole("admin"), requireActiveAccount);
 
 // ── Admin roster (SUPER_ADMIN only) ──────────────────────────────────────
 // Every route below is gated by requireSuperAdmin, which re-reads the caller's
@@ -217,7 +219,14 @@ router.patch("/accounts/:id/status", asyncHandler(async (req, res) => {
   if (!ACCOUNT_STATUSES.includes(status)) {
     return res.status(400).json({ success: false, message: "Invalid status" });
   }
-  const account = await Account.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
+  // Admin accounts are managed only through the super-admin roster above, which
+  // also protects the founding admin. Without this check any plain ADMIN could
+  // suspend a SUPER_ADMIN (or the founding admin) through this route.
+  const target = await Account.findOne({ id: req.params.id }, "role");
+  if (target && target.role === "admin") {
+    return res.status(403).json({ success: false, message: "Administrator accounts are managed from the admin roster" });
+  }
+  const account = await Account.findOneAndUpdate({ id: req.params.id, role: { $ne: "admin" } }, { status }, { new: true });
   if (!account) {
     return res.status(404).json({ success: false, message: "Account not found" });
   }
@@ -275,7 +284,7 @@ router.get("/stats", asyncHandler(async (req, res) => {
       Account.countDocuments({ role: "user", "cart.0": { $exists: true } }),
       ReturnRequest.countDocuments({ status: { $nin: ["Refunded", "Rejected"] } }),
       Order.aggregate([
-        { $match: { sellerStatus: { $nin: ["Cancelled", "Returned"] } } },
+        { $match: { sellerStatus: { $nin: ["Cancelled", "Rejected", "Returned"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       Order.aggregate([{ $group: { _id: "$sellerStatus", count: { $sum: 1 } } }]),

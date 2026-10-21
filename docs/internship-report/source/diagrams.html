@@ -1,0 +1,177 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body{margin:0;background:#fff;font-family:"Liberation Sans",Arial,sans-serif}
+  .d{display:inline-block;padding:10px;background:#fff}
+  svg text{font-family:"Liberation Sans",Arial,sans-serif}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+const C={navy:'#0f172a',blue:'#2563eb',lblue:'#dbeafe',grey:'#f1f5f9',line:'#334155',red:'#dc2626',lred:'#fee2e2',green:'#16a34a',lgreen:'#dcfce7',amber:'#b45309',lamber:'#fef3c7',slate:'#64748b',white:'#fff'};
+const NS='http://www.w3.org/2000/svg';
+function el(t,a,parent){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(parent)parent.appendChild(e);return e}
+function txt(svg,x,y,lines,o={}){const size=o.size||13,lh=o.lh||size*1.25;const n=lines.length;
+  lines.forEach((l,i)=>{const t=el('text',{x,y:y-(n-1)*lh/2+i*lh+size*0.35,'font-size':o.sizes?o.sizes[i]||size:size,'text-anchor':o.anchor||'middle',fill:o.fill||C.navy,'font-weight':(o.bold===true||(o.boldFirst&&i===0))?'700':'400','font-family':o.mono?'Liberation Mono,monospace':'',stroke:o.halo===false?'none':'#fff','stroke-width':3,'paint-order':'stroke','stroke-linejoin':'round'},svg);t.textContent=l})}
+function make(id,w,h,title){const div=document.createElement('div');div.className='d';div.id=id;document.getElementById('root').appendChild(div);
+  const svg=el('svg',{width:w,height:h,viewBox:`0 0 ${w} ${h}`,xmlns:NS},div);
+  const defs=el('defs',{},svg);
+  for(const [n,c] of [['a',C.line],['r',C.red],['b',C.blue],['g',C.green]]){const m=el('marker',{id:'m'+n,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},defs);el('path',{d:'M0,0 L10,5 L0,10 z',fill:c},m)}
+  return svg}
+function box(svg,x,y,w,h,lines,o={}){el('rect',{x,y,width:w,height:h,rx:o.rx??8,fill:o.fill||C.white,stroke:o.stroke||C.navy,'stroke-width':o.sw||1.5,'stroke-dasharray':o.dash||''},svg);
+  if(lines&&lines.length) txt(svg,x+w/2,y+h/2,lines,{...o,fill:o.tfill,halo:false}); return {x,y,w,h,cx:x+w/2,cy:y+h/2}}
+function arrow(svg,pts,o={}){const d='M'+pts.map(p=>p.join(',')).join(' L');const m={[C.red]:'mr',[C.blue]:'mb',[C.green]:'mg'}[o.color]||'ma';
+  el('path',{d,fill:'none',stroke:o.color||C.line,'stroke-width':o.sw||1.6,'stroke-dasharray':o.dash||'','marker-end':o.noHead?'':`url(#${m})`,'marker-start':o.both?`url(#${m})`:''},svg);
+  if(o.label){const [lx,ly]=o.at||[(pts[0][0]+pts[pts.length-1][0])/2,(pts[0][1]+pts[pts.length-1][1])/2];
+    const lines=Array.isArray(o.label)?o.label:[o.label];const fs=o.size||11;const wmax=Math.max(...lines.map(l=>l.length))*fs*0.55+8;const hh=lines.length*fs*1.25+4;
+    el('rect',{x:lx-wmax/2,y:ly-hh/2,width:wmax,height:hh,fill:'#fff',opacity:0.95},svg);txt(svg,lx,ly,lines,{size:fs,fill:o.color||C.slate})}}
+function header(svg,x,y,w,h,label,fill){el('rect',{x,y,width:w,height:h,rx:6,fill:fill||C.navy},svg);txt(svg,x+w/2,y+h/2,[label],{fill:'#fff',bold:true,size:13,halo:false})}
+
+/* ---------- D1: System architecture ---------- */
+(function(){const W=1100,H=760,s=make('d1',W,H);
+ const portals=[['Customer Storefront','frontend/user',':5175'],['Seller Portal','frontend/seller',':5174'],['Admin Console','frontend/admin',':5173'],['Delivery Console','frontend/delivery',':5176'],['Shared Login App','frontend/login',':5177']];
+ txt(s,20,22,['Presentation tier — five React 19 + Vite single-page applications (separate dev-server origins)'],{anchor:'start',bold:true,size:14});
+ const bw=196,gap=14;portals.forEach((p,i)=>{const x=20+i*(bw+gap);box(s,x,40,bw,74,[p[0],p[1],p[2]],{fill:i==4?C.lamber:C.lblue,stroke:i==4?C.amber:C.blue,boldFirst:true,size:13});
+   arrow(s,[[x+bw/2,116],[x+bw/2,176]],{both:true,color:C.blue});});
+ txt(s,550,146,['REST/JSON over HTTP (fetch / axios)  ·  Authorization: Bearer <JWT>  ·  Socket.io (role & user rooms)'],{size:12,fill:C.blue});
+ // backend
+ el('rect',{x:20,y:180,width:1040,height:380,rx:10,fill:'#f8fafc',stroke:C.navy,'stroke-width':2},s);
+ txt(s,36,200,['Application tier — backend/server.js (Node.js 22, Express 5)  :5000'],{anchor:'start',bold:true,size:14});
+ box(s,36,214,1008,40,['cors()  →  express.json({limit:"10mb"})  →  routers  →  central error handler (duplicate key / ValidationError → 400, otherwise 500)'],{fill:C.grey,stroke:C.slate,size:12});
+ header(s,36,266,640,26,'Route modules mounted under /api');
+ const routes=['auth  /login /register','users  /api/users','products','orders','payments','returns','reviews','admin','delivery-partners','payroll','notifications','support','coverage'];
+ routes.forEach((r,i)=>{const col=i%4,row=Math.floor(i/4);box(s,36+col*161,298+row*40,155,34,[r],{size:11.5,fill:'#fff',stroke:C.slate,rx:5})});
+ header(s,690,266,354,26,'middleware/auth.js',C.blue);
+ ['requireAuth  (JWT → req.auth, else 401)','requireRole(...roles)  (else 403)','requireSelfOrAdmin(param)  (else 403)','requireSuperAdmin  (DB re-check)','requireActiveAccount / requireActivePartner','getAuthFromHeader  (optional auth)'].forEach((t,i)=>box(s,690,298+i*27,354,24,[t],{size:11.5,fill:'#fff',stroke:C.blue,rx:4}));
+ header(s,36,466,640,26,'utils/ and realtime.js',C.slate);
+ ['pricing (server-side totals)','razorpay (HMAC verify, refunds)','mailer (SMTP or console)','serviceability / coverage','cancellation','sequence (atomic ids)','notify + Socket.io hub','payrollMath'].forEach((t,i)=>{const col=i%4,row=Math.floor(i/4);box(s,36+col*161,498+row*28,155,24,[t],{size:10.5,fill:'#fff',stroke:C.slate,rx:4})});
+ box(s,690,466,354,82,['Mongoose models (11)','Account · Product · Order · DeliveryPartner','ReturnRequest · Review · PaymentIntent','Notification · Payroll · SupportRequest · PincodeCluster'],{size:11.5,boldFirst:true,fill:C.lgreen,stroke:C.green});
+ // data + external
+ arrow(s,[[867,550],[867,606]],{both:true,color:C.green,label:'Mongoose ODM',at:[930,578]});
+ box(s,690,608,354,70,['MongoDB  (database "shopsphere")','seeded on first boot: 44 categories,','440 products, 62 orders, demo accounts'],{fill:C.lgreen,stroke:C.green,boldFirst:true,size:12});
+ box(s,36,608,300,70,['Razorpay (Test Mode) — optional','Enabled only when test keys are set;','otherwise checkout is Cash on Delivery'],{dash:'6 4',boldFirst:true,size:11.5,fill:'#fff'});
+ box(s,360,608,300,70,['SMTP mail server — optional','Welcome / reset / order e-mails;','logged to console when unset'],{dash:'6 4',boldFirst:true,size:11.5,fill:'#fff'});
+ arrow(s,[[186,562],[186,606]],{dash:'5 4',both:true});arrow(s,[[510,562],[510,606]],{dash:'5 4',both:true});
+ txt(s,20,710,['Solid lines: always-on dependencies.  Dashed: optional integrations controlled by environment variables (backend/.env.example).'],{anchor:'start',size:11.5,fill:C.slate});
+ txt(s,20,730,['Source: README.md, package.json files, backend/server.js, backend/middleware/auth.js, backend/models/*.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+
+/* ---------- D2: Authentication sequence ---------- */
+(function(){const W=1100,H=700,s=make('d2',W,H);
+ const L=[['Browser user',90],['Shared Login App',300],['Backend  POST /api/login',540],['MongoDB',760],['Role portal (useAuth)',960]];
+ L.forEach(([n,x])=>{box(s,x-88,14,176,40,[n],{bold:true,size:12.5,fill:x==540?C.lblue:(x==300?C.lamber:C.grey),stroke:x==540?C.blue:(x==300?C.amber:C.navy)});el('line',{x1:x,y1:56,x2:x,y2:H-30,stroke:'#94a3b8','stroke-dasharray':'5 5'},s)});
+ let y=86;const step=(a,b,label,o={})=>{const xa=L[a][1],xb=L[b][1];if(a===b){const L2=xa>900;const dx=L2?-60:60;arrow(s,[[xa,y],[xa+dx,y],[xa+dx,y+20],[xa+(L2?-6:6),y+20]],{color:o.color});txt(s,xa+(L2?-68:68),y+10,Array.isArray(label)?label:[label],{anchor:L2?'end':'start',size:11.5,fill:o.color||C.navy});y+=(o.gap||44);return}
+   arrow(s,[[xa,y],[xb+(xb>xa?-4:4),y]],{color:o.color,dash:o.dash});const lines=Array.isArray(label)?label:[label];txt(s,(xa+xb)/2,y-8-(lines.length-1)*7,lines,{size:11.5,fill:o.color||C.navy});y+=(o.gap||40)};
+ step(0,1,'1. choose role, enter e-mail + password');
+ step(1,2,['2. { email, password, role }  (JSON)']);
+ step(2,2,['3. validate types; role ∈ {admin, seller,','    user, delivery}  → else 400'],{gap:50});
+ step(2,3,'4. Account.findOne({ email, role })  (exact, then case-insensitive)');
+ step(3,2,'account | null',{dash:'5 4'});
+ step(2,2,['5. bcrypt.compare(password, hash)','    (dummy hash when no account → equal timing)'],{gap:50});
+ step(2,2,['6. status ≠ active → 403 + accountStatus','    role = delivery → also check DeliveryPartner'],{gap:50,color:C.red});
+ step(2,2,['7. signToken({ id, role [, adminRole] })','    HS256, JWT_SECRET, expiresIn 7d; save lastLogin'],{gap:50,color:C.green});
+ step(2,1,'8. 200 { token, role, id, name, email }   |   401 "Invalid email or password"');
+ step(1,4,['9. redirect to role origin (safeRedirectForRole) with','authId, authName, authEmail, authRole, authToken in query'],{gap:48});
+ step(4,4,['10. consumeAuthHandoff(): role must match portal;','     store {id,name,email,token} in localStorage;','     history.replaceState() strips the query'],{gap:60});
+ step(4,2,['11. API calls: Authorization: Bearer <JWT>  →  requireAuth / requireRole'],{color:C.blue});
+ step(2,4,['12. 401 → portal clears session and returns to the shared login'],{color:C.red,dash:'5 4'});
+ txt(s,20,H-12,['Source: backend/routes/auth.js, backend/middleware/auth.js, frontend/login/src/main.jsx, frontend/*/src/hooks/useAuth.js, frontend/user/src/api/client.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+
+/* ---------- D3: Authorization pipeline ---------- */
+(function(){const W=1100,H=330,s=make('d3',W,H);
+ const st=[['HTTP request','/api/...'],['requireAuth','Bearer JWT valid?'],['requireActiveAccount','/ requireActivePartner','status re-read from DB'],['requireRole(...)','role in allowed list?'],['requireSelfOrAdmin','/ requireSuperAdmin','ownership or tier'],['asyncHandler(route)','Mongoose query'],['JSON response','{ success, ... }']];
+ const rej=[null,'401  Missing or invalid','Authorization header','403  account suspended','/ no longer active','403  no access to','this resource','403  not your account','/ super admin required',null,null];
+ const bw=136,g=18;st.forEach((t,i)=>{const x=14+i*(bw+g);const last=i==st.length-1,first=i==0;
+   box(s,x,40,bw,82,t,{boldFirst:true,size:11.5,fill:first||last?C.grey:(i==5?C.lgreen:C.lblue),stroke:first||last?C.navy:(i==5?C.green:C.blue)});
+   if(i<st.length-1) arrow(s,[[x+bw,81],[x+bw+g-2,81]],{color:C.blue});
+   if(i>=1&&i<=4){arrow(s,[[x+bw/2,124],[x+bw/2,176]],{color:C.red});const r=[[rej[1],rej[2]],[rej[3],rej[4]],[rej[5],rej[6]],[rej[7],rej[8]]][i-1];box(s,x,178,bw,48,r,{size:11,fill:C.lred,stroke:C.red,rx:6})}});
+ box(s,14+5*(bw+g),178,bw,48,['thrown error →','central handler'],{size:11,fill:C.lamber,stroke:C.amber,rx:6});arrow(s,[[14+5*(bw+g)+bw/2,124],[14+5*(bw+g)+bw/2,176]],{color:C.amber});
+ txt(s,14,22,['Middleware is composed per route, e.g.  router.patch("/:id/approval", requireAuth, requireActiveAccount, requireRole("admin"), handler)'],{anchor:'start',size:12.5,bold:true});
+ txt(s,14,256,['Not every route uses every stage: admin.js and coverage.js apply requireAuth + requireRole("admin") to the whole router; users.js uses'],{anchor:'start',size:11.5,fill:C.slate});
+ txt(s,14,274,['[requireAuth, requireSelfOrAdmin("id")]; catalogue reads (GET /api/products) are public. Errors from Mongoose reach the handler in server.js'],{anchor:'start',size:11.5,fill:C.slate});
+ txt(s,14,292,['(duplicate key → 400 "That value is already in use"; ValidationError → 400; anything else → 500 "Something went wrong").'],{anchor:'start',size:11.5,fill:C.slate});
+ txt(s,14,316,['Source: backend/middleware/auth.js, backend/middleware/asyncHandler.js, backend/server.js, backend/routes/*.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+
+/* ---------- D4: Order lifecycle ---------- */
+(function(){const W=1100,H=600,s=make('d4',W,H);
+ const lane=(y,h,label,fill)=>{el('rect',{x:10,y,width:W-20,height:h,fill,stroke:'#cbd5e1'},s);el('rect',{x:10,y,width:120,height:h,fill:C.navy},s);txt(s,70,y+h/2,label,{fill:'#fff',bold:true,size:12.5,halo:false})};
+ lane(10,110,['Customer','storefront'],'#f8fafc');lane(120,120,['Seller','portal'],'#fff');lane(240,90,['Admin','console'],'#f8fafc');lane(330,130,['Delivery','partner'],'#fff');
+ const n=(x,y,l,o={})=>box(s,x,y,o.w||126,o.h||44,l,{size:11.5,fill:o.fill||C.lblue,stroke:o.stroke||C.blue,boldFirst:o.bf,rx:o.rx??8});
+ const a=n(150,30,['Cart → Checkout','POST /api/orders'],{fill:C.grey,stroke:C.navy,w:150,h:50});
+ const pay=n(330,30,['COD, or Razorpay test','payment verified (HMAC)'],{fill:C.lamber,stroke:C.amber,w:170,h:50});
+ const stock=n(530,30,['stock decremented;','seller + admin notified'],{fill:C.grey,stroke:C.navy,w:170,h:50});
+ const trk=n(900,30,['Track order','journey timeline'],{fill:C.grey,stroke:C.navy,w:150,h:50});
+ arrow(s,[[300,55],[328,55]]);arrow(s,[[500,55],[528,55]]);
+ const P=n(150,155,['Processing']),A=n(300,155,['Accepted']),K=n(450,155,['Packed']),R=n(600,155,['Ready For','Dispatch'],{w:126}),SH=n(780,155,['Shipped'],{fill:C.grey,stroke:C.slate}),DV=n(930,155,['Delivered'],{fill:C.lgreen,stroke:C.green});
+ arrow(s,[[615,80],[615,100],[213,100],[213,153]]);
+ [[P,A],[A,K],[K,R]].forEach(([u,v])=>arrow(s,[[u.x+u.w,u.cy],[v.x-2,v.cy]],{color:C.blue}));
+ n(150,205,['Rejected / Cancelled'],{fill:C.lred,stroke:C.red,w:200,h:28,rx:14});
+ txt(s,560,222,['PATCH /:id/seller-status (SELLER_TRANSITIONS) · PATCH /:id/request-pickup'],{size:11,fill:C.slate});
+ const AS=n(600,262,['Assign partner','PATCH /:id/assign'],{fill:C.lamber,stroke:C.amber,w:150,h:48});
+ const EL=n(320,262,['GET /:id/eligible-partners','(matched by PIN-code catchment)'],{fill:'#fff',stroke:C.amber,w:230,h:48});
+ arrow(s,[[663,201],[663,260]]);arrow(s,[[598,286],[552,286]],{dash:'4 3'});
+ const ds=[['Assigned'],['Accepted'],['Picked Up'],['In Transit'],['Out For','Delivery'],['Delivered']];const dn=ds.map((l,i)=>n(150+i*152,370,l,{w:124,fill:i==5?C.lgreen:C.lblue,stroke:i==5?C.green:C.blue}));
+ arrow(s,[[675,312],[675,340],[212,340],[212,368]]);
+ dn.slice(0,-1).forEach((u,i)=>arrow(s,[[u.x+u.w,u.cy],[dn[i+1].x-2,dn[i+1].cy]],{color:C.blue}));
+ arrow(s,[[dn[2].cx,368],[dn[2].cx,330],[SH.cx-20,330],[SH.cx-20,201]],{color:C.green,dash:'5 4'});
+ arrow(s,[[dn[5].cx,368],[dn[5].cx,350],[DV.cx,350],[DV.cx,201]],{color:C.green,dash:'5 4'});
+ txt(s,880,282,['system: seller','→ Shipped'],{size:11,fill:C.green});txt(s,1003,282,['system:','→ Delivered;','COD → Paid'],{size:11,fill:C.green,anchor:'start'});
+ arrow(s,[[SH.x+SH.w,SH.cy],[DV.x-2,DV.cy]],{color:C.slate,dash:'4 3'});
+ arrow(s,[[DV.cx,153],[DV.cx,120],[trk.cx,120],[trk.cx,82]],{dash:'4 3',label:'Socket.io order:updated',at:[980,110]});
+ txt(s,560,440,['PATCH /api/orders/:id/delivery-status  (requireAuth → requireActivePartner → requireRole("delivery","admin"); partner must own the job)'],{size:11,fill:C.slate});
+ txt(s,14,490,['Each hop is appended to order.statusHistory {status, phase, actor, note, timestamp}; buildJourney() folds it into the timeline shown to the customer and seller.'],{anchor:'start',size:11.5,fill:C.navy});
+ txt(s,14,510,['Cancellation (POST /:id/cancel, item-level cancel) and returns (Requested → … → Refund Approved, routes/returns.js) branch off this main path.'],{anchor:'start',size:11.5,fill:C.navy});
+ txt(s,14,540,['Source: backend/models/order.model.js (SELLER_STATUSES, SELLER_TRANSITIONS, DELIVERY_STATUSES), backend/routes/orders.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+
+/* ---------- D5: Data model ---------- */
+(function(){const W=1100,H=600,s=make('d5',W,H);
+ const ent=(x,y,w,name,fields,col)=>{const h=30+fields.length*17+8;el('rect',{x,y,width:w,height:h,rx:6,fill:'#fff',stroke:col||C.navy,'stroke-width':1.6},s);el('rect',{x,y,width:w,height:26,rx:6,fill:col||C.navy},s);txt(s,x+w/2,y+13,[name],{fill:'#fff',bold:true,size:12.5,halo:false});
+   fields.forEach((f,i)=>txt(s,x+10,y+40+i*17,[f],{anchor:'start',size:11,mono:true}));return {x,y,w,h,cx:x+w/2,cy:y+h/2}};
+ const acc=ent(20,20,300,'Account',['id (PK, "user-1", "seller-3")','email (unique) · password (bcrypt)','role: admin|seller|user|delivery','status: active|suspended|deleted','adminRole: SUPER_ADMIN|ADMIN','verificationStatus (seller)','gstin · panNumber · documents[]','addresses[] · paymentMethods[]','cart[] · wishlist[] · loyaltyPoints','resetToken · resetTokenExpiry'],C.blue);
+ const prod=ent(400,20,290,'Product',['id (PK) · slug (unique)','sellerId → Account.id','category › subcategory › type','price · oldPrice · discount','stock (min 0) · sku · specs[]','approvalStatus: Pending|Approved|Rejected','rating · ratingCount · isArchived'],C.navy);
+ const ord=ent(400,250,290,'Order',['id (PK, "ORD-1001") · trackingId','userId → Account.id','sellerId → Account.id','deliveryPartnerId → Partner.id','items[] { productId, qty, price }','pricing { subtotal, shipping, tax }','paymentMethod · paymentStatus','razorpayOrderId / PaymentId','sellerStatus · deliveryStatus','cancellation · statusHistory[]'],C.navy);
+ const dp=ent(780,250,300,'DeliveryPartner',['id (PK, "partner-1")','email · password (bcrypt)','vehicle · vehicleNumber','documents[] (licence, RC)','zone · pincode · status','accountStatus: active|suspended|deactivated','baseSalary · incentivePerDelivery'],C.navy);
+ const pi=ent(20,300,300,'PaymentIntent',['razorpayOrderId · userId','amount (server-priced) · currency','consumed · consumedByOrderId'],C.amber);
+ const rr=ent(780,20,300,'ReturnRequest',['id · orderId → Order.id','userId · reason · status','pickupPartnerId · amount'],C.slate);
+ const rv=ent(780,130,300,'Review',['id · productId · userId · orderId','rating (1–5) · moderationStatus'],C.slate);
+ const ot=ent(20,440,300,'Other collections',['Notification (recipientRole/Id, read)','Payroll (staffId, period, netPay)','SupportRequest (requesterRole, status)','PincodeCluster (hub, near PIN codes)'],C.slate);
+ const link=(pts,l,at)=>arrow(s,pts,{noHead:false,label:l,at,size:10.5});
+ link([[320,90],[398,90]],'sells (1:N)',[359,78]);
+ link([[320,230],[360,230],[360,300],[398,300]],'places / fulfils',[352,262]);
+ link([[545,175],[545,248]],'items[].productId',[600,212]);
+ link([[690,330],[778,330]],'assigned to',[734,318]);
+ link([[690,270],[735,270],[735,60],[778,60]],'returns',[735,165]);
+ link([[690,100],[740,100],[740,160],[778,160]],'reviewed in',[740,128]);
+ link([[320,350],[398,350]],'verified before',[359,338]);
+ txt(s,330,372,['order creation'],{size:10.5,fill:C.slate,anchor:'start'});
+ txt(s,400,555,['Business keys ("id") are used across the API; Mongo _id/__v and secrets (password, resetToken) are stripped by toJSON transforms.'],{anchor:'start',size:11.5});
+ txt(s,400,575,['Source: backend/models/*.model.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+
+/* ---------- D6: Seller onboarding + product approval ---------- */
+(function(){const W=1100,H=330,s=make('d6',W,H);
+ const n=(x,y,l,o={})=>box(s,x,y,o.w||170,o.h||56,l,{size:11.5,fill:o.fill||C.lblue,stroke:o.stroke||C.blue,boldFirst:true});
+ txt(s,14,20,['A. Seller onboarding'],{anchor:'start',bold:true,size:13});
+ const a=n(14,34,['Seller registers','POST /api/register/seller'],{fill:C.grey,stroke:C.navy,w:190});
+ const b=n(234,34,['Server validation','10-digit phone, GSTIN, PAN,','GST/PAN/cheque/ID docs'],{w:200,h:60});
+ const c=n(464,34,['Account created','role seller,','verificationStatus Pending'],{w:190,h:60});
+ const d=n(684,34,['Admin notified','Socket.io bell + list'],{fill:C.lamber,stroke:C.amber,w:170});
+ const e=n(884,34,['PATCH /api/admin/','accounts/:id/verification','Verified | Suspended'],{fill:C.lamber,stroke:C.amber,w:200,h:60});
+ [[a,b],[b,c],[c,d],[d,e]].forEach(([u,v])=>arrow(s,[[u.x+u.w,64],[v.x-2,64]],{color:C.blue}));
+ arrow(s,[[334,96],[334,122]],{color:C.red});box(s,250,124,170,26,['400: lists every missing item'],{size:10.5,fill:C.lred,stroke:C.red,rx:13});
+ txt(s,14,184,['B. Product listing approval'],{anchor:'start',bold:true,size:13});
+ const f=n(14,196,['Verified seller','POST /api/products'],{fill:C.grey,stroke:C.navy,w:190});
+ const g=n(234,196,['validateProductBody','→ approvalStatus Pending'],{w:200});
+ const h=n(464,196,['Admin Product Approval','PATCH /:id/approval'],{fill:C.lamber,stroke:C.amber,w:190});
+ const i=n(684,196,['Approved','listed in storefront'],{fill:C.lgreen,stroke:C.green,w:170});
+ const j=n(884,196,['Rejected','hidden from customers'],{fill:C.lred,stroke:C.red,w:200});
+ [[f,g],[g,h],[h,i]].forEach(([u,v])=>arrow(s,[[u.x+u.w,224],[v.x-2,224]],{color:C.blue}));
+ arrow(s,[[559,254],[559,272],[984,272],[984,254]],{color:C.red});
+ arrow(s,[[984,96],[984,160],[300,160],[300,194]],{dash:'4 3',label:'POST /api/products requires verificationStatus = Verified, else 403',at:[640,160]});
+ txt(s,14,300,['Stock changes through PATCH /api/products/:id/stock keep an Approved listing live; only new listings enter the approval queue.'],{anchor:'start',size:11.5});
+ txt(s,14,320,['Source: backend/routes/auth.js, backend/routes/admin.js, backend/routes/products.js'],{anchor:'start',size:11.5,fill:C.slate});
+})();
+</script></body></html>

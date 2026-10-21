@@ -1,0 +1,63 @@
+
+ShopSphere item-cancellation test -> http://localhost:5000/api
+
+Cancelling before the seller packs
+  PASS  order auto-accepts on creation  (Accepted)
+  PASS  each line carries an itemId  (ORD-1066-1)
+  PASS  cancel while Accepted succeeds  (200)
+  PASS  line marked cancelled
+  PASS  reason stored
+  PASS  cancelledAt stamped
+  PASS  stock restored exactly  (9)
+  PASS  duplicate cancellation refused  (400)
+  PASS  duplicate says already cancelled
+  PASS  stock not restored twice
+  PASS  order closes when the last line goes  (Cancelled)
+
+Multi-item order
+  PASS  one line cancels  (200)
+  PASS  the other line is untouched
+  PASS  the cancelled line is marked
+  PASS  order stays live  (Accepted)
+  PASS  only the cancelled line restocked
+  PASS  untouched line stays sold
+
+Still cancellable while the parcel is with the seller
+  PASS  STILL cancellable once Packed  (200)
+  PASS  STILL cancellable once Ready For Dispatch  (200)
+
+Blocked once the courier has the parcel
+  PASS  refused once Shipped/dispatched  (400)
+  PASS  dispatch message is specific  "This item cannot be cancelled because it has already been dispatched."
+  PASS  refused once Delivered  (400)
+  PASS  delivered points at returns  "This item has been delivered. You can request a return instead."
+
+Ownership
+  PASS  no token rejected  (401)
+  PASS  another customer rejected  (403)
+  PASS  ownership message
+  PASS  unknown item id is 404  (404)
+
+Reason validation
+  PASS  reason off the list rejected  (400)
+  PASS  Other without a note rejected  (400)
+  PASS  Other with a note accepted  (200)
+  PASS  note stored
+
+Cash on Delivery
+  PASS  COD line cancels  (200)
+  PASS  no refund amount on COD
+  PASS  refund status left empty on COD  (null)
+
+Race condition
+  PASS  cancellable at the moment the modal opened
+  PASS  the late confirm is refused  (400)
+  PASS  refusal names dispatch  "This item cannot be cancelled because it has already been dispatched."
+  PASS  stock NOT restored on a refused cancel  (5)
+  PASS  stock still reflects the sale
+
+========================================================
+  39 passed, 0 failed
+========================================================
+
+test orders created: ORD-1066, ORD-1067, ORD-1068, ORD-1069, ORD-1070, ORD-1071, ORD-1072, ORD-1073, ORD-1074

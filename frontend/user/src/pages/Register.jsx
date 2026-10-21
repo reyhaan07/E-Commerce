@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlinePhone } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 import { apiRequest } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
 
 const LOGIN_URL = '/login';
 

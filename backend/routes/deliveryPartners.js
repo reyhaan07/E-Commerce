@@ -41,10 +41,12 @@ async function partnerStats(partnerId) {
 }
 
 // GET /api/delivery-partners
-router.get("/", async (req, res) => {
+// Admin-only: the roster includes phone numbers and uploaded licence/RC/ID
+// documents.
+router.get("/", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
   const partners = await DeliveryPartner.find();
   res.json({ success: true, deliveryPartners: partners.map(omitPassword) });
-});
+}));
 
 // GET /api/delivery-partners/me — the logged-in partner's own profile + stats
 // (Feature 3/4). Defined before /:id-shaped routes so "me" is never treated
