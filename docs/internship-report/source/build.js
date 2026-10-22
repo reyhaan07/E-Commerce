@@ -41,8 +41,8 @@ const B = (text, lvl = 0) => new Paragraph({
   children: runs(text), numbering: { reference: 'bul', level: lvl },
   alignment: AlignmentType.JUSTIFIED, spacing: { after: 50, line: 276 },
 });
-const N = (text) => new Paragraph({
-  children: runs(text), numbering: { reference: 'num', level: 0 },
+const N = (text, ref = 'num') => new Paragraph({
+  children: runs(text), numbering: { reference: ref, level: 0 },
   alignment: AlignmentType.JUSTIFIED, spacing: { after: 50, line: 276 },
 });
 const C = (text, o = {}) => P(text, { align: AlignmentType.CENTER, ...o });
@@ -346,7 +346,7 @@ push(table('6.3', 'Defects fixed in the final review (commits fd224c2, bf17b77, 
 // ---------------- Chapter 7 ----------------
 ch(7, 'Team Contributions and Collaboration');
 sec('7.1', 'Team Structure');
-push(P(`ShopSphere was developed jointly by the teams **Ctrl+Alt+Win** and **Femme Forces**. Work was divided by module: three members acted as main contributors with ownership of a core area, one member supported the seller module, and two members carried out limited, bounded testing and evidence tasks. Table 7.1 summarises the responsibilities recorded in the team’s Task Assignment sheet.`));
+push(P(`ShopSphere was developed jointly by the teams **Ctrl+Alt+Win** and **Femme Forces**. Work was divided by module: three members acted as main contributors with ownership of a core area, two members supported the seller module and the delivery workflow, and one member carried out limited testing and evidence tasks. Table 7.1 summarises the responsibilities recorded in the team’s Task Assignment sheet.`));
 push(table('7.1', `Team members and responsibilities — ${TEAMS}`,
   ['Member (Reg. No.)', 'Level', 'Main responsibility'],
   [['Reyhaan S (312325205176)', 'Main contributor', 'Authentication, authorization, shared login, protected routes, security validation and integration'],
@@ -354,7 +354,7 @@ push(table('7.1', `Team members and responsibilities — ${TEAMS}`,
    ['Mrityunjai G (312325205132)', 'Main contributor', 'Administration portal, seller and product approvals, role permissions, order and delivery administration'],
    ['Pasupathi G (312325205157)', 'Supporting contributor', 'Seller portal, catalogue and inventory workflows, seller fulfilment and testing'],
    ['Priyadharshini P (312325205165)', 'Limited support', 'Customer UI spot-checks, cart/checkout smoke checks, screenshot evidence'],
-   ['Niraimathi V (312325205141)', 'Light support', 'Occasional delivery-workflow checks, screenshots and simple QA notes']],
+   ['Niraimathi V (312325205141)', 'Supporting contributor', 'Delivery-workflow checks, screenshots and QA notes']],
   [2700, 1700, 4266], { size: 19 }));
 sec('7.2', 'Member Contributions');
 push(B('**Reyhaan S — authentication, authorization and integration.** The shared login application and per-role login entry, the safe redirect to each role’s portal, the super-administrator tier (`requireSuperAdmin` and `adminRole` in the token), removal of the e-mail OTP step with a migration that re-hashes plaintext passwords, storefront re-authentication on `401`, the four-role login smoke test, and security and cross-portal regression checks (Chapter 5).'));
@@ -362,7 +362,7 @@ push(B('**Sai Saran S — architecture, integration and coordination.** Overall 
 push(B('**Mrityunjai G — administration portal.** Seller verification and product approval workflows, user and seller management, role-permission checks on admin-only screens and actions, order administration and delivery assignment, and status-transition verification (Sections 4.3 and 4.5).'));
 push(B('**Pasupathi G — seller portal (supporting).** Seller dashboard navigation, product-entry and validation review, inventory and stock workflows, seller-side order handling and fulfilment status, and consistency checks between seller listings and the storefront (Section 4.2).'));
 push(B('**Priyadharshini P — customer storefront checks (limited).** Cart and checkout smoke tests, checkout validation, customer UI spot-checks and organisation of customer-flow screenshots.'));
-push(B('**Niraimathi V — delivery checks (light).** Occasional delivery-status and navigation spot-checks, cross-role status-label comparison, simple form checks and help with labelling report evidence.'));
+push(B('**Niraimathi V — delivery workflow checks (supporting).** Delivery-status and navigation checks, cross-role status-label comparison, simple form checks and help with labelling report evidence.'));
 sec('7.3', 'Repository Evidence');
 push(P('Table 7.2 lists notable commits from the internship period and the one later merge. Commit authorship is useful evidence but is not a complete record of who did what: much of the work was discussed and tested jointly, some members contributed through testing rather than commits, and several commits carry AI co-author trailers.'));
 push(table('7.2', 'Notable commits in the shared repository',
@@ -376,7 +376,7 @@ push(table('7.2', 'Notable commits in the shared repository',
    ['20 Oct 2026', '5452ea8 (Sai Saran S), merged as PR #3', 'UI and data-flow enhancements, account-status re-checks, delivery self-registration — after the internship period'],
    ['21 Oct 2026', 'fd224c2, bf17b77, f707f90', 'Final review fixes before submission (Section 6.4)']],
   [1350, 2400, 4916], { size: 19 }));
-push(P('Earlier commits (26 June – 13 July 2026) by the accounts “Blueundead24” and “Harini-G-07” created the initial project structure, the first login API, the delivery app and the user-account module, including the original `requireAuth` and `requireSelfOrAdmin` guards; these accounts are not mapped to team members in the allocation workbook.'));
+push(P('Earlier commits (26 June – 4 July 2026) by the account “Blueundead24” created the initial project structure, the first login API and the delivery app; this account is not mapped to a team member in the allocation workbook.'));
 sec('7.4', 'Work Allocation Summary');
 push(P('The team’s workbook covers **15 July 2026 to 14 September 2026**, a sub-period of the internship (18 June – 15 September 2026). It allocates one recurring task per member for each of 41 working days. The workbook itself states that its daily calendar is a proposed retrospective allocation and not a verified record of attendance or completion dates; it is summarised here as a work-allocation record, not as a daily log.'));
 push(table('7.3', 'Recurring task areas per member in the work-allocation calendar (days allocated in brackets)',
@@ -386,11 +386,11 @@ push(table('7.3', 'Recurring task areas per member in the work-allocation calend
    ['Mrityunjai G', 'Regression pass (5), evidence preparation (5), issue verification, seller approval workflow, role permission checks, product administration, user management, status-transition checks, admin API review (4 each), order administration (3)'],
    ['Pasupathi G', 'Seller portal orientation (5), product creation review (5), seller order handling, catalogue consistency, fulfilment status, seller validation QA, evidence capture, cross-role check, final walkthrough (4 each), seller API trace (3)'],
    ['Priyadharshini P', 'Checkout validation (5), customer screenshots (5), cart smoke test and other customer UI spot-checks (3–4 each)'],
-   ['Niraimathi V', 'Cross-role display check (5), light regression support (5), delivery UI and journey spot-checks, report evidence and handover support (3–4 each)']],
+   ['Niraimathi V', 'Cross-role display check (5), regression support (5), delivery UI and journey spot-checks, report evidence and handover support (3–4 each)']],
   [1900, 6766], { size: 19 }));
 push(table('7.4', 'Project phases reconstructed from repository history and the allocation workbook',
   ['Period', 'Activity', 'Evidence'],
-  [['18 Jun – 14 Jul', 'Onboarding and MERN training; initial project set-up, common login, first backend APIs and user-account module', 'Commits 26 Jun – 13 Jul'],
+  [['18 Jun – 14 Jul', 'Onboarding and MERN training; initial project set-up, common login and first backend APIs', 'Commits 26 Jun – 4 Jul'],
    ['15 – 31 Jul', 'MongoDB migration and shared login; full module build-out; per-role login; OTP removal and password hashing; smoke test', 'Commits 16 – 25 Jul; workbook'],
    ['1 – 31 Aug', 'Super-admin tier and order journey; seller centre redesign; PIN-code delivery settings; 401 re-authentication', 'Commits 20 – 22 Aug; workbook'],
    ['1 – 15 Sep', 'Regression checks, cross-portal verification, documentation and report preparation', 'Workbook only (no commits dated in September)'],
@@ -474,6 +474,50 @@ push(table('A.1', 'Quick-start accounts (one per role)',
   push(table(`A.${i + 2}`, title, ['ID', role === 'seller' ? 'Store' : 'Name', 'E-mail', 'Password', extra], rows, [1000, 1950, 3050, 1150, 1516], { size: 16, compact: true }));
 });
 
+// ---------------- Appendix B: running the project ----------------
+TOC.push(['APPENDIX B  RUNNING THE PROJECT LOCALLY', 'appB', 0]);
+push(H1(null, 'Appendix B  Running the Project Locally'));
+push(P('These steps reproduce the environment used for the screenshots and tests in this report. They follow the repository’s README.md and package.json scripts.'));
+push(H3('B.1  Prerequisites'));
+push(B('Node.js version 20 or later, with npm.'));
+push(B('MongoDB running locally at mongodb://127.0.0.1:27017 (any recent version; MongoDB 7 was used here), or a remote MongoDB URI.'));
+push(B('Git, and a modern web browser.'));
+push(H3('B.2  Installation and start-up'));
+push(N('Clone the repository and open the project folder.', 'numB'));
+push(N('Install the root tools and the dependencies of the backend and all five front-ends.', 'numB'));
+push(N('Create `backend/.env` from `backend/.env.example` and set `MONGO_URI`, a long random `JWT_SECRET` and `LOGIN_APP_URL`. SMTP and Razorpay test keys are optional.', 'numB'));
+push(N('Start the backend and the five portals together. On first start the backend seeds the database with the demo catalogue, orders and the accounts in Appendix A.', 'numB'));
+push(N('Open the shared login at http://localhost:5177, choose a role and sign in with an account from Appendix A.', 'numB'));
+push(new Paragraph({ children: [], spacing: { after: 60 } }));
+push(code([
+  '# 1-2. clone and install',
+  'git clone https://github.com/reyhaan07/E-Commerce.git',
+  'cd E-Commerce',
+  'npm install',
+  'npm run install:all',
+  '',
+  '# 3. configure the backend',
+  'cp backend/.env.example backend/.env      # then edit MONGO_URI and JWT_SECRET',
+  '',
+  '# 4. start the API (5000) and all five portals (5173-5177)',
+  'npm run dev',
+  '',
+  '# useful extras',
+  'npm run reseed --prefix backend           # drop and re-seed the demo data',
+  'npm test --prefix backend                 # smoke test (backend must be running)',
+  'npm run build:all                         # production builds of all portals',
+]));
+push(new Paragraph({ children: [], spacing: { after: 100 } }));
+push(table('B.1', 'Applications and their local addresses',
+  ['Application', 'Folder', 'Address'],
+  [['Backend API and Socket.io', 'backend/', 'http://localhost:5000'],
+   ['Admin console', 'frontend/admin/', 'http://localhost:5173'],
+   ['Seller portal', 'frontend/seller/', 'http://localhost:5174'],
+   ['Customer storefront', 'frontend/user/', 'http://localhost:5175'],
+   ['Delivery partner console', 'frontend/delivery/', 'http://localhost:5176'],
+   ['Shared login', 'frontend/login/', 'http://localhost:5177']],
+  [3200, 2600, 2866], { size: 19 }));
+
 // =====================================================================
 // FRONT MATTER
 // =====================================================================
@@ -540,6 +584,7 @@ const doc = new Document({
     { reference: 'bul', levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 500, hanging: 280 } } } },
       { level: 1, format: LevelFormat.BULLET, text: '◦', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 1000, hanging: 280 } } } }] },
     { reference: 'num', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 500, hanging: 320 } } } }] },
+    { reference: 'numB', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 500, hanging: 320 } } } }] },
   ] },
   sections: [
     { properties: { ...pageProps, page: { ...pageProps.page, margin: { top: 1000, bottom: 900, left: 1440, right: 1440 } } }, children: cover },

@@ -1,6 +1,6 @@
 # Details to confirm before submission
 
-Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (29 pages including the cover)
+Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win and Femme Forces for TechPower Solutions (30 pages including the cover)
 
 ## Documents that were not supplied (not included in the report)
 1. **Internship completion certificate from TechPower Solutions.** The reference report only had Sai Saran's offer letter. Nothing was copied or invented. Add Reyhaan's own certificate or offer letter as an annexure if the department needs it. That adds 1–2 pages, which keeps the report within the 30-page limit only if it is a single page.
@@ -14,7 +14,7 @@ Report: `SHOPSPHERE_TEAM_INTERNSHIP_REPORT.docx`, a joint report by Ctrl+Alt+Win
 7. **Project title wording.** "Multi-Vendor *Social* E-Commerce Platform" was used as you asked. The repository README calls it "Multi-Vendor E-Commerce Platform", and the only social feature in the code is product reviews.
 
 ## Authorship questions (Chapter 7)
-8. **Who owns the GitHub accounts `Blueundead24` and `Harini-G-07`?** They wrote the earliest commits, including "Create backend login API" (27 Jun), "Security hardening pass on user auth" (13 Jul) and the original `requireAuth`, `requireSelfOrAdmin` and URL hand-off. Neither account maps to the six members in the workbook. If either belongs to Reyhaan, Section 7.2 and Table 7.1 can credit that work to him.
+8. The Harini-G-07 commits are no longer mentioned in the report, as requested. Niraimathi V is listed as a supporting contributor.
 9. **AI assistance.** Many commits carry AI co-author trailers, including some of Reyhaan's, and some are authored as "Claude". The report says so neutrally in Sections 2.5 and 7.2. Check your college's policy on disclosing AI tools.
 10. **The work-allocation calendar** (15 Jul – 14 Sep 2026) describes itself as a *proposed retrospective allocation*. The report presents it only as an allocation summary. Confirm it with teammates and your supervisor.
 
